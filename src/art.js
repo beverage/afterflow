@@ -2,7 +2,7 @@
 // A texture is only drawn when no real file was loaded for its key: put the PNG in
 // public/assets/, add one line to src/assets.js, and it replaces the placeholder.
 // The water, light, glows and portal swirls are drawn live by RiverScene, not here.
-import { GODS, WIDTH as W, HEIGHT as H } from './config.js';
+import { GODS, STALL, WIDTH as W, HEIGHT as H } from './config.js';
 import { rgbOf } from './color.js';
 import { fbm, sstep, mixRGB } from './noise.js';
 
@@ -47,7 +47,8 @@ export function makeArt(scene) {
   make(scene, 'swirl', 72, 72, drawSwirl);
   make(scene, 'beam', 64, 256, drawBeam);
   make(scene, 'pier', 100, 34, drawPier);
-  make(scene, 'shop', 150, 150, drawShop);
+  make(scene, 'shop', STALL.frameWidth, STALL.frameHeight, drawStall);
+  make(scene, 'medal_hermes', 34, 34, (g) => drawMedal(g, [255, 196, 120], 'caduceus'));
   make(scene, 'boat', 100, 170, drawBoat);
   make(scene, 'obol', 40, 40, (g) => drawObol(g, 20, 20, 17));
   make(scene, 'icon_speed', 96, 96, drawIconSpeed);
@@ -59,7 +60,7 @@ export function makeArt(scene) {
   make(scene, 'shade', W, H, drawShade);
 }
 
-/* ---------- god symbols (owl, spear, trident) on a 20-unit grid ---------- */
+/* ---------- god symbols (owl, spear, trident, and Hermes' caduceus) on a 20-unit grid ---------- */
 function glyphPath(g, type) {
   g.beginPath();
   if (type === 'owl') {
@@ -84,6 +85,23 @@ function glyphPath(g, type) {
     g.closePath();
     g.moveTo(-3.8, 1.5);
     g.lineTo(3.8, 1.5);
+  } else if (type === 'caduceus') {
+    g.moveTo(0, 10);
+    g.lineTo(0, -7.5);
+    g.moveTo(1.5, -9.2);
+    g.arc(0, -9.2, 1.5, 0, TAU);
+    g.moveTo(-1.2, -6.6);
+    g.quadraticCurveTo(-5, -10, -9.4, -8.6);
+    g.quadraticCurveTo(-6, -5.6, -1.2, -5);
+    g.moveTo(1.2, -6.6);
+    g.quadraticCurveTo(5, -10, 9.4, -8.6);
+    g.quadraticCurveTo(6, -5.6, 1.2, -5);
+    g.moveTo(-3.4, 8);
+    g.bezierCurveTo(4.6, 5.4, 4.6, 1.6, 0, 0.4);
+    g.bezierCurveTo(-4.6, -1, -4.2, -3.6, 0, -4.2);
+    g.moveTo(3.4, 8);
+    g.bezierCurveTo(-4.6, 5.4, -4.6, 1.6, 0, 0.4);
+    g.bezierCurveTo(4.6, -1, 4.2, -3.6, 0, -4.2);
   } else {
     g.moveTo(0, 10);
     g.lineTo(0, -10);
@@ -529,89 +547,138 @@ function drawPier(g) {
   }
 }
 
-// Hermes' stall, base centre at (75, 138): a wooden booth with a striped awning and a coin sign.
-function drawShop(g) {
-  g.translate(75, 138);
-  const sh = g.createRadialGradient(0, 2, 4, 0, 2, 70);
-  sh.addColorStop(0, 'rgba(8,12,11,.55)');
-  sh.addColorStop(1, 'rgba(8,12,11,0)');
-  g.fillStyle = sh;
-  g.beginPath();
-  g.ellipse(0, 3, 70, 13, 0, 0, TAU);
-  g.fill();
-  g.fillStyle = '#3b2e24';
-  g.fillRect(-54, -8, 108, 8);
-  const wall = g.createLinearGradient(-44, 0, 44, 0);
-  wall.addColorStop(0, '#4a372a');
-  wall.addColorStop(0.5, '#634a37');
-  wall.addColorStop(1, '#3d2d22');
-  g.fillStyle = wall;
-  g.fillRect(-44, -80, 88, 72);
-  g.strokeStyle = 'rgba(20,14,10,.5)';
-  g.lineWidth = 1;
-  g.beginPath();
-  for (let x = -36; x < 44; x += 8) {
-    g.moveTo(x, -80);
-    g.lineTo(x, -8);
-  }
-  g.stroke();
-  g.fillStyle = '#140f14';
-  g.fillRect(-32, -68, 64, 30);
-  const warm = g.createRadialGradient(0, -53, 2, 0, -53, 42);
-  warm.addColorStop(0, 'rgba(255,196,120,.6)');
-  warm.addColorStop(1, 'rgba(255,196,120,0)');
-  g.fillStyle = warm;
-  g.fillRect(-32, -68, 64, 30);
-  for (const [x, c] of [[-20, '#8fd6c0'], [-8, '#e0a45a'], [4, '#b9a0ff']]) {
-    g.fillStyle = c;
+// Hermes' stall, a stand-in until Ines draws hers: a striped awning over a wooden counter of wares on a
+// stone slab, a jetty out to the water and a pool of warm light where you dock. Seen at her portals' angle
+// (facing right, toward the water) in the same 327x299 frame, its base point at STALL.anchor.
+function drawStall(g) {
+  const [ox, oy] = STALL.anchor;
+  // u runs along the counter (up-right on screen), n out toward the water (down-right), h straight up.
+  const P = (u, n, h = 0) => [ox + 0.92 * (u + n), oy + 0.39 * (n - u) - h];
+  const quad = (pts, fill) => {
     g.beginPath();
-    g.ellipse(x, -43, 4, 5.5, 0, 0, TAU);
+    pts.forEach(([u, n, h], i) => g[i ? 'lineTo' : 'moveTo'](...P(u, n, h)));
+    g.closePath();
+    g.fillStyle = fill;
     g.fill();
-  }
-  g.fillStyle = '#e8dcc0';
-  g.fillRect(12, -47, 14, 5);
-  g.fillStyle = '#7a5c43';
-  g.fillRect(-48, -38, 96, 8);
-  g.fillStyle = 'rgba(255,230,190,.2)';
-  g.fillRect(-48, -38, 96, 1.5);
-  g.fillStyle = '#5a4331';
-  g.fillRect(-48, -30, 96, 22);
-  g.fillStyle = '#2e2219';
-  g.fillRect(-52, -104, 6, 96);
-  g.fillRect(46, -104, 6, 96);
-  // striped awning
+  };
+  // A box shows its left end (-u), its front (+n, facing the water) and its top.
+  const box = (u0, u1, n0, n1, h0, h1, top, front, side) => {
+    quad([[u0, n0, h0], [u0, n1, h0], [u0, n1, h1], [u0, n0, h1]], side);
+    quad([[u0, n1, h0], [u1, n1, h0], [u1, n1, h1], [u0, n1, h1]], front);
+    quad([[u0, n0, h1], [u1, n0, h1], [u1, n1, h1], [u0, n1, h1]], top);
+  };
+  const line = (a, b, style, w) => {
+    g.strokeStyle = style;
+    g.lineWidth = w;
+    g.beginPath();
+    g.moveTo(...P(...a));
+    g.lineTo(...P(...b));
+    g.stroke();
+  };
+
+  // The pool of warm light on the water, and faint rays, like the light at Ines's portals.
+  const ang = Math.atan2(0.39, 0.92), [cx, cy] = P(12, 112);
   g.save();
+  g.translate(cx, cy);
+  g.rotate(ang);
+  g.scale(1, 0.42);
+  const pool = g.createRadialGradient(0, 0, 4, 0, 0, 108);
+  pool.addColorStop(0, 'rgba(255,200,130,.30)');
+  pool.addColorStop(0.6, 'rgba(255,190,120,.12)');
+  pool.addColorStop(1, 'rgba(255,190,120,0)');
+  g.fillStyle = pool;
   g.beginPath();
-  g.moveTo(-60, -80);
-  g.lineTo(60, -80);
-  g.lineTo(48, -104);
-  g.lineTo(-48, -104);
-  g.closePath();
-  g.fillStyle = '#5e2a3c';
+  g.arc(0, 0, 108, 0, TAU);
   g.fill();
-  g.clip();
-  g.fillStyle = '#7a3a50';
-  for (let x = -60; x < 60; x += 20) g.fillRect(x, -106, 10, 28);
   g.restore();
-  for (let i = 0; i < 8; i++) {
-    g.fillStyle = i % 2 ? '#7a3a50' : '#5e2a3c';
+  g.lineCap = 'round';
+  for (const u of [-6, 16, 38]) line([u, 70, 0], [u + 6, 196, 0], 'rgba(255,214,150,.10)', 5);
+
+  // Stone slab, in the portals' stone.
+  box(-62, 62, -34, 16, 0, 8, '#7b8476', '#5e6764', '#3a4340');
+  // Back posts, then the counter in front of them.
+  const wood = ['#8a6848', '#5f432e', '#3f2c20'];
+  box(-47, -42, -24, -19, 8, 104, ...wood);
+  box(42, 47, -24, -19, 8, 104, ...wood);
+  box(-46, 46, -22, 6, 8, 40, '#977354', '#6b4b33', '#4a3324');
+  for (let u = -38; u <= 38; u += 8) line([u, 6, 10], [u, 6, 39], 'rgba(30,20,14,.45)', 1);
+  line([-46, 6, 40], [46, 6, 40], 'rgba(255,230,190,.35)', 1.2);
+  // A banner on the counter with the caduceus, skewed onto the counter's face.
+  quad([[-15, 6.2, 18], [15, 6.2, 18], [15, 6.2, 39], [-15, 6.2, 39]], '#8e4a2c');
+  g.save();
+  const [bx, by] = P(0, 6.2, 28.5);
+  g.transform(0.92, -0.39, 0, 1, bx, by);
+  drawGlyph(g, 'caduceus', 0, 0, 0.72, 'rgba(0,0,0,.3)', '#f3d38a', 1.1);
+  g.restore();
+  // Wares on the counter: amphorae in the gods' colors, scrolls, a pile of obols.
+  GODS.forEach((god, i) => {
+    const [x, y] = P(-34 + i * 11, -9, 40), c = rgbOf(god.color);
+    g.fillStyle = rgba(c.map((v) => v * 0.62), 1);
     g.beginPath();
-    g.arc(-52.5 + i * 15, -80, 7.5, 0, Math.PI);
+    g.ellipse(x, y - 6, 4.2, 6, 0, 0, TAU);
+    g.fill();
+    g.fillRect(x - 1.6, y - 14, 3.2, 4);
+    g.fillStyle = 'rgba(255,255,255,.25)';
+    g.beginPath();
+    g.ellipse(x - 1.5, y - 8, 1.2, 2.6, 0, 0, TAU);
+    g.fill();
+  });
+  for (let i = 0; i < 3; i++) {
+    const [x, y] = P(8 + i * 3, -12 + i * 5, 40 + (i === 1 ? 3 : 0));
+    g.fillStyle = '#e8dcbc';
+    g.beginPath();
+    g.ellipse(x, y - 2.5, 8, 2.6, -0.4, 0, TAU);
+    g.fill();
+    g.fillStyle = '#b89a62';
+    g.beginPath();
+    g.ellipse(x + 7, y - 5.2, 1.6, 2.4, 0, 0, TAU);
     g.fill();
   }
-  // lantern and coin sign
-  g.fillStyle = '#ffd28a';
+  for (let i = 0; i < 6; i++) {
+    const [x, y] = P(30 + (i % 3) * 3, -10 + (i > 2 ? 4 : 0), 40 + (i === 5 ? 2 : 0));
+    g.fillStyle = i % 2 ? '#d9a441' : '#f0c865';
+    g.beginPath();
+    g.ellipse(x, y - 1.5, 3.4, 1.6, 0, 0, TAU);
+    g.fill();
+  }
+  // Front posts, and the awning over everything: cream and ochre stripes sloping down toward the water.
+  box(-47, -42, 1, 6, 8, 90, ...wood);
+  box(42, 47, 1, 6, 8, 90, ...wood);
+  const back = -32, front = 14, hb = 108, hf = 88;
+  for (let i = 0; i < 8; i++) {
+    const u0 = -56 + i * 14, u1 = u0 + 14, col = i % 2 ? '#e6d6b0' : '#b8743a';
+    quad([[u0, back, hb], [u1, back, hb], [u1, front, hf], [u0, front, hf]], col);
+    // the scalloped valance hanging along the front edge
+    quad([[u0, front, hf], [u1, front, hf], [u1, front, hf - 7], [u0, front, hf - 7]], i % 2 ? '#cdbd96' : '#9a5f2e');
+    const [sx, sy] = P(u0 + 7, front, hf - 7);
+    g.fillStyle = i % 2 ? '#cdbd96' : '#9a5f2e';
+    g.beginPath();
+    g.ellipse(sx, sy, 6.2, 3.4, -ang, 0, Math.PI);
+    g.fill();
+  }
+  quad([[-56, back, hb], [-56, front, hf], [-56, front, hf - 7], [-56, back, hb - 7]], '#6e4523');
+  line([-56, back, hb], [56, back, hb], 'rgba(255,240,210,.35)', 1);
+
+  // A lantern hanging from the front corner, warm light spilling round it.
+  const [lx, ly] = P(50, 16, 70);
+  const lg = g.createRadialGradient(lx, ly, 1, lx, ly, 30);
+  lg.addColorStop(0, 'rgba(255,214,150,.55)');
+  lg.addColorStop(1, 'rgba(255,190,120,0)');
+  g.fillStyle = lg;
   g.beginPath();
-  g.arc(-49, -84, 3.5, 0, TAU);
+  g.arc(lx, ly, 30, 0, TAU);
   g.fill();
-  g.strokeStyle = '#2e2219';
-  g.lineWidth = 1.5;
-  g.beginPath();
-  g.moveTo(52, -96);
-  g.lineTo(60, -96);
-  g.lineTo(60, -86);
-  g.stroke();
-  drawObol(g, 60, -74, 11);
+  line([50, 16, 81], [50, 16, 75], '#2a211a', 1);
+  g.fillStyle = '#2a211a';
+  g.fillRect(lx - 3.5, ly - 6, 7, 11);
+  g.fillStyle = '#ffd98f';
+  g.fillRect(lx - 2, ly - 4, 4, 7);
+
+  // The jetty out over the water, planks across it, two posts at its end.
+  box(4, 30, 16, 84, 2, 6, '#8a6a4c', '#5a4330', '#4a3627');
+  for (let n = 22; n < 84; n += 7) line([4, n, 6], [30, n, 6], 'rgba(30,20,14,.4)', 1);
+  box(2, 6, 80, 85, -6, 12, ...wood);
+  box(28, 32, 80, 85, -6, 12, ...wood);
 }
 
 /* ---------- boat ---------- */
