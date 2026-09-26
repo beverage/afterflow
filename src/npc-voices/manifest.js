@@ -367,5 +367,121 @@ export const AUDIO = {
         "seconds": 1.6
       }
     ]
+  },
+  "poseidon": {
+    "run_start": [
+      {
+        "path": "/npc-voices/poseidon/run_start_sail-ferryman.wav",
+        "text": "Sail, ferryman.",
+        "seconds": 1.68
+      },
+      {
+        "path": "/npc-voices/poseidon/run_start_the-tide-is-turning.wav",
+        "text": "The tide is turning.",
+        "seconds": 1.68
+      }
+    ],
+    "rage_50": [
+      {
+        "path": "/npc-voices/poseidon/rage_50_the-sea-grows-restless.wav",
+        "text": "The sea grows restless.",
+        "seconds": 2.4
+      },
+      {
+        "path": "/npc-voices/poseidon/rage_50_you-lost-one-of-mine.wav",
+        "text": "You lost one of mine.",
+        "seconds": 2.08
+      }
+    ],
+    "rage_80": [
+      {
+        "path": "/npc-voices/poseidon/rage_80_a-storm-is-coming.wav",
+        "text": "A storm is coming!",
+        "seconds": 1.92
+      },
+      {
+        "path": "/npc-voices/poseidon/rage_80_i-will-drown-you.wav",
+        "text": "I will drown you!",
+        "seconds": 2.08
+      }
+    ],
+    "hurry": [
+      {
+        "path": "/npc-voices/poseidon/hurry_faster-ferryman.wav",
+        "text": "Faster, ferryman!",
+        "seconds": 2
+      },
+      {
+        "path": "/npc-voices/poseidon/hurry_the-tide-waits-for-no-one.wav",
+        "text": "The tide waits for no one.",
+        "seconds": 2.4
+      }
+    ],
+    "shout": [
+      {
+        "path": "/npc-voices/poseidon/shout_ferryman.wav",
+        "text": "Ferryman!",
+        "seconds": 1.28
+      },
+      {
+        "path": "/npc-voices/poseidon/shout_sink.wav",
+        "text": "Sink!",
+        "seconds": 0.96
+      },
+      {
+        "path": "/npc-voices/poseidon/shout_faster.wav",
+        "text": "Faster!",
+        "seconds": 1.12
+      },
+      {
+        "path": "/npc-voices/poseidon/shout_mine.wav",
+        "text": "Mine!",
+        "seconds": 1.12
+      },
+      {
+        "path": "/npc-voices/poseidon/shout_fool.wav",
+        "text": "Fool!",
+        "seconds": 0.96
+      },
+      {
+        "path": "/npc-voices/poseidon/shout_drown.wav",
+        "text": "Drown!",
+        "seconds": 1.12
+      },
+      {
+        "path": "/npc-voices/poseidon/shout_enough.wav",
+        "text": "Enough!",
+        "seconds": 0.96
+      },
+      {
+        "path": "/npc-voices/poseidon/shout_row.wav",
+        "text": "Row!",
+        "seconds": 1.04
+      }
+    ],
+    "streak": [
+      {
+        "path": "/npc-voices/poseidon/streak_calm-waters.wav",
+        "text": "Calm waters.",
+        "seconds": 1.44
+      },
+      {
+        "path": "/npc-voices/poseidon/streak_the-sea-approves.wav",
+        "text": "The sea approves.",
+        "seconds": 1.6
+      }
+    ],
+    "smite": [
+      {
+        "path": "/npc-voices/poseidon/smite_the-sea-takes-you.wav",
+        "text": "The sea takes you.",
+        "seconds": 1.76
+      },
+      {
+        "path": "/npc-voices/poseidon/smite_down-you-go.wav",
+        "text": "Down you go.",
+        "seconds": 1.28
+      }
+    ]
   }
 };

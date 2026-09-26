@@ -88,7 +88,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | Narrator | `narrator` | Emma (catalog) | Placeholder until we design our own |
 | Athena | `athena` | "Athena", designed (`xejWGWmOKQHMxQbh`) | Cool teacher: calm alto, precise, disappointed. Lines and prompt in `src/npc-voices/athena.js` |
 | Ares | `ares` | "Ares", designed (`bYo8Un6hIP7WoPZ2`) | Viking warlord: extremely low, gravelly, slow, enraged. Lines and full prompt in `src/npc-voices/ares.js` |
-| Poseidon | `poseidon` | to design | Deep and rolling, moody as the sea |
+| Poseidon | `poseidon` | "Poseidon", designed (`Dd8EiWWMQldQ7SeM`) | Storm king: booming bass, weathered but clear, bursts into roars. Lines and prompts in `src/npc-voices/poseidon.js` |
 | Hades | `hades` | "Hades", designed (`oyNt5tAW0wzf4qMN`) | Not one of the 3 gods yet, voice only. Cold aristocrat: deep, quiet, contemptuous. `src/npc-voices/hades.js` |
 
 ## Scope

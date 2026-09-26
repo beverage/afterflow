@@ -2,8 +2,9 @@
 import { ARES } from './ares.js';
 import { HADES } from './hades.js';
 import { ATHENA } from './athena.js';
+import { POSEIDON } from './poseidon.js';
 
-export const NPCS = { ares: ARES, hades: HADES, athena: ATHENA };
+export const NPCS = { ares: ARES, hades: HADES, athena: ATHENA, poseidon: POSEIDON };
 
 // Other spellings players and teammates use -> key in NPCS.
 export const ALIASES = { athene: 'athena' };
