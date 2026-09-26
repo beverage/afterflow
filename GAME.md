@@ -10,7 +10,8 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 1. **Scoop.** The river scrolls down the middle of the screen. Move the boat anywhere on the water with WASD and touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it burns out in a flash.
 2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into a shrine's dock to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to burn out is a **CLUTCH**, with its own sound and a bonus.
-3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially.
+3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially, or on scrolls.
+4. **Remember and recite.** Each scroll has a two-word incantation in crypto-Greek. Say it aloud on the river and the scroll calms its god. You can glance at your scrolls, but the river never slows: learn the words.
 
 ## Rules (v1)
 
@@ -19,10 +20,12 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100% = death.
 - Souls shrink and flicker over their lifespan and burn out in a flash at zero, which forces regular deliveries.
 - The streak resets when a soul burns out. Skipped souls already cost rage, so they don't also break it.
-- Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Items:
+- Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Hermes' stall is 3x2: upgrades on top, one scroll per god below.
   - **Speed**: the river scrolls faster, so more souls and shrines per minute (more money, more risk).
   - **Handling**: quicker, snappier boat movement.
   - **Hold**: +1 soul capacity (starts at 3).
+  - **Scrolls** (Athena, Ares, Poseidon): usables. You carry at most one per god. Each has a two-word incantation in crypto-Greek, like the crypto-Latin spells of Harry Potter but built from Greek roots tied to its god, solemn and never silly ("Galene Thalassa": calm, O sea). It's shown on its card with its meaning; say it aloud on the river and the scroll is used at once: that god loses half its rage. Price: 6 souls' worth at your distance.
+- Scrolls are a memory game: Space (or a tap on the scrolls panel) shows your scrolls for 5 s, over the left bank, and the river never slows.
 - Economy: upgrade prices grow exponentially per level. Soul value also grows the further downstream you get, then streak and clutch multiply it, so income keeps pace and the numbers keep climbing. Big numbers shown as 1.2K, 3.4M.
 - Difficulty ramps through density: more souls per second, shrines further apart.
 
@@ -40,21 +43,21 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## The AI hook (v2, after the river works)
 
-- What Gemini generates: the gods' voiced reactions (run start, rage at 50% and 80%, big streaks), fresh prayers written for the god and the moment, a death verdict from the god who sank you, a one-line life story for each soul.
-- Prayers: prayer scrolls (bought at shops) let you pick a god (1 / 2 / 3, or click its rage bar) and read the prayer aloud while still steering at full speed. Speech-to-text scores the words and lowers that god's rage.
+- What Gemini generates: scroll incantations (built), the gods' voiced reactions (run start, rage at 50% and 80%, big streaks), a death verdict from the god who sank you, a one-line life story for each soul.
+- Scrolls (built): Gemini writes each scroll's incantation (two crypto-Greek words and their meaning), prepared in the background so buying never waits. The browser's speech recognition listens while you carry a scroll. It hears invented words as English ("Thalassa" comes back as "the lasso"), so incantations are matched by sound, and both words must be there. What the mic heard shows like a subtitle under the river.
 - When it is called: run start, shop docks, game over, in the background. Never per frame. Lines are prepared ahead so they play instantly.
-- If the AI is slow or offline: canned lines per god; prayers fall back to holding Space.
+- If the AI is slow or offline: canned lines and canned incantations per god. With no mic (Firefox, mic refused), Space then 1 / 2 / 3 reads a scroll.
 
 ## Controls
 
 - Laptop first. **WASD** (the same keys are ZQSD on French AZERTY keyboards: keys are read by position) or the **arrow keys** move the boat freely on the water, shoot-'em-up style: across the river to reach souls and banks, forward and back to rush or wait. Diagonals are not faster. Quick acceleration with a slight glide; Handling makes it snappier.
 - Deliver: automatic when the boat touches a shrine's dock.
-- Shop: touching a shop's dock pauses the game and opens it. **1 / 2 / 3** or a click buys, **Space** or **Esc** casts off.
+- Shop: touching a shop's dock pauses the game and opens it. **1 to 6** or a click buys (1-3 upgrades, 4-6 scrolls), **Space** or **Esc** casts off.
 - **Esc** or **P** pauses, **M** mutes, **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly).
 - A "click to play" screen gives the game keyboard focus and unlocks audio. The game pauses when the window loses focus or the tab is hidden, so keys can't get stuck.
 - How to play: the first run of a browser session opens with a tour over the paused river (restarts and reloads skip it, a new tab shows it again). A spotlight moves from the boat to a soul, a shrine, the rage bars and the obols, with a caption card for each. Each step moves on by itself after 4.5 s; **Space**, **Enter**, a click or a tap moves on sooner, **Esc** or Skip ends it. **H**, or How to play on the pause screen, brings it back.
 - Never require more than 2 held keys plus 1 tap: laptop keyboards drop keys.
-- v2 prayers: **1 / 2 / 3** (or a click on a rage bar) prays to that god; hold **Space** if there's no mic. Mic permission is asked on the title screen, never mid-run.
+- Scrolls: say a carried scroll's words aloud to use it. **Space** shows your scrolls for 5 s while you keep steering. No mic: Space, then **1 / 2 / 3** (or a tap on a scroll) reads one. The browser asks for the mic when you buy your first scroll, while the stall has the game paused.
 - Phones, held sideways: a floating stick. Put a thumb down anywhere (the bars beside the game too) and slide: the boat heads that way at full speed, as if holding the key, and glides to a stop when you lift. A faint ring shows under the thumb and trails it, so sliding back reverses at once.
 - On a phone, taps do everything else: start, buy, cast off (a button), resume, restart. A pause button sits top right, and the pause screen has a sound toggle. Prompts say "tap" instead of naming keys.
 - A phone held upright shows "turn your phone sideways" and pauses the run. Android goes fullscreen on the first tap; iPhones can't, short of Add to Home Screen.
@@ -86,8 +89,9 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | `soul_athena`, `soul_ares`, `soul_poseidon` | 40x40 | The soul bubble with its god's symbol (halo and trail are code) |
 | `obol` | 40x40 | Coin with Athena's owl |
 | `icon_speed`, `icon_handling`, `icon_hold` | 96x96 | Shop icons |
+| `scroll_athena`, `scroll_ares`, `scroll_poseidon` | 88x64 | A scroll sealed in its god's color, for the stall and the HUD |
 
-- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning and smite. No background ambience: silence between effects. Real audio can replace them later. Owner: TBD.
+- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite, scrolls unrolling and a scroll calming its god. No background ambience: silence between effects. Real audio can replace them later. Owner: TBD.
 
 ## Voices (Gradium, v2)
 
@@ -102,15 +106,15 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 - Hack rule: use at least 2 of Gemini, Gradium, Devin, Voodoo (use during development counts).
 - v1, must have for the demo: river runner, 3 gods, souls with a lifespan, shrines and deliveries, rage bars and death, riverside shops with exponential prices (Speed, Handling, Hold), streaks, clutch with its own sound, juice (pops, obol bursts, screen shake), game over and instant restart.
-- v2, after v1 is solid: AI gods (reactions, fresh prayers, death verdict, soul stories), prayer scrolls read aloud (speech-to-text), obstacles and damage, saving and best score, bullet-hell arena when a god's rage fills, weapons.
-- Phones, alongside v1: touch controls for a phone held sideways (see Controls). Phone versions of v2 input (prayers) come with v2.
-- Stretch: voice cloning (the ferryman repeats your prayer in your own voice).
+- v2, after v1 is solid: AI gods (reactions, death verdict, soul stories), obstacles and damage, saving and best score, bullet-hell arena when a god's rage fills, weapons. Scrolls with spoken incantations are built.
+- Phones, alongside v1: touch controls for a phone held sideways (see Controls). Scrolls on phones: a tap on the scrolls panel shows them; the mic is untested on phones.
+- Stretch: voice cloning (the ferryman repeats your incantation in your own voice).
 - Considered, not chosen: golden hero souls, underworld zones, missions, leaderboard.
 - Cut: Unity and Voodoo.
 
 ## v1 status
 
-Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars and death, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
+Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars and death, Hermes' stall with exponential prices, scrolls with spoken incantations written by Gemini, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
 
 Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
 
