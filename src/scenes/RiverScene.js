@@ -283,6 +283,8 @@ export class RiverScene extends Phaser.Scene {
     const at = ([dx, dy]) => ({ x: ax + dir * dx, dy });
     const dock = at(STALL.dock), lamp = at(STALL.lamp), medal = at(STALL.medal);
     const f = { kind: 'shop', wy, side, x: ax, tip: dock.x, dockDy: dock.dy, used: false, parts: [] };
+    f.dockZone = STALL.dockZone.map(at);
+    f.dockReach = STALL.dockReach;
     f.glow = this.attach(f, this.add.image(lamp.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.2).setAlpha(0.35).setDepth(6.4), lamp.dy);
     f.dockGlow = this.attach(f, this.add.image(dock.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.6).setAlpha(0.3).setDepth(5), dock.dy);
     this.attach(f, this.add.image(ax, 0, 'shop').setOrigin(STALL.anchor[0] / STALL.frameWidth, STALL.anchor[1] / STALL.frameHeight).setScale(dir, 1).setDepth(6.5), 0);
@@ -589,7 +591,7 @@ export class RiverScene extends Phaser.Scene {
     return Math.hypot(lx, ly - clamp(ly, TUNING.hullFront, TUNING.hullBack));
   }
 
-  // How far the hull is from a feature's dock: its tip, or anywhere along its dock zone (a portal's pool of light).
+  // How far the hull is from a feature's dock: its tip, or anywhere along its dock zone (the pool of light at a portal or stall).
   dockDist(f, base) {
     if (!f.dockZone) return this.hullDist(f.tip, base + f.dockDy);
     const [a, b] = f.dockZone, n = Math.ceil(Math.hypot(b.x - a.x, b.dy - a.dy) / 12);
