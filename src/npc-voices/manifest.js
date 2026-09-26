@@ -227,6 +227,33 @@ export const AUDIO = {
         "seconds": 0.91
       }
     ],
+    "verdict": [
+      {
+        "path": "/npc-voices/hades/verdict_you-managed-to-lose-that-which-was-already-dead-those-souls.mp3",
+        "text": "You managed to lose that which was already dead. Those souls belong to me, yet you scattered them like loose coins in the River Styx.",
+        "seconds": 9.14
+      },
+      {
+        "path": "/npc-voices/hades/verdict_for-millennia-this-boat-has-ferried-all-manner-of-sinners.mp3",
+        "text": "For millennia, this boat has ferried all manner of sinners, but only you found a way to drop my cargo. What a pathetic display.",
+        "seconds": 13.39
+      },
+      {
+        "path": "/npc-voices/hades/verdict_i-entrusted-you-with-the-simplest-of-tasks-ferrying-shadows.mp3",
+        "text": "I entrusted you with the simplest of tasks: ferrying shadows across the river. It seems even the dead would rather drown again than sail with you.",
+        "seconds": 12.91
+      },
+      {
+        "path": "/npc-voices/hades/verdict_the-underworld-is-a-realm-of-absolute-accounting-and-you.mp3",
+        "text": "The Underworld is a realm of absolute accounting, and you have dared to bring me a deficit. I demand souls, not your worthless apologies.",
+        "seconds": 10.34
+      },
+      {
+        "path": "/npc-voices/hades/verdict_they-have-no-bodies-to-swim-with-and-nowhere-to-run-yet-you.mp3",
+        "text": "They have no bodies to swim with and nowhere to run, yet you let them slip into the eternal currents. Did you mistake my ferry for a pleasure cruise?",
+        "seconds": 9.31
+      }
+    ],
     "streak": [
       {
         "path": "/npc-voices/hades/streak_good.mp3",

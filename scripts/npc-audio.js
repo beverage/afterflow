@@ -21,6 +21,8 @@ const MASTERS = 'voice-candidates/masters';
 const MP3 = ['-codec:a', 'libmp3lame', '-ac', '1', '-b:a', '64k']; // mono 64 kbps: plenty for one voice
 const MANIFEST = 'src/npc-voices/manifest.js';
 const MAX_SECONDS = 2.5;
+const LONG_MOMENTS = new Set(['verdict']); // long on purpose (game over): no length warning
+const MAX_NAME = 60; // file names stay readable even for long lines
 const RETRIES = 5;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -34,6 +36,14 @@ function hasTool(name) {
 }
 
 const toMp3 = (wav, mp3) => execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', wav, ...MP3, mp3]);
+
+/** File name part of a line, cut at a word boundary so long lines keep readable names. */
+function shortSlug(text) {
+  const slug = slugify(text);
+  if (slug.length <= MAX_NAME) return slug;
+  const cut = slug.slice(0, MAX_NAME + 1);
+  return cut.slice(0, cut.lastIndexOf('-'));
+}
 
 /** Length of an audio file in seconds. */
 const seconds = (file) =>
@@ -76,7 +86,7 @@ for (const [hero, npc] of Object.entries(NPCS)) {
   for (const [moment, lines] of Object.entries(npc.lines)) {
     audio[hero][moment] = [];
     for (const text of lines) {
-      const base = `${moment}_${slugify(text)}`;
+      const base = `${moment}_${shortSlug(text)}`;
       const name = `${base}.mp3`;
       const file = `${dir}/${name}`;
       const wav = `${masters}/${base}.wav`;
@@ -98,7 +108,7 @@ for (const [hero, npc] of Object.entries(NPCS)) {
         }
       }
       const length = Math.round(seconds(file) * 100) / 100;
-      if (length > MAX_SECONDS) long.push(`${hero}/${name} (${length}s)  "${text}"`);
+      if (length > MAX_SECONDS && !LONG_MOMENTS.has(moment)) long.push(`${hero}/${name} (${length}s)  "${text}"`);
       audio[hero][moment].push({ path: `/npc-voices/${hero}/${name}`, text, seconds: length });
     }
   }

@@ -37,6 +37,14 @@ export const HADES = {
       'Lost. Again.',
       'Enough!',
     ],
+    // Game over monologue, the "death verdict" in GAME.md: long on purpose (8-12 s), not for gameplay.
+    verdict: [
+      'You managed to lose that which was already dead. Those souls belong to me, yet you scattered them like loose coins in the River Styx.',
+      'For millennia, this boat has ferried all manner of sinners, but only you found a way to drop my cargo. What a pathetic display.',
+      'I entrusted you with the simplest of tasks: ferrying shadows across the river. It seems even the dead would rather drown again than sail with you.',
+      'The Underworld is a realm of absolute accounting, and you have dared to bring me a deficit. I demand souls, not your worthless apologies.',
+      'They have no bodies to swim with and nowhere to run, yet you let them slip into the eternal currents. Did you mistake my ferry for a pleasure cruise?',
+    ],
     streak: [
       'Good.',
       'The underworld is fed.',
