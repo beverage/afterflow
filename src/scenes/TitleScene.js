@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import { WIDTH as W, HEIGHT as H, GODS, COLORS, FONT, DISPLAY_FONT } from '../config.js';
-import { onAction } from '../controls.js';
+import { onAction, isTouch } from '../controls.js';
 import { unlockAudio, startAmbient, sfx } from '../sfx.js';
 import { hexCss } from '../color.js';
 
-// Title card over the river running in attract mode. A click or key starts a run
+// Title card over the river running in attract mode. A click, tap or key starts a run
 // (and unlocks audio, which browsers only allow after a user gesture).
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -24,28 +24,39 @@ export class TitleScene extends Phaser.Scene {
       this.add.image(x - 46, 334, `soul_${god.key}`);
       this.add.text(x - 22, 334, god.name, { fontFamily: DISPLAY_FONT, fontSize: '26px', fontStyle: 'italic 600', color: hexCss(god.color) }).setOrigin(0, 0.5);
     });
+    const touch = isTouch();
     [
-      'Steer with WASD, ZQSD or the arrow keys',
+      touch ? 'Slide a thumb anywhere to steer' : 'Steer with WASD, ZQSD or the arrow keys',
       'Touch a soul to take it aboard',
       "Dock at its god's shrine before it fades",
       'Missed souls anger their god. A full rage bar ends the run',
     ].forEach((line, i) => this.add.text(W / 2, 400 + i * 30, line, { fontFamily: FONT, fontSize: '18px', color: COLORS.dim }).setOrigin(0.5));
-    const play = this.add.text(W / 2, 572, 'Click or press Space to play', { fontFamily: FONT, fontSize: '22px', fontStyle: '600', color: '#ffffff' }).setOrigin(0.5);
+    const play = this.add.text(W / 2, 572, touch ? 'Tap to play' : 'Click or press Space to play', { fontFamily: FONT, fontSize: '22px', fontStyle: '600', color: '#ffffff' }).setOrigin(0.5);
     this.tweens.add({ targets: play, alpha: 0.4, duration: 800, yoyo: true, repeat: -1 });
     if (new URLSearchParams(location.search).has('debug')) this.addStatusBadge();
 
     onAction(this, (action) => action === 'confirm' && this.start());
-    this.input.once('pointerdown', () => this.start());
+    // On release, not press: phones only allow sound and fullscreen from the end of a tap.
+    this.input.once('pointerup', (pointer) => this.start(pointer.wasTouch));
   }
 
-  start() {
+  start(fullscreen = false) {
     if (this.started) return;
     this.started = true;
     unlockAudio();
+    if (fullscreen) this.goFullscreen();
     startAmbient();
     sfx.tap();
     this.scene.stop();
     this.scene.get('River').scene.restart({ play: true });
+  }
+
+  // Android: fill the screen and stay sideways. iPhones can't, short of Add to Home Screen.
+  goFullscreen() {
+    const scale = this.scale;
+    if (!scale.fullscreen.available || scale.isFullscreen) return;
+    scale.once('enterfullscreen', () => screen.orientation?.lock?.('landscape')?.catch(() => {}));
+    scale.startFullscreen();
   }
 
   // ?debug: is the server's AI and voice live, mocked, or offline? (v2 uses them.)

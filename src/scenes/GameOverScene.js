@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { WIDTH as W, HEIGHT as H, GODS, COLORS, FONT, DISPLAY_FONT } from '../config.js';
 import { formatObols, formatMeters } from '../economy.js';
-import { onAction, clearKeys } from '../controls.js';
+import { onAction, clearKeys, isTouch } from '../controls.js';
 import { toggleMute } from '../sfx.js';
 import { hexCss } from '../color.js';
 import { spaced } from '../ui.js';
@@ -32,7 +32,7 @@ export class GameOverScene extends Phaser.Scene {
       this.add.text(x, 336, value, { fontFamily: FONT, fontSize: '34px', fontStyle: '600', color: COLORS.text }).setOrigin(0.5);
       this.add.text(x, 372, spaced(label), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: COLORS.dim }).setOrigin(0.5);
     });
-    const again = this.add.text(W / 2, 500, 'Press Space to drift again', { fontFamily: DISPLAY_FONT, fontSize: '34px', fontStyle: 'italic 600', color: '#ffffff' }).setOrigin(0.5);
+    const again = this.add.text(W / 2, 500, isTouch() ? 'Tap to drift again' : 'Press Space to drift again', { fontFamily: DISPLAY_FONT, fontSize: '34px', fontStyle: 'italic 600', color: '#ffffff' }).setOrigin(0.5);
     this.tweens.add({ targets: again, alpha: 0.35, duration: 800, yoyo: true, repeat: -1 });
 
     // Short delay so the key that was held when you died doesn't restart instantly.
