@@ -40,6 +40,7 @@ export function makeArt(scene) {
     make(scene, `soul_${god.key}`, 40, 40, (g) => drawSoul(g, c, god.glyph));
     make(scene, `medal_${god.key}`, 34, 34, (g) => drawMedal(g, c, god.glyph));
     make(scene, `glyph_${god.key}`, 48, 48, (g) => drawGlyph(g, god.glyph, 24, 24, 1.8, 'rgba(0,0,0,.35)', '#ffffff', 1.6));
+    make(scene, `scroll_${god.key}`, 88, 64, (g) => drawScroll(g, c, god.glyph));
   }
   make(scene, 'arch', 150, 150, drawArch);
   make(scene, 'portal_fill', 52, 96, drawPortalFill);
@@ -348,6 +349,41 @@ function drawMedal(g, c, glyph) {
   g.lineWidth = 1.8;
   g.stroke();
   drawGlyph(g, glyph, 17, 17.5, 14 / 15, rgba(c, 0.45), 'rgba(255,255,255,.95)', 1.2);
+}
+
+// A scroll from Hermes' stall: parchment between two rolled ends, sealed in the god's color.
+function drawScroll(g, c, glyph) {
+  const paper = g.createLinearGradient(0, 10, 0, 54);
+  paper.addColorStop(0, '#efe3c2');
+  paper.addColorStop(1, '#c9b27f');
+  g.fillStyle = paper;
+  g.fillRect(16, 12, 56, 40);
+  g.strokeStyle = 'rgba(90,64,30,.35)';
+  g.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    g.beginPath();
+    g.moveTo(24, 20 + i * 8);
+    g.lineTo(i === 3 ? 44 : 60, 20 + i * 8);
+    g.stroke();
+  }
+  for (const x of [12, 76]) {
+    const roll = g.createLinearGradient(x - 6, 0, x + 6, 0);
+    roll.addColorStop(0, '#9c8352');
+    roll.addColorStop(0.5, '#f4e9cc');
+    roll.addColorStop(1, '#8a7145');
+    g.fillStyle = roll;
+    g.beginPath();
+    g.roundRect(x - 6, 6, 12, 52, 6);
+    g.fill();
+  }
+  g.fillStyle = rgba(c, 1);
+  g.beginPath();
+  g.arc(58, 44, 12, 0, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(0,0,0,.35)';
+  g.lineWidth = 1.5;
+  g.stroke();
+  drawGlyph(g, glyph, 58, 44.5, 0.75, 'rgba(0,0,0,.25)', 'rgba(255,255,255,.95)', 1.1);
 }
 
 /* ---------- shrines ---------- */

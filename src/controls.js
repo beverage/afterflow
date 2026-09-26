@@ -24,6 +24,12 @@ const ACTION_BY_CODE = {
   Numpad2: 'buy2',
   Digit3: 'buy3',
   Numpad3: 'buy3',
+  Digit4: 'buy4',
+  Numpad4: 'buy4',
+  Digit5: 'buy5',
+  Numpad5: 'buy5',
+  Digit6: 'buy6',
+  Numpad6: 'buy6',
 };
 
 const CAPTURE = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
@@ -154,7 +160,7 @@ export function moveVector() {
 /** True on a touch screen (or once the player touches one): show "tap" prompts instead of keys. */
 export const isTouch = () => touch;
 
-/** Calls fn(action) for pause, mute, confirm, buy1-3 while the scene is running. Cleaned up on shutdown. */
+/** Calls fn(action) for pause, mute, confirm, buy1-6 while the scene is running. Cleaned up on shutdown. */
 export function onAction(scene, fn) {
   const h = { scene, fn };
   handlers.add(h);
