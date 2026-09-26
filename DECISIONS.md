@@ -59,3 +59,4 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 16:43 · The tour shows once per browser session (sessionStorage): restarts and reloads skip it, a new tab shows it again; H, or How to play on the pause screen, replays it in place of Ines's "?" button · "first run of a fresh session"; a "?" in the HUD corner would sit where the phone pause button is · Claude
 - 16:43 · The river pauses under the tour, where Ines's prototype kept flowing · uncaught souls would fill the rage bars while the player reads · Claude
 - 16:43 · On the first run the tour replaces the "steer" and "touch a soul" toasts · they would repeat what the tour just said · Claude
+- 17:05 · Atmosphere from Ines's river study: 16 drifting fog banks, grey tint, top/bottom haze, floating spores, vignette; fog, tint and haze sit under souls and the boat so gameplay stays readable; fogAmount 0.75 in config · the team liked her atmosphere · team
