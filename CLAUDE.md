@@ -1,0 +1,3 @@
+@AGENTS.md
+@GAME.md
+@DECISIONS.md
