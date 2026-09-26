@@ -39,7 +39,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 | `src/save.js` | What this device remembers between runs (localStorage): best run, last run, lifetime totals. `?fresh` forgets it |
 | `src/river.js`, `src/economy.js` | River shape; soul value, prices, upgrade stats, Charon's fee, number formats |
 | `src/water.js`, `src/noise.js` | Ines's water, drawn with Canvas 2D into one texture per frame; the seeded noise it and the banks use |
-| `src/color.js`, `src/ui.js` | Small helpers: colors, spaced small caps, the Greek key border |
+| `src/color.js`, `src/ui.js` | Small helpers: colors, spaced small caps |
 | `src/ai.js` | `askAI({ prompt, system, schema, fallback })`, `getAIStatus()` |
 | `src/scrolls.js` | Scroll incantations (Gemini, canned fallback) and matching what the player said |
 | `src/listen.js`, `src/wav.js` | `setListening()`, `useHeard()`, `canListen()`: hears incantations with Gradium speech-to-text (mic clips cut at pauses by a voice detector, sent to `/api/stt` as WAV by `src/wav.js`); the browser's own recognizer is the fallback without a key |
