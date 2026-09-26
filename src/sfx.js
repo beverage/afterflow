@@ -1,4 +1,4 @@
-// Synthesized sound effects and a quiet ambient drone, all Web Audio: no audio files to load.
+// Synthesized sound effects and a quiet flowing-water ambience, all Web Audio: no audio files to load.
 // Browsers only start audio after a click or key press, so call unlockAudio() from one.
 
 let ac = null;
@@ -6,7 +6,9 @@ let master = null;
 let sfxBus = null;
 let musicBus = null;
 let noiseBuf = null;
-let drone = null;
+let ambience = null;
+
+const AMBIENCE_VOLUME = 0.12; // the river under everything; 0 turns it off
 let muted = false;
 
 export function unlockAudio() {
@@ -104,8 +106,11 @@ export const sfx = {
     noise({ dur: 0.6, vol: 0.12, freq: 6000, type: 'highpass', at: 0.05 });
     tone(110, { dur: 0.5, vol: 0.3, slide: 0.5 });
   },
-  poof() {
-    noise({ dur: 0.35, vol: 0.25, freq: 900, q: 0.7, sweep: 0.3 });
+  // A soul burning out: a bright fizzle, a falling ping and a soft thump.
+  burnOut() {
+    noise({ dur: 0.3, vol: 0.2, freq: 2500, type: 'highpass', sweep: 0.35 });
+    tone(1760, { type: 'triangle', dur: 0.32, vol: 0.14, slide: 0.45 });
+    tone(95, { dur: 0.28, vol: 0.2, slide: 0.6 });
   },
   skip() {
     tone(196, { dur: 0.25, vol: 0.12, slide: 0.8 });
@@ -139,33 +144,48 @@ export const sfx = {
   },
 };
 
-/** A low, slowly breathing drone under everything. Safe to call more than once. */
+/** The river under everything: soft water noise that slowly swells, and now and then a droplet. Safe to call twice. */
 export function startAmbient() {
-  if (!ac || drone) return;
+  if (!ac || ambience || AMBIENCE_VOLUME <= 0) return;
   const t = ac.currentTime;
   const out = ac.createGain();
   out.gain.setValueAtTime(0.0001, t);
-  out.gain.exponentialRampToValueAtTime(0.5, t + 3);
-  const lp = ac.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.value = 420;
-  lp.connect(out);
+  out.gain.exponentialRampToValueAtTime(AMBIENCE_VOLUME, t + 3);
   out.connect(musicBus);
-  const oscs = [55, 55.4, 82.4, 110.2].map((f, i) => {
-    const o = ac.createOscillator();
-    const g = ac.createGain();
-    o.type = i < 2 ? 'sawtooth' : 'triangle';
-    o.frequency.value = f;
-    g.gain.value = i < 2 ? 0.06 : 0.05;
-    o.connect(g).connect(lp);
-    o.start();
-    return o;
-  });
+  const flow = ac.createBufferSource();
+  flow.buffer = pinkNoise();
+  flow.loop = true;
+  const band = ac.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = 900;
+  band.Q.value = 0.5;
+  flow.connect(band).connect(out);
   const lfo = ac.createOscillator();
   const depth = ac.createGain();
-  lfo.frequency.value = 0.07;
-  depth.gain.value = 160;
-  lfo.connect(depth).connect(lp.frequency);
+  lfo.frequency.value = 0.08;
+  depth.gain.value = 350;
+  lfo.connect(depth).connect(band.frequency);
   lfo.start();
-  drone = { out, oscs, lfo };
+  flow.start();
+  const drip = () => {
+    tone(1400 + Math.random() * 1200, { dur: 0.12, vol: 0.02, slide: 1.6 });
+    ambience.timer = setTimeout(drip, 800 + Math.random() * 1700);
+  };
+  ambience = { out, flow, lfo, timer: setTimeout(drip, 1500) };
+}
+
+// Pink noise sounds like moving water; white noise sounds like static.
+function pinkNoise() {
+  const len = ac.sampleRate * 4;
+  const buf = ac.createBuffer(1, len, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0;
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1;
+    b0 = 0.99765 * b0 + w * 0.099046;
+    b1 = 0.963 * b1 + w * 0.2965164;
+    b2 = 0.57 * b2 + w * 1.0526913;
+    d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.18;
+  }
+  return buf;
 }

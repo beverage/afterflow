@@ -58,7 +58,7 @@ export const TUNING = {
 
   // Souls
   holdStart: 3,
-  lifespan: 16, // seconds a soul lasts in the hold before it goes poof
+  lifespan: 16, // seconds a soul lasts in the hold before it burns out
   clutchBelow: 0.2, // delivering a soul with less life than this is a CLUTCH
   soulRadius: 17,
   soulGapStart: 150, // px of river between soul spawns at the start
@@ -75,7 +75,7 @@ export const TUNING = {
 
   // Rage
   ragePerSkip: 0.14, // a soul floats past uncaught
-  ragePerPoof: 0.14, // a soul fades in your hold
+  ragePerBurnOut: 0.14, // a soul burns out in your hold
   calmPerSoul: 0.04, // each soul delivered to its god
   rageWarn: 0.75,
 
