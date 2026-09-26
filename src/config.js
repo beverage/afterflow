@@ -1,29 +1,112 @@
-// Tuning knobs live here so anyone (or any agent) can tweak feel without touching game logic.
+// Sizes, colors and tuning knobs. Put magic numbers here so anyone can tweak feel without touching game logic.
 
-// Portrait phone canvas; Phaser scales it to fit any screen (letterboxed on desktop).
-export const WIDTH = 720;
-export const HEIGHT = 1280;
+// Landscape canvas; Phaser scales it to fit any screen.
+export const WIDTH = 1280;
+export const HEIGHT = 720;
 
 export const COLORS = {
-  bg: '#14121f',
-  text: '#f8fafc',
-  dim: '#94a3b8',
-  accent: '#fde047',
+  bg: '#0e0c1c',
+  text: '#e6eeea',
+  dim: '#97aaa2',
+  obol: '#f1e6c8',
   live: '#4ade80',
   warn: '#fbbf24',
   bad: '#f87171',
 };
 
-export const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+export const FONT = "'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif";
+export const DISPLAY_FONT = "'Cormorant Garamond', Georgia, 'Times New Roman', serif";
 
-// Example loop tuning (delete with the example).
-export const TUNING = {
-  playerY: 1090,
-  playerFollow: 0.22, // 0..1 per frame at 60fps: how snappily the player follows your finger
-  keyboardSpeed: 900, // px/s with arrow keys on desktop
-  hazardSpeedStart: 430, // px/s
-  hazardSpeedGrowth: 16, // px/s added per second survived
-  spawnEveryMs: 620,
-  spawnEveryMinMs: 240,
-  spawnRampPerSec: 11, // ms shaved off the spawn interval per second survived
+// The three gods, in rage-bar order. Each soul carries its god's color and symbol.
+export const GODS = [
+  { key: 'athena', name: 'Athena', color: 0xffc44d, glyph: 'owl' },
+  { key: 'ares', name: 'Ares', color: 0xff4e3a, glyph: 'spear' },
+  { key: 'poseidon', name: 'Poseidon', color: 0x3df2b0, glyph: 'trident' },
+];
+
+// River shape: a band down the middle that meanders as it scrolls. [amplitude px, frequency per px, phase]
+export const RIVER = {
+  centerX: 640,
+  halfWidth: 272,
+  meander: [
+    [42, 0.0021, 0.7],
+    [16, 0.0057, 2.1],
+  ],
+  wobble: [
+    [22, 0.0033, 1.3],
+    [8, 0.0091, 0.4],
+  ],
 };
+
+export const TUNING = {
+  // River flow
+  scrollSpeed: 110, // px/s the banks scroll at Speed level 0
+  currentFactor: 1.75, // light streaks run this much faster than the banks
+  pxPerMeter: 20, // for the distance readout
+
+  // Boat: free 2D movement
+  boatStartY: 540,
+  boatTop: 110,
+  boatBottom: 650,
+  boatEdgeMargin: 30, // keep the hull's centre this far inside the banks
+  boatMaxSpeed: 330, // px/s at Handling level 0
+  boatAccel: 2400, // px/s² at Handling level 0
+  boatDrag: 7, // how quickly the boat glides to a stop when you let go
+  hullRadius: 20, // pickup and docking capsule around the hull's centre line
+  hullFront: -52,
+  hullBack: 46,
+
+  // Souls
+  holdStart: 3,
+  lifespan: 16, // seconds a soul lasts in the hold before it goes poof
+  clutchBelow: 0.2, // delivering a soul with less life than this is a CLUTCH
+  soulRadius: 17,
+  soulGapStart: 150, // px of river between soul spawns at the start
+  soulGapMin: 58,
+  soulGapRamp: 0.0022, // the gap shrinks by this many px per px travelled
+  soulBias: 0.5, // chance a new soul matches one of the next two shrines
+
+  // Banks: shrines and shops
+  featureGapStart: 540, // px between bank features
+  featureGapGrowth: 0.0015, // shrines drift further apart as you go
+  featureGapMax: 760,
+  shopEvery: 4, // every Nth bank feature is Hermes' stall
+  dockReach: 34, // how close the hull must come to a dock's tip
+
+  // Rage
+  ragePerSkip: 0.14, // a soul floats past uncaught
+  ragePerPoof: 0.14, // a soul fades in your hold
+  calmPerSoul: 0.04, // each soul delivered to its god
+  rageWarn: 0.75,
+
+  // Economy: prices climb exponentially, so soul value does too
+  soulValue: 10,
+  soulValueGrowth: 16000, // px travelled per e-fold of soul value
+  streakCap: 8,
+  clutchMultiplier: 2,
+  priceGrowth: 1.8,
+};
+
+// Hermes' stall. Each level costs basePrice * priceGrowth^level.
+export const UPGRADES = [
+  {
+    key: 'speed',
+    name: 'Speed',
+    icon: 'icon_speed',
+    basePrice: 60,
+    maxLevel: 8,
+    perLevel: 0.12,
+    desc: 'The river runs 12% faster: more souls and obols per minute, more risk',
+  },
+  {
+    key: 'handling',
+    name: 'Handling',
+    icon: 'icon_handling',
+    basePrice: 50,
+    maxLevel: 8,
+    maxSpeedPerLevel: 45,
+    accelPerLevel: 400,
+    desc: 'A quicker, snappier boat',
+  },
+  { key: 'hold', name: 'Hold', icon: 'icon_hold', basePrice: 80, maxLevel: 5, perLevel: 1, desc: 'Carry one more soul' },
+];

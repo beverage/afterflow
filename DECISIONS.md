@@ -37,3 +37,9 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 14:22 · Name: Soul Drift, for now · simple, catchy, has "soul" in it · team
 - 14:22 · Art direction: the River Flow prototype's look on a top-down endless river, WASD runner mechanics unchanged · the team's strongest visual · team
 - 14:22 · Gods: Athena gold (owl), Ares crimson (spear), Poseidon seafoam (trident) · blue souls vanish into the violet river; the team asked Claude to pick · Claude
+- 14:58 · Placeholder art is drawn by code under the manifest keys; a PNG in public/assets replaces it with no code change · the game looks finished now and Ines's art drops in by key · Claude
+- 14:58 · Water, light, glows and portal swirls are code; Ines's list is bank ground, boat, arch, stall, pier and props · matches the look preview and saves art time · Claude
+- 14:58 · Sound effects and ambient drone synthesized with Web Audio, no audio files · no audio owner yet, nothing to download · Claude
+- 14:58 · Fonts: Cormorant Garamond and Source Sans 3 from Google Fonts · the River Flow prototype's typefaces · Claude
+- 14:58 · Keys read by physical position (event.code), so WASD works as ZQSD on AZERTY with one binding · simpler than binding both letter sets · Claude
+- 14:58 · The streak resets when a soul poofs, not on skipped souls · skips already cost rage; breaking the streak too felt like double punishment · Claude
