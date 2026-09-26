@@ -89,11 +89,24 @@ function buildAssets() {
     gg.fillStyle = q;
     gg.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
   }
-  return { sheetA, sheetB, body, glint };
+  // Foam density, one field per bank: along the flow (repeats every FOAM_P px) and over time.
+  const foam = [fbm(48, 6, 4, 51), fbm(48, 6, 4, 52)];
+  return { sheetA, sheetB, body, glint, foam };
 }
 
 // The lifestream's colors: violet, cyan, pink, periwinkle, teal.
 const RIB = [[185, 150, 255], [120, 225, 255], [240, 170, 225], [160, 140, 255], [140, 235, 240]];
+
+// Foam bubbles: [noise offset, spacing px, inset px, inset spread px, density low, density high, max alpha, max radius].
+// Clumps at the waterline, then loose flecks drifting further out. A soft band under the clumps holds them together.
+const FOAM = [[0, 2.5, 1, 7, 0.44, 0.66, 0.75, 1.9], [0.23, 6, 8, 18, 0.58, 0.74, 0.5, 1.3]];
+const FOAM_P = 2400;
+// Stable per-bubble random in [0, 1), so each bubble keeps its place as it drifts.
+const hash = (n) => {
+  n = Math.imul(n ^ (n >>> 16), 0x45d9f3b);
+  n = Math.imul(n ^ (n >>> 16), 0x45d9f3b);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+};
 
 export class Water {
   /** riverAt(worldY) -> { cx, hw }. The water texture is shown by an Image at `depth`. */
@@ -235,25 +248,53 @@ export class Water {
       b.stroke();
     }
 
-    // Foam sliding along both banks.
+    // Foam along both banks: gathers, thins and breaks up as it drifts with the slower edge current.
+    // Its density is noise along the flow (moving with the water) and over time. Drawn in LV
+    // levels of strength, one path each, to keep the draw calls down.
     b.globalAlpha = 1;
     b.globalCompositeOperation = 'source-over';
-    b.lineCap = 'round';
+    b.lineCap = 'butt';
+    const LV = 6, fu = wat * 0.8, fw = (t / 40) % 1, [, , , , lo, hi] = FOAM[0];
+    const band = Array.from({ length: LV }, () => new Path2D());
+    const dots = FOAM.map(() => Array.from({ length: LV }, () => new Path2D()));
     for (const side of [-1, 1]) {
-      for (const [inset, lw, al, dash] of [[4, 2.2, 0.28, [14, 22]], [11, 1.2, 0.16, [8, 30]]]) {
-        b.strokeStyle = `rgba(225,222,245,${al})`;
-        b.lineWidth = lw;
-        b.setLineDash(dash);
-        b.lineDashOffset = -wat * 0.9;
-        b.beginPath();
-        for (let y = -10; y <= H + 10; y += 6) {
-          const q = riverAt(y - scroll), x = side < 0 ? q.l + inset : q.r - inset;
-          y === -10 ? b.moveTo(x, y) : b.lineTo(x, y);
+      const n = assets.foam[side < 0 ? 0 : 1], edge = (q) => (side < 0 ? q.l : q.r);
+      // The soft band.
+      let px = 0, py = 0, pd = 0;
+      for (let y = -3; y <= H + 3; y += 3) {
+        const d = sstep(lo, hi, n((y - fu) / FOAM_P, fw)), x = edge(riverAt(y - scroll)) - side * 3;
+        const l = Math.round(((d + pd) / 2) * LV);
+        if (y > -3 && l > 0) {
+          band[l - 1].moveTo(px, py);
+          band[l - 1].lineTo(x, y);
         }
-        b.stroke();
+        px = x;
+        py = y;
+        pd = d;
       }
+      // The bubbles, on a grid that moves with the water.
+      FOAM.forEach(([off, sp, inset, spread, blo, bhi, , rmax], li) => {
+        const seed = (side + 2) * 7919 + li * 104729;
+        for (let k = Math.floor((-4 - fu) / sp), k1 = Math.ceil((H + 4 - fu) / sp); k <= k1; k++) {
+          const y = k * sp + fu, d = sstep(blo, bhi, n((k * sp) / FOAM_P + off, fw));
+          if (d < 0.05) continue;
+          const h1 = hash(k * 3 + seed), h2 = hash(k * 3 + seed + 1), h3 = hash(k * 3 + seed + 2);
+          const x = edge(riverAt(y - scroll)) - side * (inset + spread * h1 * (0.4 + 0.6 * d));
+          const by = y + (h2 - 0.5) * sp, r = (0.4 + rmax * d) * (0.5 + h2), p = dots[li][Math.ceil(d * (0.5 + 0.5 * h3) * LV) - 1];
+          p.moveTo(x + r, by);
+          p.arc(x, by, r, 0, Math.PI * 2);
+        }
+      });
     }
-    b.setLineDash([]);
+    band.forEach((p, i) => {
+      b.strokeStyle = `rgba(225,222,245,${(0.2 * (i + 1)) / LV})`;
+      b.lineWidth = 1 + (6 * (i + 1)) / LV;
+      b.stroke(p);
+    });
+    dots.forEach((lv, li) => lv.forEach((p, i) => {
+      b.fillStyle = `rgba(232,230,250,${(FOAM[li][6] * (i + 1)) / LV})`;
+      b.fill(p);
+    }));
 
     // A soft violet glow over the water.
     b.globalCompositeOperation = 'soft-light';

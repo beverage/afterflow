@@ -54,7 +54,7 @@ Every number below lives in `src/config.js`. Distances are in screen pixels; the
 
 ### Rage, smites and lanterns
 
-- A missed soul (it leaves the bottom of the screen) or one that burns out in your hold adds 14% to its god's rage bar. Each soul delivered calms its god by 4%. At 75% the god warns you, and the screen edges pulse red.
+- A missed soul (it leaves the bottom of the screen) or one that burns out in your hold adds 14% to its god's rage bar. Each soul delivered calms its god by 4%. At 75% the god warns you. From 50%, the screen edges glow in the angriest god's color, stronger and faster as its bar nears full, and if you carry that god's scroll its words float over the boat.
 - A full bar is a smite: lightning strikes the boat and one lantern goes out, taking the souls aboard and the streak with it. The god who struck is appeased (rage to 0), the other two cool by 25%, and for 3 s the boat flickers and missed souls anger no one.
 - Lanterns are lives: you start with 2 and can hold 3. Every 8th delivery in a row lights one.
 - When the last lantern goes out, the boat sinks and the run is over.
