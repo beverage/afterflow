@@ -1175,7 +1175,9 @@ export class RiverScene extends Phaser.Scene {
     const carried = this.run.scrolls, any = carried.some(Boolean);
     setListening(!this.ended && any && this.sys.isActive(), (c) => this.heard(c));
     const mic = listenStatus();
+    this.micPulse = Math.max(0, (this.micPulse || 0) - dt * 3);
     this.micDot.setFillStyle(mic === 'listening' ? 0x4ade80 : canListen() ? 0x97aaa2 : 0xf87171).setAlpha(any ? (mic === 'listening' ? 0.6 + 0.4 * Math.sin(this.t * 4) : 0.7) : 0.25);
+    this.micDot.setScale(1 + 0.9 * this.micPulse);
     const open = this.scrollPanel.visible;
     this.scrollIcons.forEach((icon, i) => icon.setVisible(!open).setAlpha(carried[i] ? 1 : 0.22).setScale(carried[i] ? 0.42 + 0.02 * Math.sin(this.t * 3 + i) : 0.42));
     this.scrollKey.setVisible(!open);
@@ -1226,11 +1228,16 @@ export class RiverScene extends Phaser.Scene {
   // The mic caught some words: show them, and use a carried scroll if they match its incantation.
   heard(candidates) {
     if (!this.playing || this.ended || !this.sys.isActive()) return;
-    const tail = candidates[0].split(/\s+/).slice(-9).join(' ');
-    this.heardText.setText(`“${tail}”`).setColor('#dce6e2');
-    this.heardFor = SCROLLS.heardSeconds;
-    const god = heardScroll(this.run.scrolls, candidates);
-    if (god >= 0) this.readScroll(god, true);
+    this.micPulse = 1; // the dot flares on any speech, so you can tell it's listening
+    const best = heardScroll(this.run.scrolls, candidates);
+    if (!best) return;
+    // Only attempts show as a subtitle; other people's chatter stays off screen (all of it shows with ?debug).
+    if (best.score >= SCROLLS.showHeard || DEBUG) {
+      const tail = candidates[0].all.split(/\s+/).slice(-9).join(' ');
+      this.heardText.setText(DEBUG ? `“${tail}” ${best.score.toFixed(2)}` : `“${tail}”`).setColor('#dce6e2');
+      this.heardFor = SCROLLS.heardSeconds;
+    }
+    if (best.pass) this.readScroll(best.god, true);
   }
 
   // Use a carried scroll: spoken aloud, or with a key or tap when there's no mic.
