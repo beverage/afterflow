@@ -999,7 +999,7 @@ export class RiverScene extends Phaser.Scene {
     const touch = isTouch();
     this.run.scrolls.forEach((words, i) => {
       const row = this.scrollRows[i];
-      row.words.setText(words ? `“${words}”` : 'no scroll').setFontSize(words ? 21 : 14).setAlpha(words ? 1 : 0.35);
+      row.words.setText(words || 'no scroll').setFontSize(words ? 24 : 14).setAlpha(words ? 1 : 0.35);
       row.medal.setAlpha(words ? 1 : 0.35);
     });
     const any = this.run.scrolls.some(Boolean);
@@ -1037,7 +1037,7 @@ export class RiverScene extends Phaser.Scene {
     if (this.rage[god] < TUNING.rageWarn - 0.1) this.rageWarned[god] = false;
     sfx.appease(god);
     this.heardText.setColor(hexCss(lighten(color, 0.4)));
-    this.popup(`“${words}”`, W / 2, 230, color, 34, true);
+    this.popup(words, W / 2, 230, color, 40, true);
     this.toast(`${name} is appeased`, color, true);
     const barY = 76 + god * 46 + 9;
     this.ringFx(98, barY, color, 0.8, 26);

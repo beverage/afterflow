@@ -4,6 +4,7 @@ import { price, scrollPrice, formatObols } from '../economy.js';
 import { onAction, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
 import { canListen } from '../listen.js';
+import { meaningOf } from '../scrolls.js';
 import { hexCss, lighten } from '../color.js';
 import { drawMeander } from '../ui.js';
 
@@ -105,9 +106,10 @@ export class ShopScene extends Phaser.Scene {
       .text(x, y + 2, `Say its words aloud to calm ${god.name}: ${Math.round(SCROLLS.calm * 100)}% less rage`, { fontFamily: FONT, fontSize: '13px', color: '#97aaa2', align: 'center', wordWrap: { width: 196 } })
       .setOrigin(0.5, 0);
     card.words = this.add
-      .text(x, y + 22, '', { fontFamily: DISPLAY_FONT, fontSize: '22px', fontStyle: 'italic 600', color: '#ffffff', align: 'center', wordWrap: { width: 204 } })
+      .text(x, y + 16, '', { fontFamily: DISPLAY_FONT, fontSize: '26px', fontStyle: 'italic 600', color: '#ffffff', align: 'center', wordWrap: { width: 214 } })
       .setOrigin(0.5)
       .setShadow(0, 0, hexCss(god.color), 10, true, true);
+    card.meaning = this.add.text(x, y + 45, '', { fontFamily: FONT, fontSize: '13px', fontStyle: 'italic', color: '#97aaa2', align: 'center' }).setOrigin(0.5);
     card.carried = this.add.text(x, y + 72, 'Carried · say it on the river', { fontFamily: FONT, fontSize: '13px', fontStyle: '600', color: light }).setOrigin(0.5);
     return card;
   }
@@ -135,7 +137,8 @@ export class ShopScene extends Phaser.Scene {
         const words = r.run.scrolls[c.god], cost = scrollPrice(r.scroll);
         c.affordable = !words && r.run.obols >= cost;
         c.desc.setVisible(!words);
-        c.words.setVisible(Boolean(words)).setText(words ? `“${words}”` : '');
+        c.words.setVisible(Boolean(words)).setText(words || '');
+        c.meaning.setVisible(Boolean(words)).setText(words && meaningOf(words) ? `“${meaningOf(words)}”` : '');
         c.carried.setVisible(Boolean(words));
         c.cost.setVisible(!words).setText(formatObols(cost)).setColor(c.affordable ? '#f1e6c8' : '#857c84');
         c.coin.setVisible(!words);

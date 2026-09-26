@@ -123,7 +123,8 @@ export const SCROLLS = {
   calm: 0.5, // share of a full rage bar that one scroll takes away
   priceSouls: 6, // a scroll costs this many souls' worth at your distance, so it stays worth the same effort
   panelSeconds: 5, // Space shows your scrolls this long; the river never slows
-  match: 0.7, // share of an incantation's words the player has to say (small words count a quarter)
+  match: 0.72, // how closely (0-1) what the mic heard must sound like the incantation
+  wordMatch: 0.7, // ...and each of its two words on its own
   heardSeconds: 2.5, // the words the mic caught stay on screen this long
 };
 

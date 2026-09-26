@@ -11,7 +11,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 1. **Scoop.** The river scrolls down the middle of the screen. Move the boat anywhere on the water with WASD and touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it burns out in a flash.
 2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into a shrine's dock to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to burn out is a **CLUTCH**, with its own sound and a bonus.
 3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially, or on scrolls.
-4. **Remember and recite.** Each scroll has a short incantation. Say it aloud on the river and the scroll calms its god. You can glance at your scrolls, but the river never slows: learn the words.
+4. **Remember and recite.** Each scroll has a two-word incantation in crypto-Greek. Say it aloud on the river and the scroll calms its god. You can glance at your scrolls, but the river never slows: learn the words.
 
 ## Rules (v1)
 
@@ -24,7 +24,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
   - **Speed**: the river scrolls faster, so more souls and shrines per minute (more money, more risk).
   - **Handling**: quicker, snappier boat movement.
   - **Hold**: +1 soul capacity (starts at 3).
-  - **Scrolls** (Athena, Ares, Poseidon): usables. You carry at most one per god. Each has a short incantation, shown on its card; say it aloud on the river and the scroll is used at once: that god loses half its rage. Price: 6 souls' worth at your distance.
+  - **Scrolls** (Athena, Ares, Poseidon): usables. You carry at most one per god. Each has a two-word incantation in crypto-Greek, like the crypto-Latin spells of Harry Potter but built from Greek roots tied to its god, solemn and never silly ("Galene Thalassa": calm, O sea). It's shown on its card with its meaning; say it aloud on the river and the scroll is used at once: that god loses half its rage. Price: 6 souls' worth at your distance.
 - Scrolls are a memory game: Space (or a tap on the scrolls panel) shows your scrolls for 5 s, over the left bank, and the river never slows.
 - Economy: upgrade prices grow exponentially per level. Soul value also grows the further downstream you get, then streak and clutch multiply it, so income keeps pace and the numbers keep climbing. Big numbers shown as 1.2K, 3.4M.
 - Difficulty ramps through density: more souls per second, shrines further apart.
@@ -44,7 +44,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 ## The AI hook (v2, after the river works)
 
 - What Gemini generates: scroll incantations (built), the gods' voiced reactions (run start, rage at 50% and 80%, big streaks), a death verdict from the god who sank you, a one-line life story for each soul.
-- Scrolls (built): Gemini writes each scroll's incantation, 3 to 6 plain words the speech recognizer can catch, prepared in the background so buying never waits. The browser's speech recognition listens while you carry a scroll, and a fuzzy match (70% of the words, small words count a quarter) uses it. What the mic heard shows like a subtitle under the river.
+- Scrolls (built): Gemini writes each scroll's incantation (two crypto-Greek words and their meaning), prepared in the background so buying never waits. The browser's speech recognition listens while you carry a scroll. It hears invented words as English ("Thalassa" comes back as "the lasso"), so incantations are matched by sound, and both words must be there. What the mic heard shows like a subtitle under the river.
 - When it is called: run start, shop docks, game over, in the background. Never per frame. Lines are prepared ahead so they play instantly.
 - If the AI is slow or offline: canned lines and canned incantations per god. With no mic (Firefox, mic refused), Space then 1 / 2 / 3 reads a scroll.
 
