@@ -238,10 +238,13 @@ function soulSpot(river) {
 }
 
 // The shrine on screen nearest the middle, with its arch and dock both in the light.
+// A portal (Ines's angled gate) gets a wider spot, from its medallion down to the pool of light you sail into.
 function shrineSpot(river) {
-  const mid = (f) => f.wy + river.scroll - 58;
+  const mid = (f) => f.wy + river.scroll + (f.portal ? -66 : -58);
   const best = river.features.filter((f) => f.kind === 'shrine' && mid(f) > 40 && mid(f) < H - 60).sort((p, q) => Math.abs(mid(p) - H / 2) - Math.abs(mid(q) - H / 2))[0];
-  return best ? { x: best.x + Math.sign(best.tip - best.x) * 20, y: mid(best), r: 110 } : null;
+  if (!best) return null;
+  if (best.portal) return { x: (best.x + best.tip) / 2, y: mid(best), r: 145 };
+  return { x: best.x + Math.sign(best.tip - best.x) * 20, y: mid(best), r: 110 };
 }
 
 // A square of dim with a soft round hole in it, stretched to the spotlight's size.
