@@ -79,6 +79,7 @@ export const TUNING = {
   ragePerBurnOut: 0.14, // a soul burns out in your hold
   calmPerSoul: 0.04, // each soul delivered to its god
   rageWarn: 0.75,
+  rageGlow: 0.5, // the screen's edges glow in the angriest god's color from this rage on, stronger and faster to 100%
 
   // Economy: prices climb exponentially, so soul value does too
   soulValue: 10,
@@ -161,6 +162,7 @@ export const SCROLLS = {
   oneWordPhrase: 3, // longest phrase (in words) where one word is enough: other people and the room talk longer
   showHeard: 0.55, // what the mic heard only shows on screen when it comes this close to a scroll, so chatter stays off
   heardSeconds: 2.5, // the words the mic caught stay on screen this long
+  warn: 0.5, // a carried scroll's words float over the boat once its god's rage passes this
 };
 
 // Hearing incantations with Gradium speech-to-text (src/listen.js): a voice detector cuts the mic into short clips

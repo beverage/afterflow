@@ -861,7 +861,8 @@ export class RiverScene extends Phaser.Scene {
     this.buildLevelPanel(d);
     if (isTouch()) this.buildPauseButton(d);
     this.buildScrolls(d);
-    this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setTint(0xff2a1a).setAlpha(0).setDepth(45);
+    this.vignette = this.add.image(W / 2, H / 2, 'vignette').setAlpha(0).setDepth(45);
+    this.glowPhase = 0;
     this.obolShown = 0;
     this.obolPulse = 0;
     this.streakPulse = 0;
@@ -939,8 +940,11 @@ export class RiverScene extends Phaser.Scene {
       icon.setVisible(i < next.length);
       if (i < next.length) icon.setTexture(`medal_${GODS[next[i]].key}`);
     });
-    const danger = clamp((Math.max(...this.rage) - TUNING.rageWarn) / (1 - TUNING.rageWarn), 0, 1);
-    this.vignette.setAlpha(danger * (0.3 + 0.12 * Math.sin(this.t * 6)));
+    // The screen's edges glow in the angriest god's color: thicker, brighter and faster as its rage nears full.
+    const top = this.rage.indexOf(Math.max(...this.rage));
+    const danger = clamp((this.rage[top] - TUNING.rageGlow) / (1 - TUNING.rageGlow), 0, 1);
+    this.glowPhase += dt * (3 + 9 * danger);
+    this.vignette.setTint(GODS[top].color).setScale(1.25 - 0.25 * danger).setAlpha(danger * (0.36 + 0.14 * Math.sin(this.glowPhase)));
   }
 
   toast(text, color = 0xe6eeea, big = false) {
@@ -1353,6 +1357,14 @@ export class RiverScene extends Phaser.Scene {
       .setDepth(d + 2)
       .setAlpha(0);
     this.heardFor = 0;
+
+    // Over the boat: a carried scroll's words once its god gets angry, so you can say them without looking away.
+    this.scrollCall = this.add.container(0, 0).setDepth(46).setVisible(false);
+    this.scrollCallBg = this.add.graphics();
+    this.scrollCallWords = this.add.text(0, -9, '', { fontFamily: DISPLAY_FONT, fontSize: '25px', fontStyle: 'italic 600', color: '#ffffff' }).setOrigin(0.5);
+    this.scrollCallHint = this.add.text(0, 16, '', { fontFamily: FONT, fontSize: '12px', fontStyle: '600', color: '#dce6e2' }).setOrigin(0.5).setAlpha(0.8);
+    this.scrollCall.add([this.scrollCallBg, this.scrollCallWords, this.scrollCallHint]);
+    this.scrollCallKey = '';
   }
 
   updateScrolls(dt) {
@@ -1377,6 +1389,27 @@ export class RiverScene extends Phaser.Scene {
     }
     this.heardFor -= dt;
     this.heardText.setAlpha(clamp(this.heardFor / 0.5, 0, 1));
+    this.updateScrollCall();
+  }
+
+  // The angriest god past SCROLLS.warn whose scroll you carry: its words float over the bow.
+  updateScrollCall() {
+    let god = -1;
+    this.run.scrolls.forEach((words, i) => {
+      if (words && this.rage[i] >= SCROLLS.warn && (god < 0 || this.rage[i] > this.rage[god])) god = i;
+    });
+    const c = this.scrollCall.setVisible(god >= 0 && !this.ended);
+    if (!c.visible) return;
+    const { color, name } = GODS[god], words = this.run.scrolls[god], mic = canListen();
+    const key = `${god}|${words}|${mic}`;
+    if (key !== this.scrollCallKey) {
+      this.scrollCallKey = key;
+      this.scrollCallWords.setText(words).setColor(hexCss(lighten(color, 0.35)));
+      this.scrollCallHint.setText(`${name}'s scroll: ` + (mic ? 'say it aloud' : isTouch() ? 'tap Scrolls, then this one' : `Space, then ${god + 1}`));
+      const w = Math.max(this.scrollCallWords.width, this.scrollCallHint.width) + 28;
+      this.scrollCallBg.clear().fillStyle(0x080b0a, 0.66).fillRoundedRect(-w / 2, -30, w, 60, 10).lineStyle(1.5, color, 0.8).strokeRoundedRect(-w / 2, -30, w, 60, 10);
+    }
+    c.setPosition(this.boat.x, Math.max(36, this.boat.y - 108 + 3 * Math.sin(this.t * 3))).setScale(1 + 0.03 * Math.sin(this.t * 6));
   }
 
   toggleScrolls() {
