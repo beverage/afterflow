@@ -1,6 +1,6 @@
 # AGENTS.md: rules for every coding agent on this repo
 
-Before any task, read `GAME.md` (what we are building, right now) and `DECISIONS.md` (why things are the way they are).
+Before any task, read `GAME.md` (what we are building, right now) and `DECISIONS.md` (why things are the way they are). `DESIGN.md` is the long-form write-up of the demo build, if you need the whole picture.
 If a request conflicts with either, ask the human. Don't quietly undo a logged decision.
 
 ## The one rule
@@ -10,7 +10,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 ## Team tools
 
 - **Google AI Studio**: Gemini keys and prompt prototyping. Prompts that work in AI Studio move into `askAI()` calls.
-- **Gradium**: text-to-speech, voice design (new voices from a text description) and speech-to-text (scroll incantations).
+- **Gradium**: voice design (new voices from a text description), text-to-speech (the gods' lines, recorded ahead with `npm run npc:audio`) and speech-to-text (hearing scroll incantations, live).
 - **Voodoo**: not used, we are a web game (see DECISIONS.md).
 - **Devin**: autonomous coding agent for bounded tasks, works through PRs.
 
@@ -20,7 +20,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 - Vite for dev and build. Plain JavaScript ES modules. No TypeScript, no UI framework, no new build tools.
 - Landscape 1280x720 logical canvas, scaled with `Phaser.Scale.FIT`. Laptop first: WASD, ZQSD (French AZERTY) and arrow keys; phones held sideways steer with a floating touch stick. Read input only through the controls module (a move vector plus actions), which turns both into the same move vector. Anything new the player does needs a tap path too, and its prompt should check `isTouch()` ("tap" instead of a key name).
 - Hosting: Vercel, connected to GitHub. `main` deploys to production and every PR gets its own preview link: playtest the preview before merging.
-- All keys stay on the server. Browser code calls `askAI()` (`src/ai.js`, Gemini) and `speak()` (`src/voice.js`, Gradium), and `src/listen.js` posts mic clips for Gradium speech-to-text; they hit our own `/api/gemini`, `/api/tts` and `/api/stt` routes. Never call Google or Gradium from the browser, never put a key in client code, never prefix env vars with `VITE_` (that would ship the key to every player).
+- All keys stay on the server. Browser code calls `askAI()` (`src/ai.js`, Gemini), `src/listen.js` posts mic clips for Gradium speech-to-text, and `speak()` (`src/voice.js`, Gradium text-to-speech) is there for live lines; they hit our own `/api/gemini`, `/api/stt` and `/api/tts` routes. The gods' lines in the game are pre-recorded files, not `speak()`. Never call Google or Gradium from the browser, never put a key in client code, never prefix env vars with `VITE_` (that would ship the key to every player).
 
 ## Where things live
 
@@ -28,33 +28,38 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 |---|---|
 | `GAME.md` | The design, current state only |
 | `DECISIONS.md` | Append-only log of decisions and why |
+| `DESIGN.md` | Long-form design and development write-up of the demo build: systems and numbers, AI and voice, architecture, how we built it |
+| `README.md` | The front door: what the game is, how to run and deploy it |
 | `src/main.js` | Phaser config and scene list |
 | `src/config.js` | Sizes, colors, the gods, tuning knobs and shop upgrades. Put magic numbers here |
 | `src/assets.js` | Asset manifest: key -> file in `public/assets/`. A real file replaces that key's placeholder |
 | `src/art.js` | Placeholder art drawn by code at boot, under the same keys as the manifest |
 | `src/controls.js` | All input: `moveVector()` (keys, or the touch stick) plus actions (pause, mute, confirm, help, buy1-6) by physical key; `isTouch()`, `onAway()` |
-| `src/sfx.js` | Sound effects synthesized with Web Audio, and the looping ambient track (`public/assets/ambient.mp3`); `voiceOut()`, where the gods' recorded lines play |
+| `src/sfx.js` | Sound effects synthesized with Web Audio, the looping ambient track (`public/assets/ambient.mp3`), and `voiceOut()`, where the gods' recorded lines play (one master volume, so M mutes all three) |
 | `src/save.js` | What this device remembers between runs (localStorage): best run, last run, lifetime totals. `?fresh` forgets it |
 | `src/river.js`, `src/economy.js` | River shape; soul value, prices, upgrade stats, Charon's fee, number formats |
+| `src/water.js`, `src/noise.js` | Ines's water, drawn with Canvas 2D into one texture per frame; the seeded noise it and the banks use |
+| `src/color.js`, `src/ui.js` | Small helpers: colors, spaced small caps, the Greek key border |
 | `src/ai.js` | `askAI({ prompt, system, schema, fallback })`, `getAIStatus()` |
 | `src/scrolls.js` | Scroll incantations (Gemini, canned fallback) and matching what the player said |
-| `src/listen.js` | `setListening()`, `useHeard()`, `canListen()`: hears incantations with Gradium speech-to-text (mic clips cut at pauses by a voice detector, sent to `/api/stt` as WAV by `src/wav.js`); the browser's own recognizer is the fallback without a key |
-| `src/voice.js` | `speak(text, { voice })`, `prepareSpeech()`, `stopSpeaking()`, `getVoiceStatus()` |
+| `src/listen.js`, `src/wav.js` | `setListening()`, `useHeard()`, `canListen()`: hears incantations with Gradium speech-to-text (mic clips cut at pauses by a voice detector, sent to `/api/stt` as WAV by `src/wav.js`); the browser's own recognizer is the fallback without a key |
+| `src/voice.js` | `speak(text, { voice })`, `prepareSpeech()`, `stopSpeaking()`, `getVoiceStatus()`: live Gradium TTS, not used in play today |
 | `src/voices.js` | Voice manifest: character key -> Gradium voice id |
-| `src/npc-voices/` | Gods' voice lines (`ares.js`...), `getHeroAudio(name, moment)` picks a pre-recorded line from `manifest.js` (generated), `godSay(name, moment)` plays it in the game, one line at a time (`player.js`). Audio in `public/npc-voices/<god>/` |
+| `src/npc-voices/` | The gods' lines and voice prompts (`ares.js`...), `manifest.js` (generated by `npm run npc:audio`), `getHeroAudio(name, moment)` picks a line (`picker.js`), `godSay(name, moment)` plays it in the game, one line at a time (`player.js`). Audio in `public/npc-voices/<god>/` |
 | `src/scenes/BootScene.js` | Loads the manifest, draws placeholder art, waits for fonts |
-| `src/scenes/RiverScene.js` | The game: river, souls, shrines, shops, boat, rage, lanterns (lives), HUD. Attract mode behind the title |
+| `src/scenes/RiverScene.js` | The game: river, souls, shrines, shops, boat, rage, lanterns (lives), levels, scrolls, the gods' lines, HUD. Attract mode behind the title |
 | `src/scenes/TitleScene.js`, `TutorialScene.js`, `ShopScene.js`, `PauseScene.js`, `GameOverScene.js` | Overlays on top of the river (the tutorial is the first-run how-to-play tour, its steps at the top of the file) |
-| `server/gemini.js`, `server/tts.js`, `server/stt.js` | The proxies, shared by the dev server, Vercel and `server.js` |
+| `server/gemini.js`, `server/stt.js`, `server/tts.js`, `server/http.js` | The proxies and their request helpers, shared by the dev server, Vercel and `server.js` |
 | `api/*.js`, `server.js` | Deploy adapters (Vercel, and Node/Docker for Fly) |
-| `scripts/` | `check-ai`, `check-stt`, `decide`, `voice` (list, design, keep voices) |
+| `scripts/` | `check-ai`, `check-stt`, `npc-audio`, `test-npc-audio`, `decide`, `voice` (list, design, keep voices) |
+| `public/assets/`, `public/npc-voices/` | Real art (the portal sheets) and the ambient track; the gods' recorded lines |
 
 ## Conventions
 
 - Every `askAI` call passes a `fallback`, and the game must work with it (mock mode, errors, timeouts). Show a placeholder while waiting. Never block input on AI.
 - Use `schema` (JSON) for anything game logic reads. Plain text only for flavor.
 - Keep AI off the hot path: call it on scene start, level transitions, game over or in the background. Never per frame.
-- Voice lines: one or two sentences. Anything the player needs must also be on screen (phones are often muted). Never make gameplay wait on audio. If you know a line in advance, `prepareSpeech()` it so it plays instantly.
+- Voice lines: one or two sentences. Anything the player needs must also be on screen (phones are often muted). Never make gameplay wait on audio. Lines known in advance are recorded ahead (`npm run npc:audio`) and played with `godSay()`; a live line should be `prepareSpeech()`-ed so it plays instantly.
 - Voices are referred to by key from `src/voices.js`, never by raw id in scenes.
 - Refer to art only by manifest key. New art = a file in `public/assets/` + one line in `src/assets.js`.
 - Small, focused changes: one feature per commit. Run `npm run build` before committing.
@@ -64,7 +69,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 
 ## Commands
 
-- `make up` / `make down` / `make re`: start, stop and restart the dev server in the background (output in `dev.log`, `make logs` to follow it); `make update` pulls `main`, reinstalls dependencies and restarts the server if it was running
+- `make up` / `make down` / `make re`: start, stop and restart the dev server in the background (output in `dev.log`, `make logs` to follow it, `make status` to check it); `make update` pulls `main`, reinstalls dependencies and restarts the server if it was running
 - `npm run dev`: dev server with the API routes at http://localhost:5173 (also on the LAN for phone testing)
 - `npm run build`: production build, must pass before every commit
 - `npm run check:ai`: one real call each to Gemini and Gradium
@@ -72,6 +77,6 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 - `npm run voices`, `npm run voice:design -- "description"`, `npm run voice:keep -- <id> "Name"`: Gradium voices
 - `npm run npc:audio`: records every god's lines into `public/npc-voices/` as MP3 and rewrites the manifest (skips existing files; needs ffmpeg, WAV originals kept in `voice-candidates/masters/`); `npm run test:npc` checks the picker
 - `npm run decide -- "Cut the leaderboard · no time"`: appends a timestamped line to DECISIONS.md
-- Add `?debug` to the URL to see the hull and dock zones, and whether AI and voice are live. `window.game` is exposed in the console.
+- Add `?debug` to the URL to see the hull and dock zones, whether AI and voice are live (on the title), and everything the mic hears with its match score. `window.game` is exposed in the console.
 - Add `?touch` to the URL to try the phone controls on a laptop: tap prompts, and a mouse drag steers.
 - Add `?fresh` to the URL to forget saved runs (best, mark on the river, totals), as on a first visit.

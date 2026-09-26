@@ -1,28 +1,28 @@
 # GAME.md: living design doc
 
-Single source of truth for humans and agents. Keep it short and current: when a decision changes, change it here and log the why in `DECISIONS.md`.
+Single source of truth for humans and agents. Keep it short and current: when a decision changes, change it here and log the why in `DECISIONS.md`. The long-form write-up of the demo build (every system, the architecture, how we built it) is `DESIGN.md`.
 
 ## One-liner
 
 _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifting souls and deliver each to its god's shrine before it burns out, or the gods' rage sinks you.
 
-## Core loop (v1: what the player does every few seconds)
+## Core loop (what the player does every few seconds)
 
 1. **Scoop.** The river scrolls down the middle of the screen. Move the boat anywhere on the water with WASD and touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it burns out in a flash.
 2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into the pool of light at a shrine's portal to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to burn out is a **CLUTCH**, with its own sound and a bonus.
 3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and one of your lanterns goes out; when the last one goes out, the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially.
 4. **Faster and faster.** Tetris style: every 6 souls delivered is a level, and every 3 levels the boat reaches a new river of the underworld, each 25% faster than the last.
-4. **Remember and recite.** Each scroll has a two-word incantation in crypto-Greek. Say it aloud on the river and the scroll calms its god. You can glance at your scrolls, but the river never slows: learn the words.
+5. **Remember and recite.** Each scroll has a two-word incantation in crypto-Greek. Say it aloud on the river and the scroll calms its god. You can glance at your scrolls, but the river never slows: learn the words.
 
-## Rules (v1)
+## Rules
 
 - One continuous run: game over, press a key, fresh run. No accounts, but this device remembers your best run and lifetime totals (localStorage); `?fresh` in the URL forgets them.
 - 3 gods, one rage bar each in the HUD: **Athena** (gold, owl), **Ares** (crimson, spear), **Poseidon** (seafoam, trident). Souls carry their god's symbol too, not just a color.
-- Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100%: that god smites you and a lantern goes out.
-- **Lanterns** are your lives: you start with 2 and can hold 3 (small lanterns under the rage bars). A smite puts one out and takes the souls aboard and the streak with it; the god who struck is appeased (rage back to 0) and the others cool by 25%, then for 3 s the boat flickers and passing souls anger no one. When the last lantern goes out, the run ends. Every 8th delivery in a row lights one. Obstacles (v2) will put them out too.
+- Rage: only lost souls fill it: a soul that leaves the bottom of the screen uncaught (including when your hold is full), or one that burns out in your hold, adds 14% to its god's bar. Each soul delivered calms its god a little (4%). Any bar at 100%: that god smites you and a lantern goes out.
+- **Lanterns** are your lives: you start with 2 and can hold 3 (small lanterns under the rage bars). A smite puts one out and takes the souls aboard and the streak with it; the god who struck is appeased (rage back to 0) and the others cool by 25%, then for 3 s the boat flickers and passing souls anger no one. When the last lantern goes out, the run ends. Every 8th delivery in a row lights one. Obstacles (designed, not built) would put them out too.
 - **Charon's fee:** when the last lantern goes out, the game-over screen offers to pay Charon to return with one lantern (the god who struck is appeased, as after any smite). The fee starts at 150 obols and climbs on the same curve as Hermes' prices, ×1.8 each time it's paid in a run (150, 270, 490, 870...), so obols not spent at Hermes' stall are a way back. Out of reach, the screen shows the fee next to your obols.
 - **Your best:** your best distance is marked on the river, a line of floating lights across the water labelled on the bank; crossing it pops "New best!". The game-over screen says how the run compares (a new best, your first mark, or how far short), and the title shows your best and the souls you've ferried.
-- Souls shrink and flicker over their lifespan and burn out in a flash at zero, which forces regular deliveries. A soul lasts the same stretch of river at any speed (16 s at the starting pace), so on faster rivers they burn out sooner.
+- Souls shrink and flicker over their lifespan and burn out in a flash at zero, which forces regular deliveries. A soul's lifespan starts when you catch it, and it lasts the same stretch of river at any speed (16 s at the starting pace), so on faster rivers they burn out sooner.
 - **Levels and rivers**, Tetris style: every 6 souls delivered is a level; every 3 levels, a new river: the Acheron, the Styx, the Lethe, the Cocytus, the Phlegethon. Past the Phlegethon it keeps quickening, like Tetris's kill screen. A level brings the souls closer together; a new river runs 25% faster and spreads them back out, so only one thing gets harder at a time. A new river gets a banner ("II · Styx · the river quickens"), a rising whoosh, 1.5 s with no new souls, and its speed eases in over 1.5 s. A small panel under the obols shows the river, your level and a bar of souls to the next one; the game-over screen leads with the level and river.
 - The streak resets when a soul burns out. Skipped souls already cost rage, so they don't also break it.
 - Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Hermes' stall is 3x2: upgrades on top, one scroll per god below.
@@ -41,25 +41,20 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - At every shop you can afford about one upgrade, sometimes two.
 - All numbers live in `src/config.js`.
 
-## Open questions (defaults in use until someone decides)
+## AI and voice
 
-- Does a soul that burns out in your hold anger its god? Default: yes, it counts as skipped.
-- Does a delivery calm its god's rage? Default: yes, a little per soul.
-- Does a soul's lifespan start when you catch it? Default: yes.
-
-## The AI hook (v2, after the river works)
-
-- What Gemini generates: scroll incantations (built), later fresh god reactions and a one-line life story for each soul. The gods' reactions and Hades's death verdict are recorded lines for now (built, see Voices).
-- Scrolls (built): Gemini writes each scroll's incantation (two crypto-Greek words and their meaning), prepared in the background so buying never waits. Gradium speech-to-text listens while you carry a scroll: a voice detector cuts the mic into short phrases at pauses, and each one goes to Gradium (through our `/api/stt` route) with the carried incantations' words boosted, so it tends to spell them right. Echo cancellation keeps the gods' voices from the speakers out of the mic. The browser's own speech recognition takes over only when the server has no Gradium key (mock mode) or Gradium keeps failing. Recognizers hear invented words as English ("Thalassa" can come back as "the lasso"), so incantations are matched by sound. Both words, even garbled, use the scroll; so does one word heard clearly as a short phrase of its own (up to 3 words). Other people and the room talk in longer stretches, which need both words. What the mic heard shows as a subtitle only when it comes close to a scroll, so chatter stays off screen; the mic dot flares on any speech. `?debug` shows everything heard, with its match score. What the mic heard shows like a subtitle under the river.
-- When it is called: run start, shop docks, game over, in the background. Never per frame. Lines are prepared ahead so they play instantly.
-- If the AI is slow or offline: canned lines and canned incantations per god. With no mic (mic refused, or Firefox without Gradium), Space then 1 / 2 / 3 reads a scroll.
+- Gemini writes each scroll's incantation (two crypto-Greek words and their meaning) in the background: one per god at run start, and a fresh one after each purchase, so buying never waits. Each must pass a pronounceability check, with one retry. Never per frame.
+- Gradium hears the incantations. It listens while you carry a scroll: a voice detector cuts the mic into short phrases at pauses, and each one goes to Gradium speech-to-text (through our `/api/stt` route) with the carried incantations' words boosted, so it tends to spell them right. Echo cancellation keeps the gods' voices from the speakers out of the mic. The browser's own speech recognition takes over only when the server has no Gradium key (mock mode) or Gradium keeps failing.
+- Matching: recognizers hear invented words as English ("Thalassa" can come back as "the lasso"), so incantations are matched by sound. Both words, even garbled, use the scroll; so does one word heard clearly as a short phrase of its own (up to 3 words). Other people and the room talk in longer stretches, which need both words. What the mic heard shows like a subtitle under the river, but only when it comes close to a scroll, so chatter stays off screen; the mic dot flares on any speech. `?debug` shows everything heard, with its match score.
+- Gradium also gave the gods their voices: designed voices and recorded lines (see Voices). They're files, so they play with no network.
+- If the AI is slow or offline: canned incantations per god. With no mic (mic refused, or Firefox without Gradium), Space then 1 / 2 / 3 reads a scroll.
 
 ## Controls
 
 - Laptop first. **WASD** (the same keys are ZQSD on French AZERTY keyboards: keys are read by position) or the **arrow keys** move the boat freely on the water, shoot-'em-up style: across the river to reach souls and banks, forward and back to rush or wait. Diagonals are not faster. Quick acceleration with a slight glide; Handling makes it snappier.
 - Deliver: automatic when the boat sails into the pool of light in front of a shrine's portal.
 - Shop: touching a shop's dock pauses the game and opens it. **1 to 6** or a click buys (1-3 upgrades, 4-6 scrolls), **Space** or **Esc** casts off.
-- **Esc** or **P** pauses, **M** mutes, **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly); **1** or a click on Charon's offer pays his fee instead.
+- **Esc** or **P** pauses, **M** mutes (the gods' voices too), **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly); **1** or a click on Charon's offer pays his fee instead.
 - A "click to play" screen gives the game keyboard focus and unlocks audio. The game pauses when the window loses focus or the tab is hidden, so keys can't get stuck.
 - How to play: the first run of a browser session opens with a tour over the paused river (restarts and reloads skip it, a new tab shows it again). A spotlight moves from the boat to a soul, a shrine, the rage bars, the obols and the scrolls, with a caption card for each. Each step moves on by itself after 4.5 s; **Space**, **Enter**, a click or a tap moves on sooner, **Esc** or Skip ends it. **H**, or How to play on the pause screen, brings it back.
 - Never require more than 2 held keys plus 1 tap: laptop keyboards drop keys.
@@ -74,13 +69,13 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 - View: 3/4 top-down 2D (2.5D) on a landscape 1280x720 canvas.
 - Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines are Ines's animated stone portals, set at an angle on the bank and spilling a pool of light in their god's color onto the water (sail into it to deliver). Hermes' stall stands at the same angle: a striped awning over a counter of wares, a jetty out into warm light, a caduceus medallion. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
-- Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars, lanterns and distance on the left; obols, streak and next shrines on the right, with the river and your level under them. The boat faces up the screen and everything drifts from top to bottom.
-- Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
+- Layout: the river (~545 px wide) runs down the middle. The banks (~365 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars, lanterns and distance on the left, with your scrolls under them; obols, streak, hold and next shrines on the right, with the river and your level under them. The boat faces up the screen and everything drifts from top to bottom.
+- Art owner: Ines. Her water, banks, atmosphere, portals and tour design are in the game. Every other key below has a placeholder drawn by code (`src/art.js`), so her files drop in by key with no code change.
 - Atmosphere after Ines's river study: drifting fog banks, a grey tint and haze at the top and bottom (under souls and the boat so they stay crisp), floating spores, darkened edges. `fogAmount` in `src/config.js` sets the fog (her slider; default 0.75).
 - Banks after Ines's river study too: uneven shoreline with a muddy strip, and pines, ferns, rocks and spider lilies scattered at her densities, clear of shrines and stalls.
 - How-to-play tour: Ines's tutorial design from her River Flow prototype. The screen dims except a soft round spotlight circled by a slowly turning dashed ring; a dark caption card with a faint violet glow (Cormorant title, Source Sans text, step dots, a violet-to-cyan bar that fills as the step runs out) sits at the top or bottom, away from the spotlight.
 - Drawn by code, not art: the water (ported from Ines's river study `afterflow-riviere.html`: shallow-to-deep body, flowing surface, current lines faster mid-stream, serpentine lifestream ribbons, glints, foam along the banks), glows, soul trails and sparks (and the fallback stone arch with its swirl, used only if a portal sheet fails to load).
-- Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
+- Assets (PNG with transparency, or a WebP sprite sheet, in `public/assets/`; one line each in `src/assets.js`):
 
 | Key | Size (px) | Notes |
 |---|---|---|
@@ -99,19 +94,19 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | `icon_speed`, `icon_handling`, `icon_hold` | 96x96 | Shop icons |
 | `scroll_athena`, `scroll_ares`, `scroll_poseidon` | 88x64 | A scroll sealed in its god's color, for the stall and the HUD |
 
-- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite, lantern lit, new best, scrolls unrolling and a scroll calming its god. Under them, one recorded ambient track (`public/assets/ambient.mp3`: "Sacred River Echoes", 3.5 min, made with Suno) starts on the first click and plays on through restarts, well under the effects (`AMBIENCE_VOLUME` in `src/sfx.js`). It loops whole, its fade-out blended into its intro. A hidden tab goes silent. Real audio can replace the effects later. Owner: TBD. The gods' voices are recorded (see Voices).
+- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite, lantern lit, level up, new river, new best, scrolls unrolling and a scroll calming its god. Under them, one recorded ambient track (`public/assets/ambient.mp3`: "Sacred River Echoes", 3.5 min, made with Suno) starts on the first click and plays on through restarts, well under the effects (`AMBIENCE_VOLUME` in `src/sfx.js`). It loops whole, its fade-out blended into its intro. A hidden tab goes silent. The gods' voices are recorded (see Voices).
 
-## Voices (Gradium, v2)
+## Voices (Gradium)
 
-| Character | Key in `src/voices.js` | Voice | Design prompt / notes |
+| Character | Key | Voice | Design prompt / notes |
 |---|---|---|---|
-| Narrator | `narrator` | Emma (catalog) | Placeholder until we design our own |
+| Narrator | `narrator` in `src/voices.js` | Emma (catalog) | The default voice for `speak()`; no narrator lines in the game |
 | Athena | `athena` | "Athena", designed (`xejWGWmOKQHMxQbh`) | Cool teacher: calm alto, precise, disappointed. Lines and prompt in `src/npc-voices/athena.js` |
 | Ares | `ares` | "Ares", designed (`bYo8Un6hIP7WoPZ2`) | Viking warlord: extremely low, gravelly, slow, enraged. Lines and full prompt in `src/npc-voices/ares.js` |
 | Poseidon | `poseidon` | "Poseidon", designed (`Dd8EiWWMQldQ7SeM`) | Storm king: booming bass, weathered but clear, bursts into roars. Lines and prompts in `src/npc-voices/poseidon.js` |
 | Hades | `hades` | "Hades", designed (`oyNt5tAW0wzf4qMN`) | Not one of the 3 gods: Charon's master, who speaks at run start and gives the verdict at game over. Cold aristocrat: deep, quiet, contemptuous. `src/npc-voices/hades.js` |
 
-Fede's recorded lines (MP3s in `public/npc-voices/`) play in the game:
+Fede's recorded lines (89 MP3s in `public/npc-voices/`, made with `npm run npc:audio`) play in the game:
 
 - **When:** Hades at run start (after the tour, on a first run); the god whose soul you lose (missed or burnt out) shouts half the time; a soul about to burn out makes its god say hurry, once per soul; rage at 50% and 75%; streaks of 3, 5 and every 8th; every smite (each lantern lost); and Hades's verdict on the game-over screen, which stops when you pay Charon or drift again.
 - **One at a time:** a more urgent line cuts in (verdict, then smite and run start, then the rage warnings), and small talk (shout, hurry, streak) waits 2.5 s after the last line. While the mic listens for an incantation, shouts and hurries stay quiet.
@@ -119,19 +114,20 @@ Fede's recorded lines (MP3s in `public/npc-voices/`) play in the game:
 
 ## Scope
 
-- Hack rule: use at least 2 of Gemini, Gradium, Devin, Voodoo (use during development counts).
-- v1, must have for the demo: river runner, 3 gods, souls with a lifespan, shrines and deliveries, rage bars and death, riverside shops with exponential prices (Speed, Handling, Hold), streaks, clutch with its own sound, juice (pops, obol bursts, screen shake), game over and instant restart.
-- v2, after v1 is solid: AI gods (reactions, death verdict, soul stories), obstacles and damage, bullet-hell arena when a god's rage fills, weapons. Scrolls with spoken incantations are built.
-- Phones, alongside v1: touch controls for a phone held sideways (see Controls). Scrolls on phones: a tap on the scrolls panel shows them; the mic is untested on phones.
-- Stretch: voice cloning (the ferryman repeats your incantation in your own voice).
+- Hack rule: use at least 2 of Gemini, Gradium, Devin, Voodoo (use during development counts). We use Gemini (incantations) and Gradium (voice design, the gods' recorded lines, speech-to-text).
+- v1, the must-haves for the demo, all built: river runner, 3 gods, souls with a lifespan, shrines and deliveries, rage bars and death, riverside shops with exponential prices (Speed, Handling, Hold), streaks, clutch with its own sound, juice (pops, obol bursts, screen shake), game over and instant restart.
+- Built beyond v1: scrolls with spoken incantations, the gods' recorded voices and Hades's verdict, lanterns and Charon's fee, levels and rivers, saves and your best on the river, the how-to-play tour, phones.
+- Designed, not built: obstacles and damage, a bullet-hell arena when a god's rage fills, weapons, god reactions and soul stories written fresh by Gemini (recorded lines stand in for the reactions).
+- Phones: touch controls for a phone held sideways (see Controls). Scrolls on phones: a tap on the scrolls panel shows them; the mic is untested on phones.
+- Stretch, not built: voice cloning (the ferryman repeats your incantation in your own voice).
 - Considered, not chosen: golden hero souls, underworld zones, missions, leaderboard.
 - Cut: Unity and Voodoo.
 
-## v1 status
+## Status (demo build)
 
-Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, levels and rivers that speed up Tetris style, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives), death and Charon's fee, Hermes' stall with exponential prices, scrolls with spoken incantations written by Gemini, the gods' recorded voices, pause, game over and instant restart, your best run saved on this device and marked on the river, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
+Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, levels and rivers that speed up Tetris style, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives), death and Charon's fee, Hermes' stall with exponential prices, scrolls with incantations written by Gemini and heard by Gradium, the gods' recorded voices, pause, game over and instant restart, your best run saved on this device and marked on the river, one-time tips, Ines's water, banks, atmosphere and portals, code-drawn art for the rest, synthesized sound over an ambient track, and touch controls for phones held sideways.
 
-Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
+After the freeze: only fixes and tuning in `src/config.js` against the targets above.
 
 ## Team
 
@@ -139,8 +135,8 @@ Next: playtest and tune the numbers in `src/config.js` against the targets above
 |---|---|
 | Alex | Repo, integration, AI wiring, deploy, the demo build |
 | Gleb | Game design, pitch |
-| Ines | Art, UI |
-| Fede | Backend, jack of all trades |
+| Ines | Art, UI: the water, banks, atmosphere, portals and tour design |
+| Fede | The gods' voices (Gradium voice design, lines, recordings), backend |
 
 ## Clock (Paris time)
 
