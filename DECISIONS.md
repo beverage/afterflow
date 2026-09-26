@@ -28,3 +28,9 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 12:52 · Must-have hooks: streaks, clutch with its own sound, exponential shop · we expect to be judged on stickiness · team
 - 12:52 · v2: AI gods (reactions, prayers, verdict, soul stories), prayers read aloud at full speed, obstacles, bullet hell · the river must be fun first · team
 - 12:52 · Voice cloning is a stretch goal, only after spoken prayers work · biggest wow, biggest risk · team
+- 13:03 · Laptop first: landscape 1280x720, keyboard controls; replaces the starter's portrait one-thumb default · Voodoo is out, we build for laptops · team
+- 13:03 · Mobile maybe in v3; all input goes through one controls module so touch can plug in later · keeps the door open at almost no cost · team
+- 13:03 · River flows top to bottom down the middle, shrines and shops on the side banks, HUD on the outer edges · keeps the vertical runner design on a wide screen · team
+- 13:03 · Free 2D boat movement, shoot-'em-up style · control over timing, and the v2 bullet hell needs it · team
+- 13:03 · Stay on Phaser 3 + Vite + plain JS; host on Vercel via GitHub with a preview link per PR · already wired, previews keep main playable · team
+- 13:03 · Bind ZQSD next to WASD and the arrows · French AZERTY laptops at a Paris event · Claude

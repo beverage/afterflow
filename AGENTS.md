@@ -18,7 +18,8 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 
 - Phaser **3.90** with Arcade physics. Pinned on purpose: agents know Phaser 3 best. Do not upgrade to Phaser 4 today.
 - Vite for dev and build. Plain JavaScript ES modules. No TypeScript, no UI framework, no new build tools.
-- Portrait 720x1280 logical canvas, scaled with `Phaser.Scale.FIT`. Touch first (one thumb), keyboard only as a desktop fallback.
+- Landscape 1280x720 logical canvas, scaled with `Phaser.Scale.FIT`. Laptop first: WASD, ZQSD (French AZERTY) and arrow keys. Read input only through the controls module (a move vector plus actions) so touch can be added later for mobile.
+- Hosting: Vercel, connected to GitHub. `main` deploys to production and every PR gets its own preview link: playtest the preview before merging.
 - All keys stay on the server. Browser code calls `askAI()` (`src/ai.js`, Gemini) and `speak()` (`src/voice.js`, Gradium), which hit our own `/api/gemini` and `/api/tts` routes. Never call Google or Gradium from the browser, never put a key in client code, never prefix env vars with `VITE_` (that would ship the key to every player).
 
 ## Where things live

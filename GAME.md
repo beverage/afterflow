@@ -8,19 +8,19 @@ _Name: TBD (working title **Soul Ferry**)._ Ferry the dead down the river: scoop
 
 ## Core loop (v1: what the player does every few seconds)
 
-1. **Scoop.** The river scrolls down the screen. Drag to steer the boat left and right, touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it goes *poof*.
-2. **Deliver.** Shrines drift by on the banks (a strip at the top shows the next 3). Steer into a shrine's dock to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to poof is a **CLUTCH**, with its own sound and a bonus.
+1. **Scoop.** The river scrolls down the middle of the screen. Move the boat anywhere on the water with WASD and touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it goes *poof*.
+2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into a shrine's dock to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to poof is a **CLUTCH**, with its own sound and a bonus.
 3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially.
 
 ## Rules (v1)
 
-- One continuous run. Nothing is saved: no accounts, no best score. Game over, tap, fresh run.
+- One continuous run. Nothing is saved: no accounts, no best score. Game over, press a key, fresh run.
 - 3 gods, one rage bar each in the HUD. Athena's souls are yellow; the other two gods and colors are Ines's call. Souls carry their god's symbol too, not just a color.
 - Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100% = death.
 - Souls shrink over their lifespan and poof at zero, which forces regular deliveries.
 - Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Items:
   - **Speed**: the river scrolls faster, so more souls and shrines per minute (more money, more risk).
-  - **Handling**: quicker side-to-side steering.
+  - **Handling**: quicker, snappier boat movement.
   - **Hold**: +1 soul capacity (starts at 3).
 - Economy: upgrade prices grow exponentially per level. Soul value also grows the further downstream you get, then streak and clutch multiply it, so income keeps pace and the numbers keep climbing. Big numbers shown as 1.2K, 3.4M.
 - Difficulty ramps through density: more souls per second, shrines further apart.
@@ -40,31 +40,37 @@ _Name: TBD (working title **Soul Ferry**)._ Ferry the dead down the river: scoop
 ## The AI hook (v2, after the river works)
 
 - What Gemini generates: the gods' voiced reactions (run start, rage at 50% and 80%, big streaks), fresh prayers written for the god and the moment, a death verdict from the god who sank you, a one-line life story for each soul.
-- Prayers: prayer scrolls (bought at shops) let you tap a god's rage bar and read the prayer aloud while still steering at full speed. Speech-to-text scores the words and lowers that god's rage.
+- Prayers: prayer scrolls (bought at shops) let you pick a god (1 / 2 / 3, or click its rage bar) and read the prayer aloud while still steering at full speed. Speech-to-text scores the words and lowers that god's rage.
 - When it is called: run start, shop docks, game over, in the background. Never per frame. Lines are prepared ahead so they play instantly.
-- If the AI is slow or offline: canned lines per god; prayers fall back to hold-to-pray.
+- If the AI is slow or offline: canned lines per god; prayers fall back to holding Space.
 
 ## Controls
 
-- Touch: drag anywhere, the boat follows your finger left and right (a little drift; Handling tightens it). Tap to buy in shops.
-- Desktop: arrow keys or A/D, or mouse drag.
-- v2: mic permission is asked on the title screen, never mid-run.
+- Laptop first. **WASD**, **ZQSD** (French AZERTY keyboards) or the **arrow keys** move the boat freely on the water, shoot-'em-up style: across the river to reach souls and banks, forward and back to rush or wait. Diagonals are not faster. Quick acceleration with a slight glide; Handling makes it snappier.
+- Deliver: automatic when the boat touches a shrine's dock.
+- Shop: touching a shop's dock pauses the game and opens it. **1 / 2 / 3** or a click buys, **Space** or **Esc** casts off.
+- **Esc** or **P** pauses, **M** mutes, **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly).
+- A "click to play" screen gives the game keyboard focus and unlocks audio. The game pauses when the window loses focus, so keys can't get stuck.
+- Never require more than 2 held keys plus 1 tap: laptop keyboards drop keys.
+- v2 prayers: **1 / 2 / 3** (or a click on a rage bar) prays to that god; hold **Space** if there's no mic. Mic permission is asked on the title screen, never mid-run.
+- v3, maybe mobile: all input goes through one controls module (a move vector plus actions), so drag-to-move can plug in later, and the 16:9 canvas fits a phone held sideways.
 
 ## Look and sound
 
-- View: 3/4 top-down 2D (2.5D), portrait 720x1280. Mood and palette: underworld river, Ines's call.
+- View: 3/4 top-down 2D (2.5D) on a landscape 1280x720 canvas.
+- Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Until her art lands, the code draws placeholder shapes under the same keys.
 - Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
 
 | Key | File | Size (px) | Notes |
 |---|---|---|---|
-| `river` | `river.png` | 720x1280 | Loops seamlessly top to bottom; banks ~100 px each side |
-| `boat` | `boat.png` | ~110x160 | Ferry and ferryman, heading up the screen |
-| `soul_<god>` | `soul_athena.png`, ... | ~64x64 | One per god: god's color and symbol |
-| `shrine_<god>` | `shrine_athena.png`, ... | ~180x220 | Sits on a bank; code mirrors it for the other side |
-| `shop` | `shop.png` | ~180x220 | Riverside shop with a dock |
-| `god_<god>` | `god_athena.png`, ... | ~96x96 | Face or icon for the rage bar |
-| `obol` | `obol.png` | ~48x48 | Coin |
+| `river` | `river.png` | 1280x720 | Whole background: water ~560 px wide in the middle, banks on both sides. Loops seamlessly top to bottom |
+| `boat` | `boat.png` | ~80x120 | Ferry and ferryman seen from behind, bow pointing up the screen |
+| `soul_<god>` | `soul_athena.png`, ... | ~48x48 | One per god: god's color and symbol |
+| `shrine_<god>` | `shrine_athena.png`, ... | ~180x200 | Sits at the water's edge; code mirrors it for the other bank |
+| `shop` | `shop.png` | ~180x200 | Riverside shop with a dock |
+| `god_<god>` | `god_athena.png`, ... | ~80x80 | Face or icon for the rage bar |
+| `obol` | `obol.png` | ~40x40 | Coin |
 | `icon_speed`, `icon_handling`, `icon_hold` | `icon_speed.png`, ... | ~96x96 | Shop items |
 | `prop_*` | any | varies | Optional bank props to break repetition |
 
@@ -84,9 +90,20 @@ _Name: TBD (working title **Soul Ferry**)._ Ferry the dead down the river: scoop
 - Hack rule: use at least 2 of Gemini, Gradium, Devin, Voodoo (use during development counts).
 - v1, must have for the demo: river runner, 3 gods, souls with a lifespan, shrines and deliveries, rage bars and death, riverside shops with exponential prices (Speed, Handling, Hold), streaks, clutch with its own sound, juice (pops, obol bursts, screen shake), game over and instant restart.
 - v2, after v1 is solid: AI gods (reactions, fresh prayers, death verdict, soul stories), prayer scrolls read aloud (speech-to-text), obstacles and damage, saving and best score, bullet-hell arena when a god's rage fills, weapons.
+- v3, maybe: mobile (touch controls, phone held sideways).
 - Stretch: voice cloning (the ferryman repeats your prayer in your own voice).
 - Considered, not chosen: golden hero souls, underworld zones, missions, leaderboard.
 - Cut: Unity and Voodoo.
+
+## v1 build order
+
+1. River scene: landscape layout, scrolling river, boat with free WASD / ZQSD / arrow movement kept on the water, click to play, pause on blur.
+2. Souls: spawning, drifting, pickup into the hold, lifespan shrink and poof, skipped souls fill rage.
+3. Shrines on the banks, next-shrines strip, deliveries paying obols, streak and clutch.
+4. Rage bars, smite and game over, instant restart.
+5. Riverside shops: docking pauses, Speed / Handling / Hold with exponential prices. Self-contained, a good Devin task.
+6. Juice and sound pass: pops, obol bursts, shake, streak pitch steps, the clutch sound.
+7. Ines's art drops in by file name, no code changes.
 
 ## Team
 
