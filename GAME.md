@@ -52,6 +52,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Shop: touching a shop's dock pauses the game and opens it. **1 / 2 / 3** or a click buys, **Space** or **Esc** casts off.
 - **Esc** or **P** pauses, **M** mutes, **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly).
 - A "click to play" screen gives the game keyboard focus and unlocks audio. The game pauses when the window loses focus or the tab is hidden, so keys can't get stuck.
+- How to play: the first run of a browser session opens with a tour over the paused river (restarts and reloads skip it, a new tab shows it again). A spotlight moves from the boat to a soul, a shrine, the rage bars and the obols, with a caption card for each. Each step moves on by itself after 4.5 s; **Space**, **Enter**, a click or a tap moves on sooner, **Esc** or Skip ends it. **H**, or How to play on the pause screen, brings it back.
 - Never require more than 2 held keys plus 1 tap: laptop keyboards drop keys.
 - v2 prayers: **1 / 2 / 3** (or a click on a rage bar) prays to that god; hold **Space** if there's no mic. Mic permission is asked on the title screen, never mid-run.
 - Phones, held sideways: a floating stick. Put a thumb down anywhere (the bars beside the game too) and slide: the boat heads that way at full speed, as if holding the key, and glides to a stop when you lift. A faint ring shows under the thumb and trails it, so sliding back reverses at once.
@@ -66,6 +67,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
 - Banks after Ines's river study too: uneven shoreline with a muddy strip, and pines, ferns, rocks and spider lilies scattered at her densities, clear of shrines and stalls.
+- How-to-play tour: Ines's tutorial design from her River Flow prototype. The screen dims except a soft round spotlight circled by a slowly turning dashed ring; a dark caption card with a faint violet glow (Cormorant title, Source Sans text, step dots, a violet-to-cyan bar that fills as the step runs out) sits at the top or bottom, away from the spotlight.
 - Drawn by code, not art: the water (ported from Ines's river study `afterflow-riviere.html`: shallow-to-deep body, flowing surface, current lines faster mid-stream, serpentine lifestream ribbons, glints, foam along the banks), glows, portal swirls, soul trails and sparks.
 - Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
 
@@ -107,7 +109,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## v1 status
 
-Built and playable: title over a self-steering river, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars and death, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
+Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars and death, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
 
 Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
 
