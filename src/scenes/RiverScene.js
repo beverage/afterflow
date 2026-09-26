@@ -383,15 +383,16 @@ export class RiverScene extends Phaser.Scene {
     const cap = this.stats.capacity, small = cap > 4, g = this.ringsG;
     for (let i = this.hold.length - 1; i >= 0; i--) {
       if (!this.ended) this.hold[i].life -= dt / TUNING.lifespan;
-      if (this.hold[i].life <= 0) this.poof(i);
+      if (this.hold[i].life <= 0) this.burnOut(i);
     }
     g.clear();
     this.hold.forEach((o, i) => {
       const p = this.slot(i, cap), k = Math.min(1, dt * 16);
       o.img.x += (p.x - o.img.x) * k;
       o.img.y += (p.y - o.img.y) * k;
-      o.img.setScale((small ? 0.38 : 0.5) * (0.55 + 0.45 * o.life));
       const r = small ? 9.5 : 12.5, low = o.life < 0.25;
+      o.img.setScale((small ? 0.38 : 0.5) * (0.55 + 0.45 * o.life));
+      o.img.setAlpha(low ? 0.55 + 0.45 * Math.abs(Math.sin(this.t * 19 + i)) : 1); // gutters like a candle before it burns out
       g.lineStyle(2, 0xffffff, 0.12);
       g.strokeCircle(o.img.x, o.img.y, r);
       g.lineStyle(2, low ? 0xff6e5a : GODS[o.god].color, low ? 0.55 + 0.45 * Math.sin(this.t * 16) : 0.9);
@@ -401,18 +402,17 @@ export class RiverScene extends Phaser.Scene {
     });
   }
 
-  poof(i) {
+  burnOut(i) {
     const o = this.hold[i], { x, y } = o.img;
     this.hold.splice(i, 1);
     o.img.destroy();
-    this.poofFx(x, y);
+    this.burnOutFx(x, y, o.god);
     if (!this.playing) return;
-    sfx.poof();
+    sfx.burnOut();
     if (this.run.streak > 1) sfx.streakBreak();
     this.run.streak = 0;
-    this.popup('poof', x + 38, y - 6, 0xcdc8de, 18);
-    this.hint('poof', 'Souls fade: deliver them before their ring runs out');
-    this.addRage(o.god, TUNING.ragePerPoof);
+    this.hint('burnout', 'Souls burn out: deliver them before their ring runs out');
+    this.addRage(o.god, TUNING.ragePerBurnOut);
   }
 
   deliver(f) {
@@ -583,6 +583,9 @@ export class RiverScene extends Phaser.Scene {
     this.sparks = GODS.map((god) =>
       this.add.particles(0, 0, 'glow', { ...soft, lifespan: { min: 350, max: 700 }, speed: { min: 60, max: 190 }, angle: { min: 0, max: 360 }, scale: { start: 0.16, end: 0 }, alpha: { start: 1, end: 0 }, tint: god.color }).setDepth(30),
     );
+    this.embers = GODS.map((god) =>
+      this.add.particles(0, 0, 'glow', { ...soft, lifespan: { min: 700, max: 1200 }, speed: { min: 20, max: 70 }, angle: { min: 235, max: 305 }, gravityY: -30, scale: { start: 0.12, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: [god.color, 0xffe2a8] }).setDepth(31),
+    );
     this.wakeG = this.add.graphics().setDepth(19).setBlendMode(Phaser.BlendModes.ADD);
   }
 
@@ -591,11 +594,16 @@ export class RiverScene extends Phaser.Scene {
     this.tweens.add({ targets: img, scale: (radius * 3.2) / 29, alpha: { from: 0.9, to: 0 }, duration: dur * 1000, ease: 'Cubic.easeOut', onComplete: () => img.destroy() });
   }
 
-  poofFx(x, y) {
-    for (let i = 0; i < 8; i++) {
-      const img = this.add.image(x, y, 'glow').setTint(0xaca6c4).setScale(rnd(0.12, 0.28)).setAlpha(0.45).setDepth(30);
-      this.tweens.add({ targets: img, x: x + rnd(-40, 40), y: y + rnd(-40, 20), scale: img.scale * 2.2, alpha: 0, duration: rnd(600, 1000), ease: 'Quad.easeOut', onComplete: () => img.destroy() });
-    }
+  // A soul burning out: a white-hot flash in its god's color, a quick shockwave and a spray of embers.
+  burnOutFx(x, y, god) {
+    const { color } = GODS[god];
+    const flare = this.add.image(x, y, 'glow').setTint(color).setBlendMode('ADD').setScale(0.3).setDepth(31);
+    const core = this.add.image(x, y, 'glow').setBlendMode('ADD').setScale(0.15).setDepth(32);
+    this.tweens.add({ targets: flare, scale: 3.2, alpha: { from: 1, to: 0 }, duration: 500, ease: 'Cubic.easeOut', onComplete: () => flare.destroy() });
+    this.tweens.add({ targets: core, scale: 1.5, alpha: { from: 1, to: 0 }, duration: 260, ease: 'Quad.easeOut', onComplete: () => core.destroy() });
+    this.ringFx(x, y, color, 0.35, 12);
+    this.sparks[god].explode(22, x, y);
+    this.embers[god].explode(14, x, y);
   }
 
   // Motes of light arcing from the hold into the (moving) shrine.
@@ -828,7 +836,7 @@ export class RiverScene extends Phaser.Scene {
     this.tweens.add({ targets: this.boatImg, scale: 0.6, alpha: 0, angle: '+=40', duration: 900, delay: 200, ease: 'Quad.easeIn' });
     this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
     this.hold.forEach((o) => {
-      this.poofFx(o.img.x, o.img.y);
+      this.burnOutFx(o.img.x, o.img.y, o.god);
       o.img.destroy();
     });
     this.hold = [];
