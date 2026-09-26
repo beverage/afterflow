@@ -5,6 +5,7 @@ let ac = null;
 let master = null;
 let sfxBus = null;
 let musicBus = null;
+let voiceBus = null;
 let noiseBuf = null;
 let ambience = null;
 
@@ -25,9 +26,15 @@ export function unlockAudio() {
     musicBus = ac.createGain();
     musicBus.gain.value = 0.35;
     musicBus.connect(master);
+    voiceBus = ac.createGain();
+    voiceBus.gain.value = 0.8; // the recorded voices peak near full scale, well above the effects
+    voiceBus.connect(master);
   }
   if (ac.state !== 'running') ac.resume().catch(() => {});
 }
+
+/** Where the gods' recorded lines play: through the master volume, so mute silences them too. Null before the first tap. */
+export const voiceOut = () => (ac ? { ac, bus: voiceBus } : null);
 
 // Phones only let audio start at the end of a tap, and iOS suspends it when you switch apps:
 // wake it again on the next tap or key.
