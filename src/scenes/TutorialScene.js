@@ -19,7 +19,7 @@ const OPEN = { x: W / 2, y: H / 2, r: 900 }; // a hole wider than the screen: no
 const CLOSED = { x: W / 2, y: H / 2, r: 0 }; // nothing to point at: dim everything
 const CARD_W = 600;
 const PAD = 22;
-const SEEN_KEY = 'soul-drift-tutorial';
+const SEEN_KEY = 'afterflow-tutorial';
 
 // The HUD panels drawn by RiverScene.buildHud: rage bars top left, obols and streak top right.
 const RAGE_SPOT = { x: 81, y: 106, r: 108 };

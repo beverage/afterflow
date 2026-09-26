@@ -1,6 +1,6 @@
-# Soul Drift: design and development
+# Afterflow: design and development
 
-The write-up of Soul Drift as we demo it: what the game is, how every system works and with which numbers, how the AI and voice fit in, how the code is laid out, and how a team of four built it in a day with coding agents.
+The write-up of Afterflow as we demo it: what the game is, how every system works and with which numbers, how the AI and voice fit in, how the code is laid out, and how a team of four built it in a day with coding agents.
 Made at the {Tech: Europe} AI Gaming Hack, Paris, 26 September 2026.
 
 This is a snapshot of the demo build. The living files win if they ever disagree: `GAME.md` holds the current rules in short form, `DECISIONS.md` the reason behind every call (with times), `AGENTS.md` the rules and file map for coding agents, and `src/config.js` every number.
@@ -143,7 +143,7 @@ Boot ──> River (attract mode: the boat steers itself) + Title
 
 ## 6. AI and voice
 
-The hack asked for at least two partner tools. Soul Drift uses Gemini while you play and Gradium in three ways: to design the gods' voices, to record their lines, and to hear the player. All keys stay on our server.
+The hack asked for at least two partner tools. Afterflow uses Gemini while you play and Gradium in three ways: to design the gods' voices, to record their lines, and to hear the player. All keys stay on our server.
 
 ### Gemini writes the incantations
 

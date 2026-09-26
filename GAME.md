@@ -4,7 +4,7 @@ Single source of truth for humans and agents. Keep it short and current: when a 
 
 ## One-liner
 
-_Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifting souls and deliver each to its god's shrine before it burns out, or the gods' rage sinks you.
+_Name: **Afterflow**._ Ferry the dead down the river: scoop up drifting souls and deliver each to its god's shrine before it burns out, or the gods' rage sinks you.
 
 ## Core loop (what the player does every few seconds)
 

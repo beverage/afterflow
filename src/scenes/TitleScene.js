@@ -17,7 +17,7 @@ export class TitleScene extends Phaser.Scene {
     this.started = false;
     this.add.rectangle(0, 0, W, H, 0x05040c, 0.5).setOrigin(0);
     this.add
-      .text(W / 2, 176, 'Soul Drift', { fontFamily: DISPLAY_FONT, fontSize: '124px', fontStyle: 'italic 600', color: '#f3eefe' })
+      .text(W / 2, 176, 'Afterflow', { fontFamily: DISPLAY_FONT, fontSize: '124px', fontStyle: 'italic 600', color: '#f3eefe' })
       .setOrigin(0.5)
       .setShadow(0, 0, '#9670ff', 30, true, true);
     this.add.text(W / 2, 262, 'Ferry the dead. Keep the gods happy.', { fontFamily: DISPLAY_FONT, fontSize: '30px', fontStyle: 'italic 500', color: COLORS.text }).setOrigin(0.5);

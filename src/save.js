@@ -3,7 +3,8 @@
 // and forgets on reload. Add ?fresh to the URL to start over, as on a first visit.
 import { GODS } from './config.js';
 
-const KEY = 'soul-drift-save';
+const KEY = 'afterflow-save';
+const OLD_KEY = 'soul-drift-save'; // the game's first name: a save from before the rename still loads
 const VERSION = 1;
 
 const blank = () => ({
@@ -23,8 +24,11 @@ let counted = { id: null, delivered: 0, clutches: 0, earned: 0, distance: 0 }; /
 
 function load() {
   try {
-    if (new URLSearchParams(location.search).has('fresh')) localStorage.removeItem(KEY);
-    const saved = JSON.parse(localStorage.getItem(KEY));
+    if (new URLSearchParams(location.search).has('fresh')) {
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(OLD_KEY);
+    }
+    const saved = JSON.parse(localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY));
     if (saved?.v === VERSION) return { ...blank(), ...saved };
   } catch {
     // blocked or unreadable: start blank

@@ -1,4 +1,4 @@
-# Soul Drift
+# Afterflow
 
 Ferry the dead down the rivers of the underworld. Scoop up drifting souls and sail each one into its god's shrine before it burns out, or the gods' rage sinks you. Buy scrolls at Hermes' stall and read their incantations aloud to calm the gods, while the river keeps coming.
 
