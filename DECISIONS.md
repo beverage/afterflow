@@ -55,3 +55,4 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 16:23 · The ambient hum was a synth drone; replaced by quiet flowing water with the odd droplet (AMBIENCE_VOLUME in sfx.js, 0 turns it off); brought over from shelved PR #2 · the hum sounded like a fault · team
 - 16:28 · No background ambience: the flowing-water bed read as a constant hiss; silence between sound effects (AMBIENCE_VOLUME = 0 in sfx.js) · team
 - 16:37 · Banks from Ines's river study: her ground (moss, earth, grass, pale flowers), uneven shoreline with a muddy strip, her pines, ferns, rocks (half on the waterline, with eddies) and spider lilies; reeds dropped · the team liked her banks · team
+- 16:41 · Feature freeze moves from 17:30 to 18:30 · one more hour of feature work before the demo · Alex

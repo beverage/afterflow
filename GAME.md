@@ -125,7 +125,7 @@ Next: playtest and tune the numbers in `src/config.js` against the targets above
 - 12:52 design locked (this doc)
 - 14:30 v1 river loop playable on the public URL, placeholder art
 - 15:30 v1 complete with Ines's art, v2 starts
-- 17:30 feature freeze: only fixes and polish after this
+- 18:30 feature freeze: only fixes and polish after this
 - 18:30 record a backup demo video of a good run
 - 19:00 competition opt-in deadline
 - 20:00 live demo
