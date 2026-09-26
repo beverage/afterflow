@@ -65,19 +65,21 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines drawn as stone-arch portals with a swirl in their god's color. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
 - Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
+- Banks after Ines's river study too: uneven shoreline with a muddy strip, and pines, ferns, rocks and spider lilies scattered at her densities, clear of shrines and stalls.
 - Drawn by code, not art: the water (ported from Ines's river study `afterflow-riviere.html`: shallow-to-deep body, flowing surface, current lines faster mid-stream, serpentine lifestream ribbons, glints, foam along the banks), glows, portal swirls, soul trails and sparks.
 - Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
 
 | Key | Size (px) | Notes |
 |---|---|---|
-| `bank` | 1280x720 | Ground for both banks, no water (the river is drawn over it). Loops top to bottom |
+| `bank` | 1280x720 | Ground for both banks, no water (the river is drawn over it). Loops top to bottom. Placeholder: Ines's mossy ground with grass, moss and pale flowers |
 | `boat` | 100x170 | Charon's ferry from above, bow up, hull centred at (40, 72) |
 | `arch` | 150x150 | Shrine arch, base centre at (75, 138). Leave the opening transparent: the portal shows through |
 | `shop` | 150x150 | Hermes' stall, base centre at (75, 138) |
 | `pier` | 100x34 | Planks with posts at the right (water) end, stretched to length |
-| `pine1`, `pine2`, `pine3` | 56 to 80 square | Pines seen from above |
-| `lily1`, `lily2`, `lily3` | 44x44 | Red spider lilies |
-| `rock`, `reeds` | about 26x22 | Bank details |
+| `pine1`, `pine2`, `pine3` | about 98 to 136 square | Pines seen from above (Ines's radiating needles); trunk up-left of centre, shadow down-right |
+| `fern1`, `fern2`, `fern3` | about 44 to 64 square | Ferns seen from above |
+| `lily1`, `lily2`, `lily3` | 32x36 | Red spider lilies, flower at (16, 15) |
+| `rock1` to `rock5` | about 25 to 44 square | Mossy stones; some sit on the waterline with eddies behind them |
 | `soul_athena`, `soul_ares`, `soul_poseidon` | 40x40 | The soul bubble with its god's symbol (halo and trail are code) |
 | `obol` | 40x40 | Coin with Athena's owl |
 | `icon_speed`, `icon_handling`, `icon_hold` | 96x96 | Shop icons |

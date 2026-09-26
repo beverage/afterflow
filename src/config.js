@@ -36,6 +36,7 @@ export const RIVER = {
     [22, 0.0033, 1.3],
     [8, 0.0091, 0.4],
   ],
+  bankWander: 15, // each bank wanders in and out by about this many px on its own (Ines's uneven banks)
 };
 
 export const TUNING = {

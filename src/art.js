@@ -4,11 +4,20 @@
 // The water, light, glows and portal swirls are drawn live by RiverScene, not here.
 import { GODS, WIDTH as W, HEIGHT as H } from './config.js';
 import { rgbOf } from './color.js';
+import { fbm, sstep, mixRGB } from './noise.js';
 
 const TAU = Math.PI * 2;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (a) => a[(Math.random() * a.length) | 0];
 const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+
+// Ines's bank plants and rocks, in a few sizes each (radius in px). RiverScene scatters them along the banks.
+const PINE_R = [26, 32, 40];
+const FERN_R = [14, 19, 24];
+export const ROCK_R = [6, 8, 10, 12, 15];
+const pineSize = (r) => Math.ceil(2 * (1.35 * r + 14));
+export const pineCentre = (r) => pineSize(r) / 2 - 7; // the trunk sits up-left of centre; the shadow falls down-right
+const rockSize = (r) => Math.ceil(2 * (r * 1.05 + 6));
 
 function make(scene, key, w, h, draw) {
   if (scene.textures.exists(key)) return;
@@ -19,10 +28,10 @@ function make(scene, key, w, h, draw) {
 
 export function makeArt(scene) {
   make(scene, 'bank', W, H, drawBank);
-  [34, 40, 28].forEach((size, i) => make(scene, `pine${i + 1}`, size * 2, size * 2, (g) => drawPine(g, size)));
-  for (let i = 1; i <= 3; i++) make(scene, `lily${i}`, 44, 44, drawLily);
-  make(scene, 'rock', 26, 22, drawRock);
-  make(scene, 'reeds', 26, 24, drawReeds);
+  PINE_R.forEach((r, i) => make(scene, `pine${i + 1}`, pineSize(r), pineSize(r), (g) => drawPine(g, r, pineCentre(r))));
+  FERN_R.forEach((r, i) => make(scene, `fern${i + 1}`, Math.ceil(r * 2 + 16), Math.ceil(r * 2 + 16), (g) => drawFern(g, r)));
+  for (let i = 1; i <= 3; i++) make(scene, `lily${i}`, 32, 36, drawLily);
+  ROCK_R.forEach((r, i) => make(scene, `rock${i + 1}`, rockSize(r), rockSize(r), (g) => drawRock(g, r)));
   make(scene, 'glow', 64, 64, drawGlow);
   make(scene, 'ring', 64, 64, drawRing);
   make(scene, 'rim', 44, 44, drawRim);
@@ -100,155 +109,180 @@ export function drawGlyph(g, type, x, y, s, under, over, lw) {
   g.restore();
 }
 
-/* ---------- banks ---------- */
-// Ground for both banks, seamless top to bottom. The water is drawn over it by code.
+/* ---------- banks, after Ines's river study ---------- */
+// Ground for both banks, seamless top to bottom: mossy greens with bare-earth patches and grain,
+// then grass, soft moss and tiny pale flowers. The water is drawn over the middle by code.
 function drawBank(g) {
-  const base = g.createLinearGradient(0, 0, W, 0);
-  base.addColorStop(0, '#1d2723');
-  base.addColorStop(0.28, '#27332e');
-  base.addColorStop(0.5, '#2b3732');
-  base.addColorStop(0.72, '#27332e');
-  base.addColorStop(1, '#1d2723');
-  g.fillStyle = base;
-  g.fillRect(0, 0, W, H);
+  const nBase = fbm(11, 6, 5, 1), nPatch = fbm(5, 3, 3, 2);
+  const MOSS0 = [30, 42, 37], MOSS1 = [54, 72, 58], EARTH = [72, 68, 52];
+  const img = g.createImageData(W, H), D = img.data;
+  for (let y = 0; y < H; y++) {
+    const v = y / H;
+    for (let x = 0; x < W; x++) {
+      const u = x / W, i = (y * W + x) * 4;
+      let col = mixRGB(MOSS0, MOSS1, sstep(0.3, 0.75, nBase(u, v)));
+      col = mixRGB(col, EARTH, sstep(0.55, 0.8, nPatch(u, v)) * 0.45);
+      const k = 0.9 + Math.random() * 0.12;
+      D[i] = col[0] * k;
+      D[i + 1] = col[1] * k;
+      D[i + 2] = col[2] * k;
+      D[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
   const wrap = (y, r, fn) => {
     fn(y);
-    if (y - r < 0) fn(y + H);
-    if (y + r > H) fn(y - H);
+    if (y < r) fn(y + H);
+    if (y > H - r) fn(y - H);
   };
-  for (let i = 0; i < 70; i++) {
-    const x = rnd(0, W), y = rnd(0, H), r = rnd(40, 120), dark = Math.random() < 0.55;
-    wrap(y, r, (yy) => {
-      const gr = g.createRadialGradient(x, yy, 0, x, yy, r);
-      gr.addColorStop(0, dark ? 'rgba(14,19,17,.3)' : 'rgba(72,94,78,.16)');
-      gr.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = gr;
-      g.fillRect(x - r, yy - r, r * 2, r * 2);
-    });
-  }
-  g.lineCap = 'round';
-  for (let i = 0; i < 520; i++) {
-    const x = rnd(0, W), y = rnd(0, H), s = rnd(3, 7);
-    const col = pick(['rgba(84,110,90,.5)', 'rgba(64,86,70,.55)', 'rgba(104,128,106,.35)']);
+  for (let i = 0; i < 5900; i++) {
+    const x = rnd(0, W), y = rnd(0, H), L = rnd(3, 8), a = rnd(-0.8, 0.8);
+    const col = `rgba(${(80 + rnd(0, 40)) | 0},${(105 + rnd(0, 40)) | 0},${(75 + rnd(0, 25)) | 0},${rnd(0.25, 0.6)})`, lw = rnd(0.6, 1.3);
     wrap(y, 10, (yy) => {
       g.strokeStyle = col;
-      g.lineWidth = 1;
+      g.lineWidth = lw;
       g.beginPath();
-      for (let k = -2; k <= 2; k++) {
-        g.moveTo(x + k * 1.2, yy);
-        g.lineTo(x + k * 2.4, yy - s);
-      }
+      g.moveTo(x, yy);
+      g.lineTo(x + Math.sin(a) * L, yy - Math.cos(a) * L);
       g.stroke();
     });
   }
-  for (let i = 0; i < 140; i++) {
-    const x = rnd(0, W), y = rnd(0, H), rx = rnd(1.5, 4), ry = rx * rnd(0.6, 0.9), col = pick(['#5d6863', '#6b7672', '#4f5a55']);
-    wrap(y, 6, (yy) => {
-      g.fillStyle = 'rgba(12,16,15,.4)';
-      g.beginPath();
-      g.ellipse(x + 1, yy + 1.2, rx, ry, 0, 0, TAU);
-      g.fill();
-      g.fillStyle = col;
-      g.beginPath();
-      g.ellipse(x, yy, rx, ry, 0, 0, TAU);
-      g.fill();
+  for (let i = 0; i < 300; i++) {
+    const x = rnd(-20, W + 20), y = rnd(0, H), r = rnd(10, 30);
+    const c = `${(70 + rnd(0, 20)) | 0},${(95 + rnd(0, 20)) | 0},${(70 + rnd(0, 15)) | 0}`;
+    wrap(y, 32, (yy) => {
+      const q = g.createRadialGradient(x, yy, 0, x, yy, r);
+      q.addColorStop(0, `rgba(${c},.22)`);
+      q.addColorStop(1, 'rgba(60,85,60,0)');
+      g.fillStyle = q;
+      g.fillRect(x - r, yy - r, r * 2, r * 2);
     });
   }
-  for (let i = 0; i < 16000; i++) {
-    g.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,.035)' : 'rgba(0,0,0,.06)';
-    g.fillRect(rnd(0, W), rnd(0, H), 1.2, 1.2);
-  }
-}
-
-// A pine seen from above: layered stars with a shadow falling down-right.
-function drawPine(g, size) {
-  g.translate(size, size);
-  g.fillStyle = 'rgba(6,10,9,.38)';
-  g.beginPath();
-  g.ellipse(size * 0.2, size * 0.24, size * 0.76, size * 0.6, 0.3, 0, TAU);
-  g.fill();
-  for (const [col, k] of [['#17241f', 0.94], ['#1d2e27', 0.76], ['#25392f', 0.58], ['#2e4637', 0.4], ['#3a5543', 0.22]]) {
-    const R = size * k, pts = 9, rot = rnd(0, TAU);
-    g.fillStyle = col;
-    g.beginPath();
-    for (let i = 0; i <= pts * 2; i++) {
-      const a = rot + (i * Math.PI) / pts, rr = i % 2 ? R * 0.62 : R;
-      i ? g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : g.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  for (let i = 0; i < 100; i++) {
+    const x = rnd(0, W), y = rnd(0, H), n = rnd(4, 10) | 0, col = Math.random() < 0.5 ? '215,210,235' : '235,232,220';
+    for (let k = 0; k < n; k++) {
+      const xx = x + rnd(-10, 10), yy0 = y + rnd(-10, 10), rr = rnd(0.7, 1.5), a = rnd(0.35, 0.7);
+      wrap(yy0, 12, (yy) => {
+        g.fillStyle = `rgba(${col},${a})`;
+        g.beginPath();
+        g.arc(xx, yy, rr, 0, TAU);
+        g.fill();
+      });
     }
-    g.closePath();
-    g.fill();
   }
-  const hl = g.createRadialGradient(-size * 0.3, -size * 0.35, 0, -size * 0.3, -size * 0.35, size * 0.8);
-  hl.addColorStop(0, 'rgba(160,200,170,.14)');
-  hl.addColorStop(1, 'rgba(160,200,170,0)');
-  g.fillStyle = hl;
+}
+
+// A pine seen from above: a soft shadow, a dark disc, and three layers of radiating needles.
+function drawPine(g, r, c) {
+  const sh = g.createRadialGradient(c + 12, c + 14, 2, c + 12, c + 14, r * 1.35);
+  sh.addColorStop(0, 'rgba(6,10,9,.45)');
+  sh.addColorStop(1, 'rgba(6,10,9,0)');
+  g.fillStyle = sh;
   g.beginPath();
-  g.arc(0, 0, size * 0.94, 0, TAU);
+  g.arc(c + 12, c + 14, r * 1.35, 0, TAU);
+  g.fill();
+  const base = g.createRadialGradient(c - r * 0.2, c - r * 0.2, 2, c, c, r);
+  base.addColorStop(0, 'rgba(58,82,64,.95)');
+  base.addColorStop(0.7, 'rgba(30,46,38,.95)');
+  base.addColorStop(1, 'rgba(22,34,28,0)');
+  g.fillStyle = base;
+  g.beginPath();
+  g.arc(c, c, r, 0, TAU);
+  g.fill();
+  [[1, '38,58,45', 70], [0.72, '52,76,58', 55], [0.45, '72,98,74', 38]].forEach(([s, col, n], k) => {
+    const rr = r * s, ox = -k * 2, oy = -k * 2.3;
+    for (let j = 0; j < n; j++) {
+      const a = rnd(0, TAU), l = rr * rnd(0.55, 1);
+      g.strokeStyle = `rgba(${col},${rnd(0.45, 0.8)})`;
+      g.lineWidth = rnd(0.8, 1.8);
+      g.beginPath();
+      g.moveTo(c + ox + Math.cos(a) * l * 0.15, c + oy + Math.sin(a) * l * 0.15);
+      g.lineTo(c + ox + Math.cos(a + rnd(-0.08, 0.08)) * l, c + oy + Math.sin(a + rnd(-0.08, 0.08)) * l);
+      g.stroke();
+    }
+  });
+  g.fillStyle = 'rgba(120,145,115,.35)';
+  g.beginPath();
+  g.arc(c - 5, c - 6, r * 0.12, 0, TAU);
   g.fill();
 }
 
-// Red spider lily, the flower of the dead in the River Flow painting.
-function drawLily(g) {
-  const s = 22;
-  g.translate(s, s);
-  const glow = g.createRadialGradient(0, 0, 0, 0, 0, s);
-  glow.addColorStop(0, 'rgba(230,60,50,.22)');
-  glow.addColorStop(1, 'rgba(230,60,50,0)');
-  g.fillStyle = glow;
-  g.fillRect(-s, -s, s * 2, s * 2);
-  g.lineCap = 'round';
-  const rot = rnd(0, TAU);
-  for (let i = 0; i < 6; i++) {
-    const a = rot + (i * TAU) / 6, ex = Math.cos(a + 0.25) * s * 0.9, ey = Math.sin(a + 0.25) * s * 0.9;
-    g.strokeStyle = 'rgba(240,90,80,.85)';
-    g.lineWidth = 0.7;
+// A fern from above: curved fronds with small leaflets along each one.
+function drawFern(g, r) {
+  const x = r + 8, y = r + 8, fr = rnd(5, 8) | 0, rot = rnd(0, TAU);
+  const col = `${(55 + rnd(0, 25)) | 0},${(85 + rnd(0, 25)) | 0},${(58 + rnd(0, 15)) | 0}`;
+  for (let f = 0; f < fr; f++) {
+    const a = rot + (f / fr) * TAU + rnd(-0.2, 0.2), L = r * rnd(0.75, 1), bend = rnd(-0.35, 0.35);
+    const ex = x + Math.cos(a) * L, ey = y + Math.sin(a) * L, mx = x + Math.cos(a + bend) * L * 0.55, my = y + Math.sin(a + bend) * L * 0.55;
+    g.strokeStyle = `rgba(${col},.75)`;
+    g.lineWidth = 0.9;
     g.beginPath();
-    g.moveTo(0, 0);
-    g.quadraticCurveTo(Math.cos(a) * s * 0.5, Math.sin(a) * s * 0.5, ex, ey);
-    g.stroke();
-    g.fillStyle = '#ffb0a0';
-    g.beginPath();
-    g.arc(ex, ey, 0.9, 0, TAU);
-    g.fill();
-    g.strokeStyle = '#d93a30';
-    g.lineWidth = 2.2;
-    g.beginPath();
-    g.moveTo(0, 0);
-    g.quadraticCurveTo(Math.cos(a - 0.3) * s * 0.45, Math.sin(a - 0.3) * s * 0.45, Math.cos(a) * s * 0.55, Math.sin(a) * s * 0.55);
-    g.stroke();
-  }
-  g.fillStyle = '#7a1c18';
-  g.beginPath();
-  g.arc(0, 0, 2, 0, TAU);
-  g.fill();
-}
-
-function drawRock(g) {
-  g.fillStyle = 'rgba(8,11,10,.45)';
-  g.beginPath();
-  g.ellipse(14, 13, 9, 6.5, 0, 0, TAU);
-  g.fill();
-  g.fillStyle = pick(['#5b6661', '#68736e', '#4d5853']);
-  g.beginPath();
-  g.ellipse(12, 10, 9, 6.5, 0.3, 0, TAU);
-  g.fill();
-  g.fillStyle = 'rgba(230,240,236,.14)';
-  g.beginPath();
-  g.ellipse(9.5, 8, 4, 2.3, 0.3, 0, TAU);
-  g.fill();
-}
-
-function drawReeds(g) {
-  g.strokeStyle = 'rgba(96,122,100,.85)';
-  g.lineWidth = 1.3;
-  g.lineCap = 'round';
-  g.beginPath();
-  for (let i = 0; i < 7; i++) {
-    const x = 4 + i * 3, y = 22 - ((i * 7) % 4);
     g.moveTo(x, y);
-    g.lineTo(x + rnd(-3, 3), y - 9 - (i % 3) * 3);
+    g.quadraticCurveTo(mx, my, ex, ey);
+    g.stroke();
+    for (let k = 1; k < 8; k++) {
+      const t = k / 8, px = (1 - t) * (1 - t) * x + 2 * (1 - t) * t * mx + t * t * ex, py = (1 - t) * (1 - t) * y + 2 * (1 - t) * t * my + t * t * ey;
+      const ll = (1 - t) * L * 0.28 + 1;
+      for (const sd of [-1, 1]) {
+        const aa = a + sd * 1.1;
+        g.fillStyle = `rgba(${col},.55)`;
+        g.beginPath();
+        g.ellipse(px + Math.cos(aa) * ll * 0.5, py + Math.sin(aa) * ll * 0.5, ll * 0.5, ll * 0.18, aa, 0, TAU);
+        g.fill();
+      }
+    }
   }
+}
+
+// A red spider lily, the flower of the dead: a stem, seven curled petals and long pale stamens.
+function drawLily(g) {
+  const x = 16, y = 15, s = rnd(5.5, 7.5);
+  g.strokeStyle = 'rgba(40,70,40,.6)';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(x, y);
+  g.lineTo(x + rnd(-3, 3), y + s * 1.4);
   g.stroke();
+  for (let j = 0; j < 7; j++) {
+    const a = (j / 7) * TAU + rnd(-0.2, 0.2);
+    g.strokeStyle = `rgba(${(165 + rnd(0, 40)) | 0},${(35 + rnd(0, 20)) | 0},${(38 + rnd(0, 15)) | 0},.85)`;
+    g.lineWidth = 1.3;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.quadraticCurveTo(x + Math.cos(a) * s * 0.9, y + Math.sin(a) * s * 0.9, x + Math.cos(a + 0.5) * s, y + Math.sin(a + 0.5) * s);
+    g.stroke();
+    g.strokeStyle = 'rgba(235,120,110,.55)';
+    g.lineWidth = 0.5;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + Math.cos(a - 0.15) * s * 1.5, y + Math.sin(a - 0.15) * s * 1.5);
+    g.stroke();
+  }
+  g.fillStyle = 'rgba(255,170,150,.8)';
+  g.beginPath();
+  g.arc(x, y, 1.1, 0, TAU);
+  g.fill();
+}
+
+// A rounded grey stone with a shadow and a patch of moss.
+function drawRock(g, r) {
+  const c = rockSize(r) / 2 - 2, ry = r * rnd(0.6, 0.9);
+  g.fillStyle = 'rgba(8,10,10,.4)';
+  g.beginPath();
+  g.ellipse(c + 3, c + 4, r * 1.05, ry * 1.05, 0, 0, TAU);
+  g.fill();
+  const gr = g.createRadialGradient(c - r * 0.35, c - ry * 0.4, 1, c, c, r * 1.1);
+  gr.addColorStop(0, '#6f7874');
+  gr.addColorStop(0.55, '#454d4a');
+  gr.addColorStop(1, '#232927');
+  g.fillStyle = gr;
+  g.beginPath();
+  g.ellipse(c, c, r, ry, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = 'rgba(90,120,80,.45)';
+  g.beginPath();
+  g.ellipse(c + r * 0.2, c + ry * 0.3, r * 0.45, ry * 0.3, 0, 0, TAU);
+  g.fill();
 }
 
 /* ---------- light and effects (white, tinted in game) ---------- */
