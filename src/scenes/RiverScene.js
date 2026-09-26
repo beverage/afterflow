@@ -440,7 +440,8 @@ export class RiverScene extends Phaser.Scene {
     s.x = q.cx + (s.o + 0.07 * Math.sin(this.t * 0.8 + s.ph)) * q.hw + 4 * Math.sin(this.t * 1.7 + s.ph);
     s.y = s.sy + 3 * Math.cos(this.t * 1.3 + s.ph);
     const fade = clamp((s.sy + 40) / 60, 0, 1);
-    s.halo.setPosition(s.x, s.y).setAlpha(0.36 * fade);
+    const breathe = 0.5 + 0.5 * Math.sin(this.t * 1.6 + s.ph);
+    s.halo.setPosition(s.x, s.y).setAlpha((0.45 + 0.2 * breathe) * fade).setScale(1.5 + 0.4 * breathe);
     s.body.setPosition(s.x, s.y).setAlpha(fade).setScale(1 + 0.05 * Math.sin(this.t * 2.4 + s.ph));
     s.rim.setPosition(s.x, s.y).setAlpha(fade);
     if (!s.trailAt || Math.hypot(s.x - s.trailAt.x, s.y - s.trailAt.y) > 6) {
