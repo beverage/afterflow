@@ -42,6 +42,7 @@ export const RIVER = {
 export const TUNING = {
   // River flow
   scrollSpeed: 110, // px/s the banks scroll at Speed level 0
+  fogAmount: 0.75, // Ines's fog slider: 0 clear, 1 thick (fog banks, grey tint, haze)
   currentFactor: 1.75, // the current (water surface, lifestream) runs this much faster than the banks scroll
   pxPerMeter: 20, // for the distance readout
 

@@ -78,7 +78,7 @@ export class RiverScene extends Phaser.Scene {
     this.scroll += this.speed * dt * (this.ended ? 0.3 : 1);
     this.bank.tilePositionY = -this.scroll;
     this.spawnAhead();
-    this.updateFog(dt);
+    this.updateAtmosphere(dt);
     this.drawShore();
     const eddyRocks = [];
     for (const p of this.props) {
@@ -101,26 +101,50 @@ export class RiverScene extends Phaser.Scene {
     this.bank = this.add.tileSprite(0, 0, W, H, 'bank').setOrigin(0).setDepth(0);
     this.shoreG = this.add.graphics().setDepth(0.5);
     this.water = new Water(this, riverAt, 1); // Ines's water: body, flowing surface, current lines, lifestream, foam
-    this.fog = Array.from({ length: 8 }, (_, i) => {
-      const f = this.add.image(rnd(0, W), rnd(-100, H + 100), 'glow').setTint(0xc8d6d2).setScale(rnd(4.6, 8.6)).setDepth(i < 5 ? 9 : 26);
-      f.setAlpha(rnd(0.05, 0.09) * (i < 5 ? 1 : 0.7));
-      f.vx = rnd(4, 11) * (Math.random() < 0.5 ? -1 : 1);
-      return f;
-    });
+    this.buildAtmosphere();
   }
 
-  updateFog(dt) {
+  // Ines's atmosphere. Fog, tint and haze sit over the river and banks but under the souls and boat,
+  // so those stay crisp; a few lighter fog banks and the spores drift above everything but the HUD.
+  buildAtmosphere() {
+    const fog = TUNING.fogAmount;
+    this.add.rectangle(0, 0, W, H, 0x8c96a2, 0.05 * fog).setOrigin(0).setDepth(9.2);
+    this.fog = Array.from({ length: 16 }, (_, i) => {
+      const f = this.add.image(rnd(-100, W + 100), rnd(0, H), 'fog').setTint(0x9ea8b2).setDepth(i < 11 ? 9.3 : 26);
+      f.r = rnd(180, 400);
+      f.sx = rnd(1, 2.4); // stretched sideways
+      f.vx = rnd(-9, 9);
+      f.vy = rnd(-4, 4);
+      f.setScale((f.r * 2 * f.sx) / 256, (f.r * 2) / 256).setAlpha(rnd(0.07, 0.16) * fog * 1.35 * (i < 11 ? 1 : 0.6));
+      return f;
+    });
+    this.add.image(0, 0, 'haze').setOrigin(0).setTint(0xaab2c3).setAlpha(fog).setDepth(9.4);
+    this.spores = Array.from({ length: 70 }, () => ({ x: rnd(0, W), y: rnd(0, H), r: rnd(0.8, 2.2), a: rnd(0.15, 0.45), ph: rnd(0, TAU), v: rnd(8, 22) }));
+    this.sporeG = this.add.graphics().setDepth(27);
+    this.add.image(0, 0, 'shade').setOrigin(0).setDepth(44);
+  }
+
+  updateAtmosphere(dt) {
     const v = this.speed;
     for (const f of this.fog) {
-      const r = f.displayWidth / 2;
+      const half = f.r * f.sx;
       f.x += f.vx * dt;
-      f.y += v * 0.9 * dt;
-      if (f.y - r > H) {
-        f.y = -r;
-        f.x = rnd(0, W);
+      f.y += (f.vy + v * 0.6) * dt;
+      if (f.y - f.r > H) f.y = -f.r;
+      if (f.x > W + half) f.x = -half;
+      if (f.x < -half) f.x = W + half;
+    }
+    const g = this.sporeG;
+    g.clear();
+    for (const s of this.spores) {
+      s.y += (s.v + v * 0.5) * dt;
+      s.x += Math.sin(this.t * 0.8 + s.ph) * 15 * dt;
+      if (s.y > H + 5) {
+        s.y = -5;
+        s.x = rnd(0, W);
       }
-      if (f.x > W + r) f.x = -r;
-      if (f.x < -r) f.x = W + r;
+      g.fillStyle(0xe1e4f0, s.a * (0.7 + 0.3 * Math.sin(this.t * 2 + s.ph)));
+      g.fillCircle(s.x, s.y, s.r);
     }
   }
 
