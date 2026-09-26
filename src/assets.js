@@ -9,6 +9,15 @@ export const IMAGES = {
   // bank: 'assets/bank.png',
 };
 
+// Animated sprite sheets: key -> file and frame size. Ines's angled portals, one per god, matched by color:
+// Athena uses her gold (Apollo) sheet, Ares her red (Persephone) sheet, Poseidon hers shifted to seafoam.
+// If a sheet is missing or fails to load, that god's shrine falls back to the stone arch drawn by code.
+export const SHEETS = {
+  portal_athena: { path: 'assets/portal_athena.webp', frameWidth: 327, frameHeight: 299 },
+  portal_ares: { path: 'assets/portal_ares.webp', frameWidth: 327, frameHeight: 299 },
+  portal_poseidon: { path: 'assets/portal_poseidon.webp', frameWidth: 327, frameHeight: 299 },
+};
+
 export const AUDIO = {
   // music: 'assets/music.mp3',
 };

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { WIDTH as W, HEIGHT as H, GODS, TUTORIAL, FONT, DISPLAY_FONT } from '../config.js';
 import { onAction, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
+import { canListen } from '../listen.js';
 import { hexCss } from '../color.js';
 
 // How to play, after Ines's tour for the River Flow prototype: over the paused river, the screen dims
@@ -25,12 +26,21 @@ const RAGE_SPOT = { x: 81, y: 106, r: 108 };
 const OBOLS_SPOT = { x: W - 81, y: 90, r: 90 };
 
 // touch: the words on a phone, where there are no keys and "touch a soul" would read as "tap it".
+// noMic: the words when the browser has no speech recognition (Firefox), where scrolls are read with keys or taps.
 const STEPS = [
   { title: 'Your ferry', body: 'Steer anywhere on the water with WASD, ZQSD or the arrow keys.', touch: 'Slide a thumb anywhere on the screen to steer.', spot: (river) => ({ x: river.boat.x, y: river.boat.y - 6, r: 86 }) },
   { title: 'Scoop up souls', body: 'Touch a soul to take it aboard. Its color and symbol show which god it belongs to.', touch: 'Steer into a soul to take it aboard. Its color and symbol show which god it belongs to.', spot: soulSpot, pulse: true },
-  { title: 'Three gods, three shrines', body: "Steer into a shrine's dock to deliver its god's souls. Be quick: souls aboard don't last.", spot: shrineSpot, legend: true },
+  { title: 'Three gods, three shrines', body: "Sail into the light at a shrine to deliver its god's souls. Be quick: souls aboard don't last.", spot: shrineSpot, legend: true },
   { title: "The gods' rage", body: 'Every soul that floats past uncaught angers its god. When a bar fills, that god puts out one of your lanterns.', spot: () => RAGE_SPOT },
   { title: 'Obols and streaks', body: "Deliveries earn obols, and back-to-back ones build a streak. Spend obols at Hermes' stall.", spot: () => OBOLS_SPOT },
+  {
+    title: 'Scrolls calm the gods',
+    body: "Buy a god's scroll at Hermes' stall and learn its two words. Say them aloud to calm that god. Space shows them, but the river won't wait.",
+    touch: "Buy a god's scroll at Hermes' stall and learn its two words. Say them aloud to calm that god. Tap here to see them, but the river won't wait.",
+    noMic: "Buy a god's scroll at Hermes' stall to calm that god. There's no mic here: press Space, then 1, 2 or 3, to read one.",
+    touchNoMic: "Buy a god's scroll at Hermes' stall to calm that god. There's no mic here: tap here, then tap a scroll, to read one.",
+    spot: scrollsSpot,
+  },
   { title: 'Your turn', body: 'Press H anytime to see this again.', touch: 'Pause, then tap How to play to see this again.', seconds: TUTORIAL.lastStepSeconds },
 ];
 
@@ -150,7 +160,8 @@ export class TutorialScene extends Phaser.Scene {
   buildCard(step) {
     const c = this.add.container(0, 0), touch = isTouch();
     const title = this.add.text(PAD, 14, step.title, { fontFamily: DISPLAY_FONT, fontSize: '32px', fontStyle: 'italic 500', color: '#f3f6f5' });
-    const body = this.add.text(PAD, 14 + title.height, (touch && step.touch) || step.body, { fontFamily: FONT, fontSize: '19px', color: '#d3dcd9', lineSpacing: 6, wordWrap: { width: CARD_W - 2 * PAD } });
+    const said = canListen() ? (touch && step.touch) || step.body : (touch && step.touchNoMic) || step.noMic || (touch && step.touch) || step.body;
+    const body = this.add.text(PAD, 14 + title.height, said, { fontFamily: FONT, fontSize: '19px', color: '#d3dcd9', lineSpacing: 6, wordWrap: { width: CARD_W - 2 * PAD } });
     c.add([title, body]);
     let y = body.y + body.height;
     if (step.legend) {
@@ -231,6 +242,12 @@ export class TutorialScene extends Phaser.Scene {
 /* ---------- where each step points ---------- */
 
 // The soul on screen nearest the boat.
+// The scrolls panel under the left HUD panel, found from where RiverScene put its scroll icons.
+function scrollsSpot(river) {
+  const icon = river.scrollIcons?.[1];
+  return icon ? { x: icon.x, y: icon.y - 3, r: 78 } : null;
+}
+
 function soulSpot(river) {
   const b = river.boat, dist = (s) => Math.hypot(s.x - b.x, s.y - b.y);
   const best = river.souls.filter((s) => s.y > 50 && s.y < H - 50).sort((p, q) => dist(p) - dist(q))[0];
@@ -238,10 +255,13 @@ function soulSpot(river) {
 }
 
 // The shrine on screen nearest the middle, with its arch and dock both in the light.
+// A portal (Ines's angled gate) gets a wider spot, from its medallion down to the pool of light you sail into.
 function shrineSpot(river) {
-  const mid = (f) => f.wy + river.scroll - 58;
+  const mid = (f) => f.wy + river.scroll + (f.portal ? -66 : -58);
   const best = river.features.filter((f) => f.kind === 'shrine' && mid(f) > 40 && mid(f) < H - 60).sort((p, q) => Math.abs(mid(p) - H / 2) - Math.abs(mid(q) - H / 2))[0];
-  return best ? { x: best.x + Math.sign(best.tip - best.x) * 20, y: mid(best), r: 110 } : null;
+  if (!best) return null;
+  if (best.portal) return { x: (best.x + best.tip) / 2, y: mid(best), r: 145 };
+  return { x: best.x + Math.sign(best.tip - best.x) * 20, y: mid(best), r: 110 };
 }
 
 // A square of dim with a soft round hole in it, stretched to the spotlight's size.

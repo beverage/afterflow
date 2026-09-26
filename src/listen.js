@@ -22,8 +22,9 @@ export const listenStatus = () => status;
 export const canListen = () => status === 'off' || status === 'listening';
 
 /**
- * Start or stop listening. heard(candidates) gets the words said since the last useHeard(),
- * as a few alternative transcripts. The first start asks for the mic: do it from a click or key.
+ * Start or stop listening. heard(candidates) gets what was said since the last useHeard(), as a few
+ * alternatives { all, last, final }: all the words, the latest phrase on its own, and whether that phrase is
+ * finished (the recognizer splits speech into phrases at pauses). The first start asks for the mic: do it from a click or key.
  */
 export function setListening(on, heard) {
   if (heard) onHeard = heard;
@@ -58,11 +59,14 @@ function begin() {
       latest = e.results.length - 1;
       const words = [];
       for (let i = from; i < e.results.length; i++) words.push(e.results[i][0].transcript);
-      const last = e.results[e.results.length - 1];
-      const head = words.slice(0, -1).join(' ');
-      const candidates = [words.join(' ')];
-      for (let a = 1; a < last.length; a++) candidates.push(`${head} ${last[a].transcript}`);
-      if (onHeard && words.length) onHeard(candidates.map((c) => c.trim()).filter(Boolean));
+      if (!onHeard || !words.length) return;
+      const last = e.results[latest], head = words.slice(0, -1).join(' ');
+      const candidates = [];
+      for (let a = 0; a < last.length; a++) {
+        const phrase = last[a].transcript.trim();
+        if (phrase) candidates.push({ all: `${head} ${phrase}`.trim(), last: phrase, final: last.isFinal });
+      }
+      if (candidates.length) onHeard(candidates);
     };
     rec.onerror = (e) => {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') {
