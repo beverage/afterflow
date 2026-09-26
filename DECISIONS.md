@@ -48,3 +48,6 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 16:02 · Stick feel: 10 px dead zone, the ring trails the thumb past 34 px, slides within ~22° of straight snap straight (STICK in config.js) · taps don't steer, reversing is instant, and the keyboard-tuned braking still applies · Claude
 - 16:02 · The title starts the run on tap release, and sound also wakes on touchend · phones only allow audio and fullscreen from the end of a tap, so sound was likely silent on phones · Claude
 - 16:02 · The run also pauses when the tab is hidden or a phone turns upright, not just on window blur · phones switch apps without a blur · Claude
+- 16:14 · Shelve PR #2 (turbulent river, rocky shore, burn-out flash, water ambience) · the team is taking Ines's water instead; revisit the rest later · team
+- 16:14 · Water ported from Ines's river study (afterflow-riviere.html): body, flowing surface, current lines, lifestream ribbons, glints, bank foam; banks and atmosphere unchanged for now · the team liked her water; banks and atmosphere to be considered separately · team
+- 16:14 · Ines's water is drawn with Canvas 2D into one texture per frame (src/water.js), not rebuilt in WebGL · keeps her look exactly and costs ~2 ms a frame · Claude
