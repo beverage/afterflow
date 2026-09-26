@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, SCROLLS, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { tutorialPending } from './TutorialScene.js';
-import { soulValue, statsFor, formatObols, formatMeters } from '../economy.js';
+import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
+import { getSave, recordRun } from '../save.js';
 import { moveVector, onAction, onAway, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
 import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
@@ -20,6 +21,7 @@ const pickOne = (a) => a[(Math.random() * a.length) | 0];
 const DEBUG = new URLSearchParams(location.search).has('debug'); // ?debug draws the hull and dock zones
 
 const HUD_RIGHT = W - 148;
+const SCROLLS_Y = 322; // the scrolls panel, under the left panel (rage bars, lanterns, distance)
 
 // The game: an endless top-down river. Scoop up souls, deliver them to their god's shrine,
 // spend obols at Hermes' stall, and never let a god's rage fill up.
@@ -36,10 +38,13 @@ export class RiverScene extends Phaser.Scene {
     this.scroll = 0; // px travelled this run: world y + scroll = screen y
     this.levels = { speed: 0, handling: 0, hold: 0 };
     this.stats = statsFor(this.levels);
-    this.run = { obols: 0, earned: 0, delivered: 0, clutches: 0, streak: 0, bestStreak: 0, scrolls: GODS.map(() => null) };
+    this.run = { obols: 0, earned: 0, delivered: 0, clutches: 0, streak: 0, bestStreak: 0, feesPaid: 0, scrolls: GODS.map(() => null) };
     this.rage = GODS.map(() => 0);
     this.rageFlash = GODS.map(() => 0);
     this.rageWarned = GODS.map(() => false);
+    this.lanterns = LANTERNS.start;
+    this.graceUntil = 0; // after a smite, until this.t, missed souls anger no one
+    this.mark = null; // your best distance on the river, if you have one
     this.ended = false;
     this.hints = {};
     this.souls = [];
@@ -56,7 +61,12 @@ export class RiverScene extends Phaser.Scene {
     this.buildWorld();
     this.buildBoat();
     this.buildEffects();
-    if (this.playing) this.buildHud();
+    if (this.playing) {
+      this.runId = Date.now(); // lets the save tell a run revived by Charon's fee from a new one
+      this.buildHud();
+      const best = getSave().best?.distance ?? 0;
+      if (best >= TUNING.markFrom) this.buildMark(best);
+    }
     this.spawnAhead();
     for (const k of this.playing ? [0.1, 0.3] : [0.15, 0.35, 0.55]) this.spawnSoul(H * k);
 
@@ -90,6 +100,7 @@ export class RiverScene extends Phaser.Scene {
     this.water.update(dt, this.scroll, this.speed * TUNING.currentFactor * (this.ended ? 0.3 : 1), eddyRocks);
     this.updateFeatures(dt);
     this.updateSouls(dt);
+    if (this.mark) this.updateMark();
     if (!this.ended) this.updateBoat(dt);
     this.updateHold(dt);
     this.drawWake(dt);
@@ -420,7 +431,7 @@ export class RiverScene extends Phaser.Scene {
   }
 
   skipped(god) {
-    if (!this.playing || this.ended) return;
+    if (!this.playing || this.ended || this.t < this.graceUntil) return;
     sfx.skip();
     this.addRage(god, TUNING.ragePerSkip);
     this.hint('skip', `Missed souls anger ${GODS[god].name}`, GODS[god].color);
@@ -509,6 +520,7 @@ export class RiverScene extends Phaser.Scene {
     sfx.deliver(this.run.streak);
     if (clutch) sfx.clutch();
     if (this.run.streak === 3) this.hint('streak', 'Back-to-back deliveries build your streak');
+    if (this.run.streak % LANTERNS.streakForLantern === 0) this.gainLantern();
   }
 
   arrived(f, gain, clutch, count) {
@@ -584,10 +596,12 @@ export class RiverScene extends Phaser.Scene {
       b.vx = Math.min(0, b.vx);
     }
     b.tilt += (clamp(b.vx * 0.0011, -0.3, 0.3) - b.tilt) * Math.min(1, dt * 7);
-    this.boatImg.setPosition(b.x, b.y).setRotation(b.tilt);
+    const blink = this.t < this.graceUntil && Math.sin(this.t * 38) > 0; // the boat flickers through the grace after a smite
+    this.boatImg.setPosition(b.x, b.y).setRotation(b.tilt).setAlpha(blink ? 0.35 : 1);
     const bow = this.local(0, -66);
-    this.lantern.setPosition(bow.x, bow.y);
-    this.lanternCore.setPosition(bow.x, bow.y - 1);
+    const gutter = this.playing && this.lanterns === 1 ? 0.45 + 0.55 * Math.abs(Math.sin(this.t * 7.3) * Math.sin(this.t * 3.1)) : 1; // on the last lantern the bow light gutters
+    this.lantern.setPosition(bow.x, bow.y).setAlpha(0.5 * gutter);
+    this.lanternCore.setPosition(bow.x, bow.y - 1).setAlpha(0.9 * gutter);
     b.wakeT -= dt;
     if (b.wakeT <= 0) {
       b.wakeT = 0.03;
@@ -737,9 +751,9 @@ export class RiverScene extends Phaser.Scene {
   buildHud() {
     const d = 50;
     const panel = this.add.graphics().setDepth(d);
-    for (const x of [14, HUD_RIGHT]) {
-      panel.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, 14, 134, 238, 10);
-      panel.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, 14, 134, 238, 10);
+    for (const [x, h] of [[14, 298], [HUD_RIGHT, 238]]) {
+      panel.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, 14, 134, h, 10);
+      panel.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, 14, 134, h, 10);
       drawMeander(panel, x + 12, 24, 110);
     }
     const label = (text, x, y) => this.add.text(x, y, spaced(text), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55).setDepth(d + 1);
@@ -750,8 +764,17 @@ export class RiverScene extends Phaser.Scene {
       this.add.text(60, y - 17, god.name, { fontFamily: DISPLAY_FONT, fontSize: '19px', fontStyle: 'italic 600', color: '#e6eeea' }).setDepth(d + 1);
     });
     this.hudG = this.add.graphics().setDepth(d + 1);
-    label('DISTANCE', 26, 204);
-    this.distText = this.add.text(26, 220, '0 m', { fontFamily: FONT, fontSize: '19px', fontStyle: '600', color: '#e6eeea' }).setDepth(d + 1);
+    // Lanterns: small copies of the boat's bow lantern. The frames are drawn in updateHud, the flames are glows.
+    label('LANTERNS', 26, 204);
+    this.lanternIcons = Array.from({ length: LANTERNS.max }, (_, i) => {
+      const x = 38 + i * 30, y = 238;
+      const glow = this.add.image(x, y + 1, 'glow').setTint(0xffc478).setBlendMode('ADD').setDepth(d + 1);
+      const core = this.add.image(x, y + 1, 'glow').setTint(0xffe6aa).setBlendMode('ADD').setDepth(d + 1);
+      return { x, y, glow, core };
+    });
+    this.lanternPulse = this.lanternIcons.map(() => 0);
+    label('DISTANCE', 26, 262);
+    this.distText = this.add.text(26, 278, '0 m', { fontFamily: FONT, fontSize: '19px', fontStyle: '600', color: '#e6eeea' }).setDepth(d + 1);
     label('OBOLS', HUD_RIGHT + 12, 38);
     this.add.image(HUD_RIGHT + 25, 70, 'obol').setScale(0.62).setDepth(d + 1);
     this.obolText = this.add.text(HUD_RIGHT + 44, 70, '0', { fontFamily: FONT, fontSize: '25px', fontStyle: '600', color: '#f1e6c8' }).setOrigin(0, 0.5).setDepth(d + 1);
@@ -788,6 +811,17 @@ export class RiverScene extends Phaser.Scene {
       const alarm = Math.max(hot * (0.5 + 0.5 * Math.sin(this.t * 8)), this.rageFlash[i]) * 0.6;
       if (alarm > 0.01) g.lineStyle(2, 0xff5a46, alarm).strokeRoundedRect(bx - 2, by - 2, bw + 4, bh + 4, 4);
       this.rageFlash[i] = Math.max(0, this.rageFlash[i] - dt * 2);
+    });
+    this.lanternIcons.forEach((l, i) => {
+      const lit = i < this.lanterns, p = this.lanternPulse[i];
+      const flicker = this.lanterns === 1 ? 0.5 + 0.5 * Math.abs(Math.sin(this.t * 9)) : 1; // the last one gutters
+      g.lineStyle(1.5, 0xf1e6c8, lit ? 0.7 : 0.22).strokeRoundedRect(l.x - 7, l.y - 8, 14, 18, 4);
+      g.beginPath();
+      g.arc(l.x, l.y - 8, 4, Math.PI, TAU);
+      g.strokePath();
+      l.glow.setVisible(lit).setScale(0.6 * (1 + 0.6 * p)).setAlpha((0.5 + 0.08 * Math.sin(this.t * 3 + i * 2)) * flicker);
+      l.core.setVisible(lit).setScale(0.17 * (1 + 0.6 * p)).setAlpha(0.95 * flicker);
+      this.lanternPulse[i] = Math.max(0, p - dt * 2.5);
     });
     const cap = this.stats.capacity;
     for (let i = 0; i < cap; i++) {
@@ -893,12 +927,61 @@ export class RiverScene extends Phaser.Scene {
     this.stats = statsFor(this.levels);
   }
 
+  /* ---------- your best, marked on the river ---------- */
+
+  // A line of floating lanterns across the water where your best run sank, labelled on the bank.
+  // It crosses the boat's usual line just as the distance counter reaches your best.
+  buildMark(best) {
+    const m = { best, wy: TUNING.boatStartY - best, passed: false };
+    m.lights = Array.from({ length: 7 }, (_, i) => ({
+      k: 0.08 + (0.84 * i) / 6,
+      ph: rnd(0, TAU),
+      glow: this.add.image(0, 0, 'glow').setTint(0xffe6aa).setBlendMode('ADD').setScale(0.9).setAlpha(0.45).setDepth(13),
+      core: this.add.image(0, 0, 'glow').setBlendMode('ADD').setScale(0.2).setAlpha(0.9).setDepth(13),
+    }));
+    m.label = this.add
+      .text(0, 0, `${spaced('YOUR BEST')}   ${formatMeters(best)}`, { fontFamily: FONT, fontSize: '13px', fontStyle: '600', color: '#f1e6c8' })
+      .setOrigin(1, 0.5)
+      .setAlpha(0.85)
+      .setDepth(9);
+    m.label.setShadow(0, 0, '#000000', 6, true, true);
+    this.mark = m;
+  }
+
+  updateMark() {
+    const m = this.mark, y = m.wy + this.scroll, q = riverAt(m.wy);
+    for (const l of m.lights) {
+      const x = q.l + (q.r - q.l) * l.k, by = y + 3 * Math.sin(this.t * 1.6 + l.ph);
+      l.glow.setPosition(x, by);
+      l.core.setPosition(x, by);
+    }
+    m.label.setPosition(q.l - 14, y);
+    if (m.passed || this.ended || this.scroll < m.best) return;
+    // Passing it: the lanterns flare and drift off, one after another.
+    m.passed = true;
+    sfx.newBest();
+    this.popup('New best!', this.boat.x, this.boat.y - 96, 0xffe6aa, 40, true);
+    m.lights.forEach((l, i) => {
+      this.tweens.add({ targets: l.glow, scale: 2.2, alpha: 0, duration: 700, delay: i * 70, ease: 'Quad.easeOut' });
+      this.tweens.add({ targets: l.core, scale: 0.5, alpha: 0, duration: 700, delay: i * 70, ease: 'Quad.easeOut' });
+    });
+    this.tweens.add({ targets: m.label, alpha: 0, duration: 900, delay: 400 });
+    this.time.delayedCall(1400, () => {
+      for (const l of m.lights) {
+        l.glow.destroy();
+        l.core.destroy();
+      }
+      m.label.destroy();
+      if (this.mark === m) this.mark = null;
+    });
+  }
+
+  /* ---------- lanterns: the boat's lives ---------- */
+
+  // A god's rage is full: lightning strikes the boat and puts out a lantern.
   smite(god) {
     if (this.ended) return;
-    this.ended = true;
-    setListening(false);
-    this.showScrolls(false);
-    const { color } = GODS[god], b = this.boat;
+    const { name, color } = GODS[god], b = this.boat;
     sfx.smite();
     const bolt = this.add.graphics().setDepth(35).setBlendMode(Phaser.BlendModes.ADD);
     const pts = [];
@@ -917,18 +1000,97 @@ export class RiverScene extends Phaser.Scene {
     this.cameras.main.shake(420, 0.012);
     this.ringFx(b.x, b.y, color, 0.9, 40);
     this.boatImg.setTint(color);
-    this.tweens.add({ targets: this.boatImg, scale: 0.6, alpha: 0, angle: '+=40', duration: 900, delay: 200, ease: 'Quad.easeIn' });
-    this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
+    this.loseLantern({ god });
+    if (this.ended) return;
+    this.appease(god);
+    this.time.delayedCall(400, () => !this.ended && this.boatImg.clearTint());
+    this.toast(`${name} struck: ${this.lanterns === 1 ? 'one lantern left' : `${this.lanterns} lanterns left`}`, color, true);
+  }
+
+  // After a smite you survive: the god who struck is appeased and the others cool off a little.
+  appease(god) {
+    this.rage = this.rage.map((v, i) => (i === god ? 0 : Math.max(0, v - LANTERNS.coolOthers)));
+    this.rageWarned = this.rageWarned.map((w, i) => w && this.rage[i] >= TUNING.rageWarn - 0.1);
+  }
+
+  // A lantern goes out: a god's smite, and a wrecked hull once there are obstacles. The souls aboard
+  // and the streak go with it, then a few seconds of grace. The last one ends the run.
+  loseLantern(cause) {
+    this.lanterns = Math.max(0, this.lanterns - 1);
+    this.lanternOutFx(this.lanterns);
     this.hold.forEach((o) => {
       this.burnOutFx(o.img.x, o.img.y, o.god);
       o.img.destroy();
     });
     this.hold = [];
-    const result = { god, distance: this.scroll, delivered: this.run.delivered, earned: this.run.earned, bestStreak: this.run.bestStreak, clutches: this.run.clutches };
+    this.run.streak = 0;
+    if (this.lanterns === 0) this.sink(cause);
+    else this.graceUntil = this.t + LANTERNS.graceSeconds;
+  }
+
+  // The last lantern is out: the boat goes under and the run ends, unless Charon's fee is paid.
+  sink(cause) {
+    this.ended = true;
+    this.sunkBy = cause;
+    setListening(false);
+    this.showScrolls(false);
+    this.tweens.add({ targets: this.boatImg, scale: 0.6, alpha: 0, angle: '+=40', duration: 900, delay: 200, ease: 'Quad.easeIn' });
+    this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
+    const result = {
+      god: cause.god,
+      distance: this.scroll,
+      delivered: this.run.delivered,
+      earned: this.run.earned,
+      bestStreak: this.run.bestStreak,
+      clutches: this.run.clutches,
+      obols: this.run.obols,
+      fee: charonFee(this.run.feesPaid),
+    };
+    result.previousBest = recordRun(this.runId, result);
     this.time.delayedCall(1100, () => {
       this.scene.pause();
       this.scene.launch('GameOver', result);
     });
+  }
+
+  // Called by the game-over screen once Charon's fee is paid: back on the water with one lantern.
+  revive() {
+    this.run.feesPaid += 1;
+    this.ended = false;
+    this.lanterns = 1;
+    this.graceUntil = this.t + LANTERNS.graceSeconds;
+    if (this.sunkBy.god !== undefined) this.appease(this.sunkBy.god);
+    this.tweens.killTweensOf([this.boatImg, this.lantern, this.lanternCore]);
+    this.boatImg.setScale(1).clearTint();
+    this.lanternPulse[0] = 1;
+    sfx.lanternLit();
+    this.ringFx(this.boat.x, this.boat.y, 0xffc478, 0.9, 40);
+    this.toast('Charon takes his fee: one lantern lit', 0xffc478, true);
+    this.scene.resume();
+  }
+
+  // Every 8th delivery in a row lights a lantern, up to the max.
+  gainLantern() {
+    if (this.lanterns >= LANTERNS.max) return;
+    this.lanternPulse[this.lanterns] = 1;
+    this.lanterns += 1;
+    sfx.lanternLit();
+    const bow = this.local(0, -66);
+    this.ringFx(bow.x, bow.y, 0xffc478, 0.7, 24);
+    this.popup('+1 lantern', this.boat.x + 64, this.boat.y - 50, 0xffc478, 24);
+    this.hint('lantern', `Every ${LANTERNS.streakForLantern} deliveries in a row light a lantern`, 0xffc478);
+  }
+
+  // A lantern in the HUD goes out: a last flare, then a wisp of smoke.
+  lanternOutFx(i) {
+    const l = this.lanternIcons?.[i];
+    if (!l) return;
+    const flare = this.add.image(l.x, l.y, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(0.9).setDepth(52);
+    this.tweens.add({ targets: flare, scale: 1.8, alpha: { from: 0.9, to: 0 }, duration: 450, ease: 'Quad.easeOut', onComplete: () => flare.destroy() });
+    for (let k = 0; k < 4; k++) {
+      const puff = this.add.image(l.x + rnd(-3, 3), l.y - 6, 'glow').setTint(0x9a96a8).setScale(rnd(0.12, 0.2)).setAlpha(0.5).setDepth(52);
+      this.tweens.add({ targets: puff, x: puff.x + rnd(-10, 10), y: puff.y - rnd(22, 36), scale: puff.scale * 2.4, alpha: 0, duration: rnd(700, 1000), delay: k * 90, ease: 'Quad.easeOut', onComplete: () => puff.destroy() });
+    }
   }
 
   /* ---------- scrolls: say a carried scroll's incantation aloud to calm its god ---------- */
@@ -936,7 +1098,7 @@ export class RiverScene extends Phaser.Scene {
   // A small panel under the rage bars shows which scrolls you carry. Space (or a tap on it) unrolls them
   // for a few seconds so you can re-read the words, over the bank, while the river keeps going.
   buildScrolls(d) {
-    const x = 14, y = 262, g = this.add.graphics().setDepth(d);
+    const x = 14, y = SCROLLS_Y, g = this.add.graphics().setDepth(d);
     g.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, y, 134, 84, 10);
     g.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, y, 134, 84, 10);
     this.add.text(26, y + 12, spaced('SCROLLS'), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55).setDepth(d + 1);
@@ -1005,7 +1167,7 @@ export class RiverScene extends Phaser.Scene {
       this.scrollOpenFor -= dt;
       if (this.scrollOpenFor <= 0) this.showScrolls(false);
       const left = clamp(this.scrollOpenFor / SCROLLS.panelSeconds, 0, 1);
-      this.scrollTimer.clear().fillStyle(0xf1e6c8, 0.5).fillRect(24, 262 + 207, 310 * left, 2);
+      this.scrollTimer.clear().fillStyle(0xf1e6c8, 0.5).fillRect(24, SCROLLS_Y + 207, 310 * left, 2);
     }
     this.heardFor -= dt;
     this.heardText.setAlpha(clamp(this.heardFor / 0.5, 0, 1));

@@ -87,6 +87,19 @@ export const TUNING = {
   streakCap: 8,
   clutchMultiplier: 2,
   priceGrowth: 1.8,
+
+  // Your best distance (saved on this device) is marked on the river
+  markFrom: 1000, // px: a best shorter than this (50 m) isn't marked
+};
+
+// Lanterns are lives. A god's smite puts one out (a wrecked hull will too, once there are obstacles);
+// when the last one goes out, the run ends.
+export const LANTERNS = {
+  start: 2,
+  max: 3,
+  graceSeconds: 3, // after a smite, souls that float past anger no one and the boat flickers
+  coolOthers: 0.25, // a smite appeases the god who struck (rage to 0) and cools the others by this much
+  streakForLantern: 8, // every 8th delivery in a row lights one
 };
 
 // How-to-play tour on the first run (TutorialScene): each step moves on by itself after this long.
@@ -94,6 +107,10 @@ export const TUTORIAL = {
   stepSeconds: 4.5,
   lastStepSeconds: 1.8, // "Your turn"
 };
+
+// Charon's fee: when the last lantern goes out, pay it on the game-over screen to return with one.
+// Priced like one of Hermes' upgrades: basePrice, climbing by TUNING.priceGrowth each time it's paid in a run.
+export const CHARON = { basePrice: 150 };
 
 // Hermes' stall. Each level costs basePrice * priceGrowth^level.
 export const UPGRADES = [

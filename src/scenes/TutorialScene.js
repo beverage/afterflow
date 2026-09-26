@@ -29,7 +29,7 @@ const STEPS = [
   { title: 'Your ferry', body: 'Steer anywhere on the water with WASD, ZQSD or the arrow keys.', touch: 'Slide a thumb anywhere on the screen to steer.', spot: (river) => ({ x: river.boat.x, y: river.boat.y - 6, r: 86 }) },
   { title: 'Scoop up souls', body: 'Touch a soul to take it aboard. Its color and symbol show which god it belongs to.', touch: 'Steer into a soul to take it aboard. Its color and symbol show which god it belongs to.', spot: soulSpot, pulse: true },
   { title: 'Three gods, three shrines', body: "Steer into a shrine's dock to deliver its god's souls. Be quick: souls aboard don't last.", spot: shrineSpot, legend: true },
-  { title: "The gods' rage", body: 'Every soul that floats past uncaught angers its god. When a bar fills, that god sinks you.', spot: () => RAGE_SPOT },
+  { title: "The gods' rage", body: 'Every soul that floats past uncaught angers its god. When a bar fills, that god puts out one of your lanterns.', spot: () => RAGE_SPOT },
   { title: 'Obols and streaks', body: "Deliveries earn obols, and back-to-back ones build a streak. Spend obols at Hermes' stall.", spot: () => OBOLS_SPOT },
   { title: 'Your turn', body: 'Press H anytime to see this again.', touch: 'Pause, then tap How to play to see this again.', seconds: TUTORIAL.lastStepSeconds },
 ];
