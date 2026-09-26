@@ -28,7 +28,7 @@ const OBOLS_SPOT = { x: W - 81, y: 90, r: 90 };
 const STEPS = [
   { title: 'Your ferry', body: 'Steer anywhere on the water with WASD, ZQSD or the arrow keys.', touch: 'Slide a thumb anywhere on the screen to steer.', spot: (river) => ({ x: river.boat.x, y: river.boat.y - 6, r: 86 }) },
   { title: 'Scoop up souls', body: 'Touch a soul to take it aboard. Its color and symbol show which god it belongs to.', touch: 'Steer into a soul to take it aboard. Its color and symbol show which god it belongs to.', spot: soulSpot, pulse: true },
-  { title: 'Three gods, three shrines', body: "Steer into a shrine's dock to deliver its god's souls. Be quick: souls aboard don't last.", spot: shrineSpot, legend: true },
+  { title: 'Three gods, three shrines', body: "Sail into the light at a shrine to deliver its god's souls. Be quick: souls aboard don't last.", spot: shrineSpot, legend: true },
   { title: "The gods' rage", body: 'Every soul that floats past uncaught angers its god. When a bar fills, that god puts out one of your lanterns.', spot: () => RAGE_SPOT },
   { title: 'Obols and streaks', body: "Deliveries earn obols, and back-to-back ones build a streak. Spend obols at Hermes' stall.", spot: () => OBOLS_SPOT },
   { title: 'Your turn', body: 'Press H anytime to see this again.', touch: 'Pause, then tap How to play to see this again.', seconds: TUTORIAL.lastStepSeconds },
@@ -238,10 +238,13 @@ function soulSpot(river) {
 }
 
 // The shrine on screen nearest the middle, with its arch and dock both in the light.
+// A portal (Ines's angled gate) gets a wider spot, from its medallion down to the pool of light you sail into.
 function shrineSpot(river) {
-  const mid = (f) => f.wy + river.scroll - 58;
+  const mid = (f) => f.wy + river.scroll + (f.portal ? -66 : -58);
   const best = river.features.filter((f) => f.kind === 'shrine' && mid(f) > 40 && mid(f) < H - 60).sort((p, q) => Math.abs(mid(p) - H / 2) - Math.abs(mid(q) - H / 2))[0];
-  return best ? { x: best.x + Math.sign(best.tip - best.x) * 20, y: mid(best), r: 110 } : null;
+  if (!best) return null;
+  if (best.portal) return { x: (best.x + best.tip) / 2, y: mid(best), r: 145 };
+  return { x: best.x + Math.sign(best.tip - best.x) * 20, y: mid(best), r: 110 };
 }
 
 // A square of dim with a soft round hole in it, stretched to the spotlight's size.
