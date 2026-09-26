@@ -54,6 +54,9 @@ export function makeArt(scene) {
   make(scene, 'icon_handling', 96, 96, drawIconHandling);
   make(scene, 'icon_hold', 96, 96, drawIconHold);
   make(scene, 'vignette', W, H, drawVignette);
+  make(scene, 'fog', 256, 256, drawFog);
+  make(scene, 'haze', W, H, drawHaze);
+  make(scene, 'shade', W, H, drawShade);
 }
 
 /* ---------- god symbols (owl, spear, trident) on a 20-unit grid ---------- */
@@ -771,6 +774,36 @@ function drawIconHold(g) {
     g.arc(0, -16 + i * 14, 5.5, 0, TAU);
     g.fill();
   });
+}
+
+// Atmosphere, after Ines's river study. A fog bank: soft all the way out (tinted grey-blue in game).
+function drawFog(g, w) {
+  const r = w / 2, gr = g.createRadialGradient(r, r, 0, r, r, r);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.6, 'rgba(255,255,255,.5)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, w, w);
+}
+
+// Haze fading in at the top and bottom of the screen, for a sense of distance (tinted in game).
+function drawHaze(g) {
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, 'rgba(255,255,255,.28)');
+  gr.addColorStop(0.35, 'rgba(255,255,255,0)');
+  gr.addColorStop(0.8, 'rgba(255,255,255,0)');
+  gr.addColorStop(1, 'rgba(255,255,255,.18)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, W, H);
+}
+
+// Darkened corners and edges.
+function drawShade(g) {
+  const gr = g.createRadialGradient(W / 2, H / 2, H * 0.36, W / 2, H / 2, H * 1.01);
+  gr.addColorStop(0, 'rgba(8,10,12,0)');
+  gr.addColorStop(1, 'rgba(8,10,12,.55)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, W, H);
 }
 
 // Screen-edge glow for danger, tinted red in game.
