@@ -7,3 +7,6 @@ dist
 .DS_Store
 *.log
 voice-candidates/
+
+# Claude Code worktrees (other sessions work in these; never commit them)
+.claude/worktrees/
