@@ -1,4 +1,4 @@
-// Synthesized sound effects and a quiet flowing-water ambience, all Web Audio: no audio files to load.
+// Synthesized sound effects, all Web Audio: no audio files to load. No background ambience by default.
 // Browsers only start audio after a click or key press, so call unlockAudio() from one.
 
 let ac = null;
@@ -8,7 +8,7 @@ let musicBus = null;
 let noiseBuf = null;
 let ambience = null;
 
-const AMBIENCE_VOLUME = 0.12; // the river under everything; 0 turns it off
+const AMBIENCE_VOLUME = 0; // flowing-water bed under everything; off (the team prefers silence between effects), ~0.12 turns it on
 let muted = false;
 
 export function unlockAudio() {
