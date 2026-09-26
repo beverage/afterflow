@@ -3,7 +3,6 @@ import { WIDTH as W, HEIGHT as H, UPGRADES, FONT, DISPLAY_FONT } from '../config
 import { price, formatObols } from '../economy.js';
 import { onAction, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
-import { drawMeander } from '../ui.js';
 
 // Hermes' stall: opens over the paused river when the boat docks at a shop.
 // Buy with 1 / 2 / 3 or a click or tap, cast off with Space, Esc or the button.
@@ -23,7 +22,6 @@ export class ShopScene extends Phaser.Scene {
     const g = this.add.graphics();
     g.fillStyle(0x0b100e, 0.95).fillRoundedRect(px, py, pw, ph, 14);
     g.lineStyle(1, 0xdce6e2, 0.16).strokeRoundedRect(px, py, pw, ph, 14);
-    drawMeander(g, px + 24, py + 16, pw - 48, 2);
     this.add.text(W / 2, py + 66, "Hermes' Stall", { fontFamily: DISPLAY_FONT, fontSize: '46px', fontStyle: 'italic 600', color: '#f1e6c8' }).setOrigin(0.5);
     this.add.text(W / 2, py + 104, 'Spend your obols. The river waits.', { fontFamily: FONT, fontSize: '16px', color: '#97aaa2' }).setOrigin(0.5);
     this.add.image(px + pw - 150, py + 66, 'obol').setScale(0.7);
