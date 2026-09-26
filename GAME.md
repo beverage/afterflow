@@ -18,6 +18,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - 3 gods, one rage bar each in the HUD: **Athena** (gold, owl), **Ares** (crimson, spear), **Poseidon** (seafoam, trident). Souls carry their god's symbol too, not just a color.
 - Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100% = death.
 - Souls shrink over their lifespan and poof at zero, which forces regular deliveries.
+- The streak resets when a soul poofs. Skipped souls already cost rage, so they don't also break it.
 - Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Items:
   - **Speed**: the river scrolls faster, so more souls and shrines per minute (more money, more risk).
   - **Handling**: quicker, snappier boat movement.
@@ -46,7 +47,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## Controls
 
-- Laptop first. **WASD**, **ZQSD** (French AZERTY keyboards) or the **arrow keys** move the boat freely on the water, shoot-'em-up style: across the river to reach souls and banks, forward and back to rush or wait. Diagonals are not faster. Quick acceleration with a slight glide; Handling makes it snappier.
+- Laptop first. **WASD** (the same keys are ZQSD on French AZERTY keyboards: keys are read by position) or the **arrow keys** move the boat freely on the water, shoot-'em-up style: across the river to reach souls and banks, forward and back to rush or wait. Diagonals are not faster. Quick acceleration with a slight glide; Handling makes it snappier.
 - Deliver: automatic when the boat touches a shrine's dock.
 - Shop: touching a shop's dock pauses the game and opens it. **1 / 2 / 3** or a click buys, **Space** or **Esc** casts off.
 - **Esc** or **P** pauses, **M** mutes, **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly).
@@ -60,22 +61,25 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - View: 3/4 top-down 2D (2.5D) on a landscape 1280x720 canvas.
 - Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines drawn as stone-arch portals with a swirl in their god's color. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
 - Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
-- Art owner: Ines. Until her art lands, the code draws placeholder shapes under the same keys.
+- Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
+- Drawn by code, not art: the water, light streaks, glows, portal swirls, soul trails and sparks.
 - Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
 
-| Key | File | Size (px) | Notes |
-|---|---|---|---|
-| `river` | `river.png` | 1280x720 | Whole background: water ~560 px wide in the middle, banks on both sides. Loops seamlessly top to bottom |
-| `boat` | `boat.png` | ~80x120 | Ferry and ferryman seen from behind, bow pointing up the screen |
-| `soul_<god>` | `soul_athena.png`, ... | ~48x48 | One per god: god's color and symbol |
-| `shrine_<god>` | `shrine_athena.png`, ... | ~180x200 | Sits at the water's edge; code mirrors it for the other bank |
-| `shop` | `shop.png` | ~180x200 | Riverside shop with a dock |
-| `god_<god>` | `god_athena.png`, ... | ~80x80 | Face or icon for the rage bar |
-| `obol` | `obol.png` | ~40x40 | Coin |
-| `icon_speed`, `icon_handling`, `icon_hold` | `icon_speed.png`, ... | ~96x96 | Shop items |
-| `prop_*` | any | varies | Optional bank props to break repetition |
+| Key | Size (px) | Notes |
+|---|---|---|
+| `bank` | 1280x720 | Ground for both banks, no water (the river is drawn over it). Loops top to bottom |
+| `boat` | 100x170 | Charon's ferry from above, bow up, hull centred at (40, 72) |
+| `arch` | 150x150 | Shrine arch, base centre at (75, 138). Leave the opening transparent: the portal shows through |
+| `shop` | 150x150 | Hermes' stall, base centre at (75, 138) |
+| `pier` | 100x34 | Planks with posts at the right (water) end, stretched to length |
+| `pine1`, `pine2`, `pine3` | 56 to 80 square | Pines seen from above |
+| `lily1`, `lily2`, `lily3` | 44x44 | Red spider lilies |
+| `rock`, `reeds` | about 26x22 | Bank details |
+| `soul_athena`, `soul_ares`, `soul_poseidon` | 40x40 | The soul bubble with its god's symbol (halo and trail are code) |
+| `obol` | 40x40 | Coin with Athena's owl |
+| `icon_speed`, `icon_handling`, `icon_hold` | 96x96 | Shop icons |
 
-- Sounds (v1): pickup, deliver, streak step (one sound, pitch rises per level), streak break, **clutch (unique)**, poof, shop open, buy, can't afford, rage warning, smite and game over, music loop. Owner: TBD.
+- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, poof, skip, coin, shop open, buy, can't afford, rage warning, smite, and an ambient drone. Real audio can replace them later. Owner: TBD.
 
 ## Voices (Gradium, v2)
 
@@ -96,15 +100,11 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Considered, not chosen: golden hero souls, underworld zones, missions, leaderboard.
 - Cut: Unity and Voodoo.
 
-## v1 build order
+## v1 status
 
-1. River scene: landscape layout, scrolling river, boat with free WASD / ZQSD / arrow movement kept on the water, click to play, pause on blur.
-2. Souls: spawning, drifting, pickup into the hold, lifespan shrink and poof, skipped souls fill rage.
-3. Shrines on the banks, next-shrines strip, deliveries paying obols, streak and clutch.
-4. Rage bars, smite and game over, instant restart.
-5. Riverside shops: docking pauses, Speed / Handling / Hold with exponential prices. Self-contained, a good Devin task.
-6. Juice and sound pass: pops, obol bursts, shake, streak pitch steps, the clutch sound.
-7. Ines's art drops in by file name, no code changes.
+Built and playable: title over a self-steering river, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars and death, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound.
+
+Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
 
 ## Team
 

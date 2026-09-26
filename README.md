@@ -67,12 +67,11 @@ speak()  src/voice.js --> /api/tts    --> server/tts.js    --> Gradium TTS (WAV)
 - No key means mock mode: `askAI` returns the caller's `fallback`, and `speak` uses the browser's built-in voice.
 - Default Gemini model is `gemini-3.5-flash-lite` (fast and cheap). Set `GEMINI_MODEL` to change it.
 
-## Swap in your game
+## The game: Soul Drift
 
-1. Fill in `GAME.md` together (10 minutes). Agents build from it.
-2. Replace `src/scenes/GameScene.js` with your loop. Keep BootScene and the status badge.
-3. Replace the example in `GameOverScene.js` with your game's real AI moment, copying the `askAI` + `speak` pattern.
-4. Designers overwrite files in `public/assets/` (same names) and refresh.
+The design lives in `GAME.md`, the reasons in `DECISIONS.md`, and the file map in `AGENTS.md`.
+All art is drawn by code until real files land: put a PNG in `public/assets/`, add its key to `src/assets.js`, refresh.
+Add `?debug` to the URL to see the hull and dock zones, and whether AI and voice are live.
 
 ## Demo-day checklist
 

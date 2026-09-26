@@ -16,7 +16,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 
 ## Stack
 
-- Phaser **3.90** with Arcade physics. Pinned on purpose: agents know Phaser 3 best. Do not upgrade to Phaser 4 today.
+- Phaser **3.90** (no physics engine: pickups and docking are simple distance checks). Pinned on purpose: agents know Phaser 3 best. Do not upgrade to Phaser 4 today.
 - Vite for dev and build. Plain JavaScript ES modules. No TypeScript, no UI framework, no new build tools.
 - Landscape 1280x720 logical canvas, scaled with `Phaser.Scale.FIT`. Laptop first: WASD, ZQSD (French AZERTY) and arrow keys. Read input only through the controls module (a move vector plus actions) so touch can be added later for mobile.
 - Hosting: Vercel, connected to GitHub. `main` deploys to production and every PR gets its own preview link: playtest the preview before merging.
@@ -29,14 +29,18 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 | `GAME.md` | The design, current state only |
 | `DECISIONS.md` | Append-only log of decisions and why |
 | `src/main.js` | Phaser config and scene list |
-| `src/config.js` | Sizes, colors and tuning knobs. Put magic numbers here |
-| `src/assets.js` | Asset manifest: key -> file in `public/assets/` |
+| `src/config.js` | Sizes, colors, the gods, tuning knobs and shop upgrades. Put magic numbers here |
+| `src/assets.js` | Asset manifest: key -> file in `public/assets/`. A real file replaces that key's placeholder |
+| `src/art.js` | Placeholder art drawn by code at boot, under the same keys as the manifest |
+| `src/controls.js` | All input: `moveVector()` plus actions (pause, mute, confirm, buy1-3), by physical key |
+| `src/sfx.js` | Sound effects and the ambient drone, synthesized with Web Audio (no files) |
+| `src/river.js`, `src/economy.js` | River shape; soul value, prices, upgrade stats, number formats |
 | `src/ai.js` | `askAI({ prompt, system, schema, fallback })`, `getAIStatus()` |
 | `src/voice.js` | `speak(text, { voice })`, `prepareSpeech()`, `stopSpeaking()`, `getVoiceStatus()` |
 | `src/voices.js` | Voice manifest: character key -> Gradium voice id |
-| `src/scenes/BootScene.js` | Loads the manifest, checks AI and voice status |
-| `src/scenes/GameScene.js` | Example loop (to be replaced by our game) |
-| `src/scenes/GameOverScene.js` | Example AI + voice hook: Gemini JSON verdict, read out by Gradium |
+| `src/scenes/BootScene.js` | Loads the manifest, draws placeholder art, waits for fonts |
+| `src/scenes/RiverScene.js` | The game: river, souls, shrines, shops, boat, rage, HUD. Attract mode behind the title |
+| `src/scenes/TitleScene.js`, `ShopScene.js`, `PauseScene.js`, `GameOverScene.js` | Overlays on top of the river |
 | `server/gemini.js`, `server/tts.js` | The proxies, shared by the dev server, Vercel and `server.js` |
 | `api/*.js`, `server.js` | Deploy adapters (Vercel, and Node/Docker for Fly) |
 | `scripts/` | `check-ai`, `decide`, `voice` (list, design, keep voices) |
@@ -61,4 +65,4 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 - `npm run check:ai`: one real call each to Gemini and Gradium
 - `npm run voices`, `npm run voice:design -- "description"`, `npm run voice:keep -- <id> "Name"`: Gradium voices
 - `npm run decide -- "Cut the leaderboard · no time"`: appends a timestamped line to DECISIONS.md
-- Add `?debug` to the URL to see hitboxes. `window.game` is exposed in the console.
+- Add `?debug` to the URL to see the hull and dock zones, and whether AI and voice are live. `window.game` is exposed in the console.

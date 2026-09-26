@@ -1,8 +1,9 @@
 Drop-in art folder.
 
-Replace a file with one of the same name and refresh the page:
-  player.png   ~96x96 PNG with transparency (the thing the player controls)
-  hazard.png   ~64x64 PNG with transparency (the thing to avoid)
+Every art key already has a placeholder drawn by code (src/art.js), so the game runs with no files here.
+To use real art: put a PNG here, add one line to src/assets.js with its key, refresh.
+The real file replaces the placeholder for that key; no other code changes.
 
-New file? Put it here, add one line to src/assets.js, and use its key in a scene.
-Keep files small (under ~500 KB each) so the game loads fast on phones.
+Keys, sizes and notes: see the asset table in GAME.md (bank, boat, arch, shop, pier, obol, pines,
+lilies, rock, reeds, soul_<god>, icon_speed / icon_handling / icon_hold).
+Keep files small (under ~500 KB each) so the game loads fast.

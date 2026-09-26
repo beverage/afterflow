@@ -1,13 +1,13 @@
-// Asset manifest. Scenes only ever refer to assets by key.
-// Designers: overwrite a file in public/assets/ with the same name and refresh, that's it.
-// New asset: drop the file in public/assets/, add one line below, use the key in a scene.
+// Asset manifest. Scenes only ever refer to art by key.
+// Every key already has a placeholder drawn by code (src/art.js), so the game runs with no files at all.
+// Real art: put the PNG in public/assets/, add one line below, refresh. Sizes and notes are in GAME.md.
+// Keys: bank, boat, arch, shop, pier, obol, pine1-pine3, lily1-lily3, rock, reeds,
+//       soul_athena, soul_ares, soul_poseidon, icon_speed, icon_handling, icon_hold
 
 export const IMAGES = {
-  player: 'assets/player.png',
-  hazard: 'assets/hazard.png',
+  // bank: 'assets/bank.png',
 };
 
 export const AUDIO = {
-  // tap: 'assets/tap.mp3',
   // music: 'assets/music.mp3',
 };
