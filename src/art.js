@@ -362,12 +362,23 @@ function drawBand(g, w, h) {
   g.fillRect(0, 0, w, h);
 }
 
-// Wavelets on the water, seamless in both directions: short curved crests across the flow.
+// Chop on the water, seamless in both directions: crests at every angle and little curls.
 function drawRipples(g, w, h) {
   g.lineCap = 'round';
-  for (let i = 0; i < 70; i++) {
-    const x = rnd(0, w), y = rnd(0, h), len = rnd(12, 44), rot = rnd(-0.6, 0.6), bend = rnd(3, 9) * (Math.random() < 0.5 ? 1 : -1);
-    const a = rnd(0.1, 0.34), lw = rnd(0.8, 1.7);
+  g.lineJoin = 'round';
+  for (let i = 0; i < 95; i++) {
+    const x = rnd(0, w), y = rnd(0, h), kind = Math.random(), a = rnd(0.1, 0.34), lw = rnd(0.8, 1.7);
+    const rot = rnd(-1.1, 1.1), len = rnd(10, 40), bend = rnd(3, 10) * (Math.random() < 0.5 ? 1 : -1);
+    const r = rnd(3, 9), a0 = rnd(0, TAU), sweep = rnd(3, 4.8);
+    const shape = () => {
+      g.beginPath();
+      if (kind < 0.7) {
+        g.moveTo(-len / 2, 0);
+        g.quadraticCurveTo(0, bend, len / 2, 0);
+      } else {
+        g.arc(0, 0, r, a0, a0 + sweep);
+      }
+    };
     for (const dx of [-w, 0, w]) {
       for (const dy of [-h, 0, h]) {
         const xx = x + dx, yy = y + dy;
@@ -375,10 +386,8 @@ function drawRipples(g, w, h) {
         g.save();
         g.translate(xx, yy);
         g.rotate(rot);
-        g.beginPath();
-        g.moveTo(-len / 2, 0);
-        g.quadraticCurveTo(0, bend, len / 2, 0);
-        g.strokeStyle = `rgba(225,215,255,${a * 0.3})`; // soft glow around each crest
+        shape();
+        g.strokeStyle = `rgba(225,215,255,${a * 0.3})`;
         g.lineWidth = lw * 3.5;
         g.stroke();
         g.strokeStyle = `rgba(235,228,255,${a * 0.7})`;

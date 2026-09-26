@@ -101,8 +101,8 @@ export class RiverScene extends Phaser.Scene {
     this.waterMask = this.make.graphics({}, false);
     const mask = this.waterMask.createGeometryMask();
     this.surface = [
-      this.add.tileSprite(0, 0, W, H, 'ripples').setOrigin(0).setDepth(1.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.45).setMask(mask),
-      this.add.tileSprite(0, 0, W, H, 'ripples').setOrigin(0).setDepth(1.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.28).setTileScale(1.7, 1.35).setMask(mask),
+      this.add.tileSprite(0, 0, W, H, 'ripples').setOrigin(0).setDepth(1.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.5).setMask(mask),
+      this.add.tileSprite(0, 0, W, H, 'ripples').setOrigin(0).setDepth(1.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.32).setTileScale(1.7, 1.35).setMask(mask),
     ];
     this.lightG = this.add.graphics().setDepth(2).setBlendMode(Phaser.BlendModes.ADD);
     // The lifestream: wide soft bands and fine streaks of light, each a rope so it bends smoothly with no seams.
@@ -112,6 +112,14 @@ export class RiverScene extends Phaser.Scene {
     for (const r of this.streaks) r.rope = this.bandRope('band_xs', 8, r.c);
     this.glints = Array.from({ length: 40 }, () => ({ sy: rnd(-20, H + 20), o: clamp(gauss() * 0.85, -0.9, 0.9), ph: rnd(0, TAU), sp: rnd(1.4, 1.9) }));
     this.foam = Array.from({ length: 150 }, () => this.newFoam(rnd(-20, H + 20)));
+    this.drift = Array.from({ length: 45 }, () => this.newDrift(rnd(-20, H + 20)));
+    this.eddies = Array.from({ length: 5 }, (_, i) => {
+      const e = this.newEddy(-60 + (i + rnd(0.2, 0.8)) * ((H + 120) / 5)); // spread down the screen
+      e.dark = this.add.image(0, 0, 'glow').setTint(0x07050f).setDepth(1.55);
+      e.whirl = this.add.image(0, 0, 'swirl').setTint(0xbfb0ff).setBlendMode(Phaser.BlendModes.ADD).setDepth(1.6);
+      e.ph = i * 1.7;
+      return e;
+    });
     this.fog = Array.from({ length: 8 }, (_, i) => {
       const f = this.add.image(rnd(0, W), rnd(-100, H + 100), 'glow').setTint(0xc8d6d2).setScale(rnd(4.6, 8.6)).setDepth(i < 5 ? 9 : 26);
       f.setAlpha(rnd(0.05, 0.09) * (i < 5 ? 1 : 0.7));
@@ -122,16 +130,44 @@ export class RiverScene extends Phaser.Scene {
   }
 
   newStreak(fromTop) {
-    return { sy: fromTop ? -rnd(0, 260) : rnd(-60, H + 160), o: clamp(gauss() * 0.9, -0.93, 0.93), ph: rnd(0, TAU), len: rnd(90, 230), lw: rnd(1, 2.2), a: rnd(0.06, 0.2), c: pickOne(STREAK_HUES), sp: rnd(0.85, 1.2) };
+    return { sy: fromTop ? -rnd(0, 260) : rnd(-60, H + 160), o: clamp(gauss() * 0.9, -0.93, 0.93), ph: rnd(0, TAU), len: rnd(90, 230), lw: rnd(1, 2.2), a: rnd(0.06, 0.2), c: pickOne(STREAK_HUES), sp: rnd(0.7, 1.4) };
   }
 
   newRibbon(fromTop) {
-    return { sy: fromTop ? -rnd(0, 400) : rnd(-100, H + 300), o: clamp(gauss() * 0.7, -0.75, 0.75), ph: rnd(0, TAU), len: rnd(300, 520), a: rnd(0.07, 0.12), c: pickOne(RIBBON_HUES), sp: rnd(1.2, 1.5) };
+    return { sy: fromTop ? -rnd(0, 400) : rnd(-100, H + 300), o: clamp(gauss() * 0.7, -0.75, 0.75), ph: rnd(0, TAU), len: rnd(300, 520), a: rnd(0.07, 0.12), c: pickOne(RIBBON_HUES), sp: rnd(1.0, 1.6) };
   }
 
   // Foam churning along the shore, a few px to ~20 px out from the stones.
   newFoam(sy) {
     return { sy, side: Math.random() < 0.5 ? -1 : 1, off: rnd(1, 20), ph: rnd(0, TAU), sp: rnd(1.02, 1.3), r: rnd(0.8, 2.4), len: rnd(0, 8), a: rnd(0.12, 0.36) };
+  }
+
+  // Foam flecks carried in the current, stretched along the flow.
+  newDrift(sy) {
+    return { sy, o: clamp(gauss() * 0.8, -0.9, 0.9), ph: rnd(0, TAU), sp: rnd(0.95, 1.4), r: rnd(0.8, 1.8), len: rnd(3, 12), a: rnd(0.08, 0.22) };
+  }
+
+  // An eddy: a slowly turning whirl that drifts downstream and bends everything that passes it.
+  newEddy(sy) {
+    return { sy, o: rnd(-0.55, 0.55), r: rnd(45, 95), spin: Math.random() < 0.5 ? -1 : 1, power: rnd(0.5, 0.9), sp: rnd(1.0, 1.35), rot: rnd(0, TAU), x: 0, y: sy };
+  }
+
+  // Lateral wander of a flow line: waves at three scales, drifting with the current and churning over time.
+  turb(yy, ph, amp) {
+    const u = yy - this.scroll * TUNING.currentFactor, t = this.t;
+    return amp * (Math.sin(u * 0.011 + ph + t * 0.6) + 0.55 * Math.sin(u * 0.027 - ph * 1.3 + t * 1.3) + 0.3 * Math.sin(u * 0.063 + ph * 2.1 - t * 2.1));
+  }
+
+  // Bend a point around the eddies it passes: strongest at an eddy's heart, fading out by ~2 radii.
+  swirlPoint(p, k = 1) {
+    for (const e of this.eddies) {
+      const dx = p.x - e.x, dy = p.y - e.y, d2 = dx * dx + dy * dy, r2 = e.r * e.r * 2.2;
+      if (d2 > r2 * 2.5) continue;
+      const a = e.spin * e.power * k * Math.exp(-d2 / r2), c = Math.cos(a), sn = Math.sin(a);
+      p.x = e.x + dx * c - dy * sn;
+      p.y = e.y + dx * sn + dy * c;
+    }
+    return p;
   }
 
   bandRope(key, n, color) {
@@ -142,14 +178,15 @@ export class RiverScene extends Phaser.Scene {
     return rope;
   }
 
-  // Lay a rope along the current, from the band's head (s.sy) back along its length.
-  layRope(rope, s, wave, freq, drift, limit) {
+  // Lay a rope along the current, from the band's head (s.sy) back along its length, through the turbulence.
+  layRope(rope, s, amp, limit) {
     const pts = rope.points, n = pts.length;
     for (let j = 0; j < n; j++) {
       const yy = s.sy - (s.len * j) / (n - 1), q = riverAt(yy - this.scroll);
-      const o = clamp(s.o + wave * Math.sin(yy * freq + s.ph + this.t * drift), -limit, limit);
+      const o = clamp(s.o + this.turb(yy, s.ph, amp), -limit, limit);
       pts[j].x = q.cx + o * q.hw;
       pts[j].y = yy;
+      this.swirlPoint(pts[j]);
     }
     rope.updateVertices();
   }
@@ -180,6 +217,21 @@ export class RiverScene extends Phaser.Scene {
     for (const f of this.foam) {
       f.sy += v * f.sp * dt;
       if (f.sy > H + 20) Object.assign(f, this.newFoam(-20));
+    }
+    for (const f of this.drift) {
+      f.sy += v * TUNING.currentFactor * 0.75 * f.sp * dt;
+      if (f.sy > H + 20) Object.assign(f, this.newDrift(-20));
+    }
+    for (const e of this.eddies) {
+      e.sy += v * e.sp * dt;
+      e.rot += e.spin * dt * 1.3;
+      if (e.sy - e.r > H + 20) Object.assign(e, this.newEddy(Math.min(-60, ...this.eddies.map((o) => o.sy)) - rnd(160, 300)));
+      const q = riverAt(e.sy - this.scroll);
+      e.x = q.cx + e.o * q.hw;
+      e.y = e.sy;
+      const breathe = 0.85 + 0.15 * Math.sin(this.t * 0.9 + e.ph);
+      e.dark.setPosition(e.x, e.y).setScale(e.r / 30).setAlpha(0.3 * breathe);
+      e.whirl.setPosition(e.x, e.y).setScale(e.r / 34).setRotation(e.rot).setAlpha(0.16 * breathe);
     }
     for (const f of this.fog) {
       const r = f.displayWidth / 2;
@@ -225,6 +277,12 @@ export class RiverScene extends Phaser.Scene {
       g.fillStyle(0xdcd4ff, f.a * (0.7 + 0.3 * Math.sin(this.t * 3 + f.ph)));
       g.fillEllipse(q.cx + f.side * (q.hw - f.off), f.sy, f.r * 2, f.r * 2 + f.len);
     }
+    for (const f of this.drift) {
+      const q = riverAt(f.sy - this.scroll);
+      const p = this.swirlPoint({ x: q.cx + (f.o + this.turb(f.sy, f.ph, 0.06)) * q.hw, y: f.sy });
+      g.fillStyle(0xdcd4ff, f.a * (0.75 + 0.25 * Math.sin(this.t * 2.6 + f.ph)));
+      g.fillEllipse(p.x, p.y, f.r * 2, f.r * 2 + f.len);
+    }
     const [near, far] = this.surface;
     near.tilePositionY = -this.scroll * 1.2;
     near.tilePositionX = 14 * Math.sin(this.t * 0.23);
@@ -244,11 +302,11 @@ export class RiverScene extends Phaser.Scene {
     const g = this.lightG;
     g.clear();
     for (const s of this.ribbons) {
-      this.layRope(s.rope, s, 0.12, 0.008, 0.5, 0.9);
+      this.layRope(s.rope, s, 0.08, 0.9);
       s.rope.setAlpha(s.a * (0.8 + 0.2 * Math.sin(this.t * 1.1 + s.ph)));
     }
     for (const s of this.streaks) {
-      this.layRope(s.rope, s, 0.07, 0.011, 0.6, 0.96);
+      this.layRope(s.rope, s, 0.05, 0.96);
       const a = s.a * (0.75 + 0.25 * Math.sin(this.t * 2 + s.ph));
       s.rope.setAlpha(a * 0.45);
       g.lineStyle(s.lw, s.c, a);
@@ -259,8 +317,9 @@ export class RiverScene extends Phaser.Scene {
       const a = Math.pow(Math.max(0, Math.sin(this.t * 2.3 + s.ph)), 4) * 0.7;
       if (a < 0.02) continue;
       const q = riverAt(s.sy - this.scroll);
+      const p = this.swirlPoint({ x: q.cx + (s.o + this.turb(s.sy, s.ph, 0.04)) * q.hw, y: s.sy });
       g.fillStyle(0xf2ecff, a);
-      g.fillEllipse(q.cx + s.o * q.hw, s.sy, 8, 1.8);
+      g.fillEllipse(p.x, p.y, 8, 1.8);
     }
   }
 
@@ -462,6 +521,7 @@ export class RiverScene extends Phaser.Scene {
     const q = riverAt(s.sy - this.scroll);
     s.x = q.cx + (s.o + 0.07 * Math.sin(this.t * 0.8 + s.ph)) * q.hw + 4 * Math.sin(this.t * 1.7 + s.ph);
     s.y = s.sy + 3 * Math.cos(this.t * 1.3 + s.ph);
+    this.swirlPoint(s, 0.5);
     const fade = clamp((s.sy + 40) / 60, 0, 1);
     s.halo.setPosition(s.x, s.y).setAlpha(0.36 * fade);
     s.body.setPosition(s.x, s.y).setAlpha(fade).setScale(1 + 0.05 * Math.sin(this.t * 2.4 + s.ph));
