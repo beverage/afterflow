@@ -26,7 +26,7 @@ What the player does every few seconds:
 2. **Deliver.** Shrines drift by on both banks, and the HUD shows the gods of the next three. Sail into the pool of light at a shrine's portal to hand over every soul of its color for obols.
 3. **Survive.** Missed and burnt-out souls fill their god's rage bar. A full bar is a smite: a lantern goes out. The last lantern ends the run, unless you pay Charon to return.
 4. **Spend.** Every fourth bank feature is Hermes' stall. Docking pauses the river: buy Speed, Handling, Hold, or a scroll per god.
-5. **Recite.** Carry a scroll, learn its two words, and say them aloud when its god is angry. Half its rage is gone at once.
+5. **Recite.** Carry a scroll, learn its two words, and say them aloud when its god is angry. Its rage drops by half a bar at once.
 
 Underneath it all, every 6 souls delivered is a level, and every 3 levels the boat reaches a new, faster river.
 
@@ -79,14 +79,14 @@ A new river gets a banner ("II · Styx · the river quickens"), a rising whoosh,
 
 ### Hermes' stall
 
-The stall shows up every fourth bank feature (about every 20 s at the starting pace), on alternating banks. Dock anywhere along its jetty and pool of light; the river pauses. It is 3x2: upgrades on top, one scroll per god below. An upgrade costs `base × 1.8^level`, rounded to a friendly number.
+The stall shows up every fourth bank feature (about every 20 s at the starting pace). Bank features alternate sides, so within a run the stall always stands on the same bank (which one is random). Dock anywhere along its jetty and pool of light; the river pauses. It is 3x2: upgrades on top, one scroll per god below. An upgrade costs `base × 1.8^level`, rounded to a friendly number.
 
 | Item | Base price | Max level | Per level |
 |---|---|---|---|
 | Speed | 60 | 4 | The river runs 12% faster, on top of the rivers' own pace: more souls and obols per minute, more risk |
 | Handling | 50 | 8 | +45 px/s top speed, +400 px/s² acceleration |
 | Hold | 80 | 5 | +1 soul aboard (3 to 8) |
-| Scroll (one per god) | 6 souls' worth at your distance | carry one per god | Its god loses half its rage when you say the words |
+| Scroll (one per god) | 6 souls' worth at your distance | carry one per god | Its god's rage drops by half a bar (50%) when you say the words |
 
 ### Scrolls and incantations
 
@@ -125,7 +125,7 @@ The run pauses when the window loses focus, the tab is hidden, or a phone turns 
 
 ```
 Boot ──> River (attract mode: the boat steers itself) + Title
-            │ click, key or tap: sound unlocks, the run starts
+            │ click, Space/Enter or tap: sound unlocks, the run starts
             v
          River (the run) ──> Tutorial (first run of a browser session, or H)
             │        ├──> Shop (dock at Hermes' stall)       the river pauses
@@ -136,8 +136,8 @@ Boot ──> River (attract mode: the boat steers itself) + Title
                   └─> drift again: a fresh run (no title, no tour)
 ```
 
-- **Title.** The river runs behind it in attract mode: the boat chases souls and delivers them by itself. The first click, key or tap starts the run and unlocks audio (browsers only allow sound after a user gesture; phones only at the end of a tap).
-- **How-to-play tour.** Ines's tutorial design from her River Flow prototype. Over the paused river, the screen dims except a spotlight that moves from the boat to a soul, a shrine, the rage bars, the obols and the scrolls, each with a caption card. Steps move on after 4.5 s, or on Space, Enter, a click or a tap; Esc or Skip ends it. It opens once per browser session (sessionStorage), and on the first run it replaces the opening tips.
+- **Title.** The river runs behind it in attract mode: the boat chases souls and delivers them by itself. The first click, Space, Enter or tap starts the run and unlocks audio (browsers only allow sound after a user gesture; phones only at the end of a tap).
+- **How-to-play tour.** Ines's tutorial design from her River Flow prototype. Over the paused river, the screen dims except a spotlight that moves from the boat to a soul, a shrine, the rage bars, the obols and the scrolls, each with a caption card. Steps move on after 4.5 s (the last after 1.8 s), or on Space, Enter, a click or a tap; Esc or Skip ends it. It opens once per browser session (sessionStorage), and on the first run it replaces the opening tips.
 - **One-time tips.** The first time something happens (first pickup, full hold, first streak, first lantern, first level...), a short toast explains it.
 - **Game over.** "Athena smote you.", then your level, river, souls, obols earned, best streak and clutches, how the run compares with your best, Charon's offer, and Hades's spoken verdict.
 
@@ -154,8 +154,8 @@ The hack asked for at least two partner tools. Soul Drift uses Gemini while you 
 
 ### Gradium speaks: the gods' recorded voices
 
-- Fede designed four voices with Gradium Voice Design, each from a written description: Athena (a calm, precise, disappointed teacher), Ares (an enraged low Viking warlord), Poseidon (a storm king) and Hades (a cold aristocrat, Charon's master). The prompts and lines live in `src/npc-voices/<god>.js`.
-- `npm run npc:audio` recorded every line with Gradium text-to-speech ahead of time: 89 lines, shipped as mono 64 kbps MP3 in `public/npc-voices/` (about 1.6 MB in all). Nothing is generated at play time, so voices cost no credits, no network and no wait during the demo.
+- Fede designed the gods' voices with Gradium Voice Design, each from a written description, and the four were chosen from his candidates: Athena (a calm, precise, disappointed teacher), Ares (an enraged low Viking warlord), Poseidon (a storm king) and Hades (a cold aristocrat, Charon's master). The prompts and lines live in `src/npc-voices/<god>.js`.
+- `npm run npc:audio` recorded every line with Gradium text-to-speech ahead of time: 89 lines, shipped as mono 64 kbps MP3 in `public/npc-voices/<god>/` (about 1.5 MB in all). Nothing is generated at play time, so voices cost no credits, no network and no wait during the demo.
 - When they speak: Hades at run start; the god whose soul you lose shouts half the time; a soul about to burn out makes its god say hurry (once per soul); a god speaks up as its rage passes 50% and again at 75%; streaks of 3, 5 and every 8th earn praise; every smite; and Hades's verdict on the game-over screen (five monologues of 9 to 13 s), which stops when you pay Charon or drift again.
 - One line at a time: a more urgent line cuts in (verdict, then smite and run start, then the rage warnings), and small talk (shouts, hurries, streaks) waits 2.5 s after the last line. A shuffle bag per god and moment means no line repeats until the others have played.
 - While the mic listens for an incantation, shouts and hurries stay quiet: the gods' voices from the speakers could reach it.
@@ -189,8 +189,8 @@ The hack asked for at least two partner tools. Soul Drift uses Gemini while you 
 - Art direction: Ines's River Flow prototype. A glowing violet river on dark water, misty grey-green banks with pines, ferns and red spider lilies, souls as glowing bubbles with their god's symbol.
 - Ines's pieces in the game:
   - **Water**, ported from her river study (`afterflow-riviere.html`): a shallow-to-deep body, a flowing surface, current lines faster mid-stream, serpentine lifestream ribbons, glints, and foam along the banks. Drawn with Canvas 2D into one texture per frame (`src/water.js`, about 2 ms a frame), which kept her look exactly.
-  - **Banks**: her ground, an uneven shoreline with a muddy strip, and her pines, ferns, rocks (half of them on the waterline, with eddies) and spider lilies, at her densities.
-  - **Atmosphere**: drifting fog banks, a grey tint, haze at the top and bottom, floating spores and darkened edges. Fog, tint and haze sit under the souls and the boat so gameplay stays crisp (`fogAmount` 0.75).
+  - **Banks**, drawn by code after her study: her ground, an uneven shoreline with a muddy strip, and her pines, ferns, rocks (half of them on the waterline, with eddies) and spider lilies, at her densities.
+  - **Atmosphere**: drifting fog banks, a grey tint, haze at the top and bottom, floating spores and darkened edges. Most of the fog, the tint and the haze sit under the souls and the boat so gameplay stays crisp; a few lighter fog banks and the spores drift above (`fogAmount` 0.75).
   - **Portals**: her animated Afterflow gates, as sprite sheets (8x4 frames of 327x299, 8 fps), set at an angle on the bank and spilling a pool of light in their god's color onto the water. Matched by color: her gold sheet is Athena, red is Ares, and her Poseidon sheet shifted to seafoam is Poseidon, with our owl, spear and trident medallions over her symbols.
   - **The tour**: her spotlight-and-caption tutorial design.
 - Everything else is drawn by code at boot (`src/art.js`) under the asset manifest's keys: the boat, souls, obols, Hermes' stall (a stand-in at the portals' angle and in their frame), shop icons, scrolls, props. A PNG in `public/assets/` plus one line in `src/assets.js` replaces any of them with no other code change. Glows, trails, sparks, burn-out flashes, lightning and the best-distance lights are always code.
@@ -217,7 +217,7 @@ browser (no keys)                                   server (keys live here only)
 askAI()        src/ai.js      --> /api/gemini --> server/gemini.js --> Gemini generateContent
 listen.js      mic clips, WAV --> /api/stt    --> server/stt.js    --> Gradium speech-to-text
 speak()        src/voice.js   --> /api/tts    --> server/tts.js    --> Gradium text-to-speech
-godSay()       recorded lines <-- public/npc-voices/*.mp3 (static files, made by npm run npc:audio)
+godSay()       recorded lines <-- public/npc-voices/<god>/*.mp3 (static files, made by npm run npc:audio)
                      (routes mounted by vite.config.js in dev, api/*.js on Vercel, server.js elsewhere)
 ```
 
@@ -225,7 +225,7 @@ godSay()       recorded lines <-- public/npc-voices/*.mp3 (static files, made by
 |---|---|---|
 | `/api/gemini` | `live` or `mock`, and the model | `{ prompt, system?, schema?, temperature? }` → `{ text, data }` |
 | `/api/stt` | `live` or `mock` | a WAV clip (`?words=` to boost) → `{ ok, text }`, or `{ ok, mock }` without a key |
-| `/api/tts` | `live` or `mock` | `{ text, voice? }` → WAV audio. Not used during play (the gods' lines are recorded); `speak()` and the console helper `npcSay()` use it |
+| `/api/tts` | `live` or `mock` | `{ text, voice? }` → WAV audio. Not used during play (the gods' lines are recorded); `speak()` and `npcSay()` (from the console) use it |
 
 Browser code never calls Google or Gradium directly, no key is in client code, and no env var is prefixed `VITE_` (that would ship it to every player).
 
@@ -315,8 +315,8 @@ Browser code never calls Google or Gradium directly, no key is in client code, a
 - **Designed, not built:** obstacles that wreck the hull (lanterns are ready for them), a bullet-hell arena when a god's rage fills, weapons, a one-line life story for each soul, god reactions written fresh by Gemini (the recorded lines stand in), voice cloning (the ferryman repeating your incantation in your own voice).
 - **Considered, not chosen:** golden hero souls, underworld zones, missions, a leaderboard or accounts.
 - **Cut:** Unity and Voodoo; we built for the web.
-- **Art still to come:** Ines's own boat, souls, stall, bank ground, props and icons would replace the code-drawn ones by key.
-- **Tuning:** the targets are a first lantern lost after 60 to 90 s for a first-timer, a good run lasting 3 to 5 minutes, the Styx inside the first minute of decent play, and about one upgrade affordable at each stall.
+- **Art still to come:** Ines's own drawn files for the boat, souls, stall, obol, icons and scrolls would replace the code-drawn ones by key (the banks and props are code ports of her study).
+- **Tuning:** the targets are a first lantern lost after 60 to 90 s for a first-timer, a good run lasting 3 to 5 minutes, the Styx after about a minute of decent play, and about one upgrade affordable at each stall.
 
 ## 11. Known limits
 

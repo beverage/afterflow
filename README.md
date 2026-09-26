@@ -37,7 +37,7 @@ browser (no keys)                                   server (keys live here only)
 askAI()        src/ai.js      --> /api/gemini --> server/gemini.js --> Gemini generateContent
 listen.js      mic clips, WAV --> /api/stt    --> server/stt.js    --> Gradium speech-to-text
 speak()        src/voice.js   --> /api/tts    --> server/tts.js    --> Gradium text-to-speech
-godSay()       recorded lines <-- public/npc-voices/*.mp3 (made ahead by npm run npc:audio)
+godSay()       recorded lines <-- public/npc-voices/<god>/*.mp3 (made ahead by npm run npc:audio)
                      (routes mounted by vite.config.js in dev, api/*.js on Vercel, server.js elsewhere)
 ```
 
