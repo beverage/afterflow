@@ -25,7 +25,7 @@ export class GameOverScene extends Phaser.Scene {
       .setShadow(0, 0, hexCss(god.color), 24, true, true);
     this.addBestLine(data);
     const stats = [
-      ['DISTANCE', formatMeters(data.distance)],
+      [`ON THE ${(data.river ?? '').toUpperCase()}`, `Level ${data.level ?? 1}`], // the distance is in the best line above
       ['SOULS DELIVERED', String(data.delivered)],
       ['OBOLS EARNED', formatObols(data.earned)],
       ['BEST STREAK', String(data.bestStreak)],
