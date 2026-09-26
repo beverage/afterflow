@@ -112,7 +112,7 @@ _Name: TBD (working title **Soul Ferry**)._ Ferry the dead down the river: scoop
 | Alex | Repo, integration, AI wiring, deploy, the demo build |
 | Gleb | Game design, pitch |
 | Ines | Art, UI |
-| | |
+| Fede | Backend, jack of all trades |
 
 ## Clock (Paris time)
 
