@@ -52,4 +52,22 @@ for (let i = 0, now = 0; covered.size < n && i < n * 4; i++, now += 1500) {
 }
 assert.equal(covered.size, n);
 
-console.log(`getHeroAudio OK: ${n} Ares shouts, aliases, shuffle bag and cooldown checked.`);
+// id: a specific line, ignores the cooldown, leaves the bag alone; a wrong id -> null.
+const verdicts = AUDIO.hades?.verdict || [];
+if (verdicts.length) {
+  resetHeroAudio();
+  const warn = console.warn;
+  console.warn = () => {}; // expected warnings for the wrong ids below
+  assert.ok(getHeroAudio('hades', 'shout', { now: 0 }));
+  const third = getHeroAudio('Hades', 'verdict', { id: 3, now: 100 }); // 0.1 s later: cooldown ignored
+  assert.equal(third?.path, verdicts[2].path);
+  assert.equal(third.id, 3);
+  assert.equal(getHeroAudio('hades', 'verdict', { id: 3, now: 200 })?.path, verdicts[2].path, 'same id, same line');
+  assert.equal(getHeroAudio('hades', 'shout', { now: 1000 }), null, 'a special line starts the cooldown too');
+  for (const bad of [0, verdicts.length + 1, -1, 1.5, '2']) {
+    assert.equal(getHeroAudio('hades', 'verdict', { id: bad, now: 5000 }), null, `id ${bad} must return null`);
+  }
+  console.warn = warn;
+}
+
+console.log(`getHeroAudio OK: ${n} Ares shouts, aliases, shuffle bag, cooldown and ids checked.`);

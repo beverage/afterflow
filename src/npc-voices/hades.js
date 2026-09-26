@@ -37,7 +37,9 @@ export const HADES = {
       'Lost. Again.',
       'Enough!',
     ],
-    // Game over monologue, the "death verdict" in GAME.md: long on purpose (8-12 s), not for gameplay.
+    // Game over monologue, the "death verdict" in GAME.md: long on purpose (9-13 s), not for gameplay.
+    // Special events ask for one by number: getHeroAudio('hades', 'verdict', { id: 3 }). The id is the
+    // position below (1 = first), so add new lines at the end and never reorder, or ids will change.
     verdict: [
       'You managed to lose that which was already dead. Those souls belong to me, yet you scattered them like loose coins in the River Styx.',
       'For millennia, this boat has ferried all manner of sinners, but only you found a way to drop my cargo. What a pathetic display.',
