@@ -104,6 +104,10 @@ export const TUTORIAL = {
   lastStepSeconds: 1.8, // "Your turn"
 };
 
+// Charon's fee: when the last lantern goes out, pay it on the game-over screen to return with one.
+// Priced like one of Hermes' upgrades: basePrice, climbing by TUNING.priceGrowth each time it's paid in a run.
+export const CHARON = { basePrice: 150 };
+
 // Hermes' stall. Each level costs basePrice * priceGrowth^level.
 export const UPGRADES = [
   {

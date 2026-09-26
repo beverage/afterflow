@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { tutorialPending } from './TutorialScene.js';
-import { soulValue, statsFor, formatObols, formatMeters } from '../economy.js';
+import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
 import { moveVector, onAction, onAway, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
 import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
@@ -34,7 +34,7 @@ export class RiverScene extends Phaser.Scene {
     this.scroll = 0; // px travelled this run: world y + scroll = screen y
     this.levels = { speed: 0, handling: 0, hold: 0 };
     this.stats = statsFor(this.levels);
-    this.run = { obols: 0, earned: 0, delivered: 0, clutches: 0, streak: 0, bestStreak: 0 };
+    this.run = { obols: 0, earned: 0, delivered: 0, clutches: 0, streak: 0, bestStreak: 0, feesPaid: 0 };
     this.rage = GODS.map(() => 0);
     this.rageFlash = GODS.map(() => 0);
     this.rageWarned = GODS.map(() => false);
@@ -909,11 +909,15 @@ export class RiverScene extends Phaser.Scene {
     this.boatImg.setTint(color);
     this.loseLantern({ god });
     if (this.ended) return;
-    // Still afloat: the god who struck is appeased and the others cool off a little.
-    this.rage = this.rage.map((v, i) => (i === god ? 0 : Math.max(0, v - LANTERNS.coolOthers)));
-    this.rageWarned = this.rageWarned.map((w, i) => w && this.rage[i] >= TUNING.rageWarn - 0.1);
+    this.appease(god);
     this.time.delayedCall(400, () => !this.ended && this.boatImg.clearTint());
     this.toast(`${name} struck: ${this.lanterns === 1 ? 'one lantern left' : `${this.lanterns} lanterns left`}`, color, true);
+  }
+
+  // After a smite you survive: the god who struck is appeased and the others cool off a little.
+  appease(god) {
+    this.rage = this.rage.map((v, i) => (i === god ? 0 : Math.max(0, v - LANTERNS.coolOthers)));
+    this.rageWarned = this.rageWarned.map((w, i) => w && this.rage[i] >= TUNING.rageWarn - 0.1);
   }
 
   // A lantern goes out: a god's smite, and a wrecked hull once there are obstacles. The souls aboard
@@ -931,16 +935,42 @@ export class RiverScene extends Phaser.Scene {
     else this.graceUntil = this.t + LANTERNS.graceSeconds;
   }
 
-  // The last lantern is out: the boat goes under and the run ends.
+  // The last lantern is out: the boat goes under and the run ends, unless Charon's fee is paid.
   sink(cause) {
     this.ended = true;
+    this.sunkBy = cause;
     this.tweens.add({ targets: this.boatImg, scale: 0.6, alpha: 0, angle: '+=40', duration: 900, delay: 200, ease: 'Quad.easeIn' });
     this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
-    const result = { god: cause.god, distance: this.scroll, delivered: this.run.delivered, earned: this.run.earned, bestStreak: this.run.bestStreak, clutches: this.run.clutches };
+    const result = {
+      god: cause.god,
+      distance: this.scroll,
+      delivered: this.run.delivered,
+      earned: this.run.earned,
+      bestStreak: this.run.bestStreak,
+      clutches: this.run.clutches,
+      obols: this.run.obols,
+      fee: charonFee(this.run.feesPaid),
+    };
     this.time.delayedCall(1100, () => {
       this.scene.pause();
       this.scene.launch('GameOver', result);
     });
+  }
+
+  // Called by the game-over screen once Charon's fee is paid: back on the water with one lantern.
+  revive() {
+    this.run.feesPaid += 1;
+    this.ended = false;
+    this.lanterns = 1;
+    this.graceUntil = this.t + LANTERNS.graceSeconds;
+    if (this.sunkBy.god !== undefined) this.appease(this.sunkBy.god);
+    this.tweens.killTweensOf([this.boatImg, this.lantern, this.lanternCore]);
+    this.boatImg.setScale(1).clearTint();
+    this.lanternPulse[0] = 1;
+    sfx.lanternLit();
+    this.ringFx(this.boat.x, this.boat.y, 0xffc478, 0.9, 40);
+    this.toast('Charon takes his fee: one lantern lit', 0xffc478, true);
+    this.scene.resume();
   }
 
   // Every 8th delivery in a row lights a lantern, up to the max.

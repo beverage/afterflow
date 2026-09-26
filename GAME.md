@@ -18,6 +18,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - 3 gods, one rage bar each in the HUD: **Athena** (gold, owl), **Ares** (crimson, spear), **Poseidon** (seafoam, trident). Souls carry their god's symbol too, not just a color.
 - Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100%: that god smites you and a lantern goes out.
 - **Lanterns** are your lives: you start with 2 and can hold 3 (small lanterns under the rage bars). A smite puts one out and takes the souls aboard and the streak with it; the god who struck is appeased (rage back to 0) and the others cool by 25%, then for 3 s the boat flickers and passing souls anger no one. When the last lantern goes out, the run ends. Every 8th delivery in a row lights one. Obstacles (v2) will put them out too.
+- **Charon's fee:** when the last lantern goes out, the game-over screen offers to pay Charon to return with one lantern (the god who struck is appeased, as after any smite). The fee starts at 150 obols and climbs on the same curve as Hermes' prices, ×1.8 each time it's paid in a run (150, 270, 490, 870...), so obols not spent at Hermes' stall are a way back. Out of reach, the screen shows the fee next to your obols.
 - Souls shrink and flicker over their lifespan and burn out in a flash at zero, which forces regular deliveries.
 - The streak resets when a soul burns out. Skipped souls already cost rage, so they don't also break it.
 - Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Items:
@@ -51,13 +52,13 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Laptop first. **WASD** (the same keys are ZQSD on French AZERTY keyboards: keys are read by position) or the **arrow keys** move the boat freely on the water, shoot-'em-up style: across the river to reach souls and banks, forward and back to rush or wait. Diagonals are not faster. Quick acceleration with a slight glide; Handling makes it snappier.
 - Deliver: automatic when the boat touches a shrine's dock.
 - Shop: touching a shop's dock pauses the game and opens it. **1 / 2 / 3** or a click buys, **Space** or **Esc** casts off.
-- **Esc** or **P** pauses, **M** mutes, **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly).
+- **Esc** or **P** pauses, **M** mutes, **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly); **1** or a click on Charon's offer pays his fee instead.
 - A "click to play" screen gives the game keyboard focus and unlocks audio. The game pauses when the window loses focus or the tab is hidden, so keys can't get stuck.
 - How to play: the first run of a browser session opens with a tour over the paused river (restarts and reloads skip it, a new tab shows it again). A spotlight moves from the boat to a soul, a shrine, the rage bars and the obols, with a caption card for each. Each step moves on by itself after 4.5 s; **Space**, **Enter**, a click or a tap moves on sooner, **Esc** or Skip ends it. **H**, or How to play on the pause screen, brings it back.
 - Never require more than 2 held keys plus 1 tap: laptop keyboards drop keys.
 - v2 prayers: **1 / 2 / 3** (or a click on a rage bar) prays to that god; hold **Space** if there's no mic. Mic permission is asked on the title screen, never mid-run.
 - Phones, held sideways: a floating stick. Put a thumb down anywhere (the bars beside the game too) and slide: the boat heads that way at full speed, as if holding the key, and glides to a stop when you lift. A faint ring shows under the thumb and trails it, so sliding back reverses at once.
-- On a phone, taps do everything else: start, buy, cast off (a button), resume, restart. A pause button sits top right, and the pause screen has a sound toggle. Prompts say "tap" instead of naming keys.
+- On a phone, taps do everything else: start, buy, cast off (a button), resume, pay Charon (his offer is a button), restart. A pause button sits top right, and the pause screen has a sound toggle. Prompts say "tap" instead of naming keys.
 - A phone held upright shows "turn your phone sideways" and pauses the run. Android goes fullscreen on the first tap; iPhones can't, short of Add to Home Screen.
 - Add `?touch` to the URL to try the phone controls on a laptop, dragging with the mouse.
 
@@ -110,7 +111,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## v1 status
 
-Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives) and death, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
+Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives), death and Charon's fee, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
 
 Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
 
