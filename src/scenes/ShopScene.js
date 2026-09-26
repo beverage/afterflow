@@ -6,7 +6,6 @@ import { sfx, toggleMute } from '../sfx.js';
 import { canListen } from '../listen.js';
 import { meaningOf } from '../scrolls.js';
 import { hexCss, lighten } from '../color.js';
-import { drawMeander } from '../ui.js';
 
 const KEYS = ['buy1', 'buy2', 'buy3', 'buy4', 'buy5', 'buy6'];
 
@@ -28,7 +27,6 @@ export class ShopScene extends Phaser.Scene {
     const g = this.add.graphics();
     g.fillStyle(0x0b100e, 0.95).fillRoundedRect(px, py, pw, ph, 14);
     g.lineStyle(1, 0xdce6e2, 0.16).strokeRoundedRect(px, py, pw, ph, 14);
-    drawMeander(g, px + 24, py + 16, pw - 48, 2);
     this.add.text(W / 2, py + 58, "Hermes' Stall", { fontFamily: DISPLAY_FONT, fontSize: '44px', fontStyle: 'italic 600', color: '#f1e6c8' }).setOrigin(0.5);
     this.add.text(W / 2, py + 94, 'Spend your obols. The river waits.', { fontFamily: FONT, fontSize: '16px', color: '#97aaa2' }).setOrigin(0.5);
     this.add.image(px + pw - 150, py + 58, 'obol').setScale(0.7);

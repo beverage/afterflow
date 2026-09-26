@@ -7,7 +7,7 @@ import { getSave, recordRun } from '../save.js';
 import { moveVector, onAction, onAway, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
 import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
-import { drawMeander, spaced } from '../ui.js';
+import { spaced } from '../ui.js';
 import { Water } from '../water.js';
 import { ROCK_R } from '../art.js';
 import { setListening, useHeard, canListen, listenStatus } from '../listen.js';
@@ -830,7 +830,6 @@ export class RiverScene extends Phaser.Scene {
     for (const [x, h] of [[14, 298], [HUD_RIGHT, 238]]) {
       panel.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, 14, 134, h, 10);
       panel.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, 14, 134, h, 10);
-      drawMeander(panel, x + 12, 24, 110);
     }
     const label = (text, x, y) => this.add.text(x, y, spaced(text), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55).setDepth(d + 1);
     label('RAGE', 26, 38);
