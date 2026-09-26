@@ -3,6 +3,7 @@ import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, FONT, DISPLAY
 import { riverAt } from '../river.js';
 import { tutorialPending } from './TutorialScene.js';
 import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
+import { getSave, recordRun } from '../save.js';
 import { moveVector, onAction, onAway, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
 import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
@@ -43,6 +44,7 @@ export class RiverScene extends Phaser.Scene {
     this.rageWarned = GODS.map(() => false);
     this.lanterns = LANTERNS.start;
     this.graceUntil = 0; // after a smite, until this.t, missed souls anger no one
+    this.mark = null; // your best distance on the river, if you have one
     this.ended = false;
     this.hints = {};
     this.souls = [];
@@ -59,7 +61,12 @@ export class RiverScene extends Phaser.Scene {
     this.buildWorld();
     this.buildBoat();
     this.buildEffects();
-    if (this.playing) this.buildHud();
+    if (this.playing) {
+      this.runId = Date.now(); // lets the save tell a run revived by Charon's fee from a new one
+      this.buildHud();
+      const best = getSave().best?.distance ?? 0;
+      if (best >= TUNING.markFrom) this.buildMark(best);
+    }
     this.spawnAhead();
     for (const k of this.playing ? [0.1, 0.3] : [0.15, 0.35, 0.55]) this.spawnSoul(H * k);
 
@@ -93,6 +100,7 @@ export class RiverScene extends Phaser.Scene {
     this.water.update(dt, this.scroll, this.speed * TUNING.currentFactor * (this.ended ? 0.3 : 1), eddyRocks);
     this.updateFeatures(dt);
     this.updateSouls(dt);
+    if (this.mark) this.updateMark();
     if (!this.ended) this.updateBoat(dt);
     this.updateHold(dt);
     this.drawWake(dt);
@@ -919,6 +927,55 @@ export class RiverScene extends Phaser.Scene {
     this.stats = statsFor(this.levels);
   }
 
+  /* ---------- your best, marked on the river ---------- */
+
+  // A line of floating lanterns across the water where your best run sank, labelled on the bank.
+  // It crosses the boat's usual line just as the distance counter reaches your best.
+  buildMark(best) {
+    const m = { best, wy: TUNING.boatStartY - best, passed: false };
+    m.lights = Array.from({ length: 7 }, (_, i) => ({
+      k: 0.08 + (0.84 * i) / 6,
+      ph: rnd(0, TAU),
+      glow: this.add.image(0, 0, 'glow').setTint(0xffe6aa).setBlendMode('ADD').setScale(0.9).setAlpha(0.45).setDepth(13),
+      core: this.add.image(0, 0, 'glow').setBlendMode('ADD').setScale(0.2).setAlpha(0.9).setDepth(13),
+    }));
+    m.label = this.add
+      .text(0, 0, `${spaced('YOUR BEST')}   ${formatMeters(best)}`, { fontFamily: FONT, fontSize: '13px', fontStyle: '600', color: '#f1e6c8' })
+      .setOrigin(1, 0.5)
+      .setAlpha(0.85)
+      .setDepth(9);
+    m.label.setShadow(0, 0, '#000000', 6, true, true);
+    this.mark = m;
+  }
+
+  updateMark() {
+    const m = this.mark, y = m.wy + this.scroll, q = riverAt(m.wy);
+    for (const l of m.lights) {
+      const x = q.l + (q.r - q.l) * l.k, by = y + 3 * Math.sin(this.t * 1.6 + l.ph);
+      l.glow.setPosition(x, by);
+      l.core.setPosition(x, by);
+    }
+    m.label.setPosition(q.l - 14, y);
+    if (m.passed || this.ended || this.scroll < m.best) return;
+    // Passing it: the lanterns flare and drift off, one after another.
+    m.passed = true;
+    sfx.newBest();
+    this.popup('New best!', this.boat.x, this.boat.y - 96, 0xffe6aa, 40, true);
+    m.lights.forEach((l, i) => {
+      this.tweens.add({ targets: l.glow, scale: 2.2, alpha: 0, duration: 700, delay: i * 70, ease: 'Quad.easeOut' });
+      this.tweens.add({ targets: l.core, scale: 0.5, alpha: 0, duration: 700, delay: i * 70, ease: 'Quad.easeOut' });
+    });
+    this.tweens.add({ targets: m.label, alpha: 0, duration: 900, delay: 400 });
+    this.time.delayedCall(1400, () => {
+      for (const l of m.lights) {
+        l.glow.destroy();
+        l.core.destroy();
+      }
+      m.label.destroy();
+      if (this.mark === m) this.mark = null;
+    });
+  }
+
   /* ---------- lanterns: the boat's lives ---------- */
 
   // A god's rage is full: lightning strikes the boat and puts out a lantern.
@@ -989,6 +1046,7 @@ export class RiverScene extends Phaser.Scene {
       obols: this.run.obols,
       fee: charonFee(this.run.feesPaid),
     };
+    result.previousBest = recordRun(this.runId, result);
     this.time.delayedCall(1100, () => {
       this.scene.pause();
       this.scene.launch('GameOver', result);

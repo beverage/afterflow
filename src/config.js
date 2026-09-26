@@ -87,6 +87,9 @@ export const TUNING = {
   streakCap: 8,
   clutchMultiplier: 2,
   priceGrowth: 1.8,
+
+  // Your best distance (saved on this device) is marked on the river
+  markFrom: 1000, // px: a best shorter than this (50 m) isn't marked
 };
 
 // Lanterns are lives. A god's smite puts one out (a wrecked hull will too, once there are obstacles);
