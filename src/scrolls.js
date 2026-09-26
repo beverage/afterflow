@@ -7,16 +7,16 @@ import { GODS, SCROLLS } from './config.js';
 
 // [incantation, meaning]
 const CANNED = {
-  athena: [['Glaukos Eirena', 'grey-eyed one, grant peace'], ['Noesis Glaukra', 'mind of the owl'], ['Metira Pallada', 'Pallas, counsel me'], ['Elaia Sophrona', 'olive, make me wise'], ['Aigidos Sophren', 'aegis, keep me wise']],
+  athena: [['Glaukos Eirena', 'grey-eyed one, grant peace'], ['Noesis Glaukra', 'mind of the owl'], ['Metira Pallada', 'Pallas, counsel me'], ['Parthena Sophos', 'wise maiden, hear me'], ['Aigidos Sophren', 'aegis, keep me wise']],
   ares: [['Polemos Pausa', 'war, cease'], ['Doru Hypnos', 'spear, sleep'], ['Aspida Hesychos', 'shield, be still'], ['Chalkeos Eirene', 'bronze, find peace'], ['Phobos Katheudo', 'fear, lie down']],
-  poseidon: [['Galene Thalassa', 'calm, O sea'], ['Triaina Galenos', 'trident, bring calm'], ['Kymata Hesyche', 'waves, be still'], ['Bythos Galena', 'deep one, be calm'], ['Pontos Eudia', 'open sea, fair skies']],
+  poseidon: [['Galene Thalassa', 'calm, O sea'], ['Triana Galenos', 'trident, bring calm'], ['Kymata Hesyche', 'waves, be still'], ['Bythos Galena', 'deep one, be calm'], ['Pontos Eudia', 'open sea, fair skies']],
 };
 
-// Real Greek roots for Gemini to build on.
+// Real Greek roots for Gemini to build on, in forms an English speaker can say.
 const ROOTS = {
-  athena: 'glaux (owl), glaukos (grey-eyed), sophia (wisdom), noos (mind), elaia (olive), metis (counsel), aigis (aegis), pallas, parthenos',
-  ares: 'polemos (war), doru (spear), aspis (shield), chalkos (bronze), haima (blood), phobos (fear), eirene (peace), pauo (to cease), hypnos (sleep)',
-  poseidon: 'thalassa (sea), pontos (open sea), kyma (wave), galene (calm sea), triaina (trident), hippos (horse), seismos (quake), bythos (the deep)',
+  athena: 'glaux (owl), glaukos (grey-eyed), sophia (wisdom), noos (mind), elai- (olive), metis (counsel), aigis (aegis), pallas, parthenos (maiden)',
+  ares: 'polemos (war), doru (spear), aspis (shield), chalkos (bronze), haima (blood), phobos (fear), eirene (peace), pausis (a stop), hypnos (sleep)',
+  poseidon: 'thalassa (sea), pontos (open sea), kyma (wave), galene (calm sea), trian- (trident), hippos (horse), seismos (quake), bythos (the deep)',
 };
 
 const ready = {}; // god key -> the next incantation, written ahead so buying one is instant
@@ -50,7 +50,7 @@ export function takeIncantation(godIndex) {
 /** What an incantation means, in a few English words ('' if unknown). */
 export const meaningOf = (line) => meanings.get(line) || '';
 
-async function write(god) {
+async function write(god, tries = 2) {
   const other = GODS.find((g) => g !== god);
   const [example, exampleMeaning] = CANNED[other.key][0];
   const { data } = await askAI({
@@ -58,8 +58,10 @@ async function write(god) {
     prompt:
       `Invent a two-word incantation a ferryman speaks aloud to calm ${god.name}. Write it in crypto-Greek, the way the ` +
       `spells in Harry Potter are crypto-Latin: real ancient Greek roots tied to ${god.name}, bent into solemn, spell-like ` +
-      `words. Roots to draw on: ${ROOTS[god.key]}. Each word 2 to 4 syllables, easy to say and remember, plain letters a-z ` +
-      `with no accents. Solemn and ancient, never silly. For ${other.name}, one would be "${example}" (${exampleMeaning}). ` +
+      `words. Roots to draw on: ${ROOTS[god.key]}. Each word 2 to 4 syllables, plain letters a-z with no accents. ` +
+      `An English speaker must be able to read every word aloud at first sight: simple syllables like Ga-le-ne or ` +
+      `Po-le-mos, never three vowels in a row, no "ao" or "uo", no openings like ps, pn, mn, gn or chth ("Pauo" or ` +
+      `"Chthonios" would be too hard). Solemn and ancient, never silly. For ${other.name}, one would be "${example}" (${exampleMeaning}). ` +
       `Also give its meaning in 2 to 5 English words. Don't use any of these: ${[...used].join('; ') || 'none'}.`,
     schema: {
       type: 'object',
@@ -71,18 +73,37 @@ async function write(god) {
     fallback: { incantation: null, meaning: null },
   });
   const line = tidy(data?.incantation);
+  if (!line && tries > 1 && !ready[god.key]) return write(god, tries - 1); // one more go before the canned ones
   if (!line || used.has(line) || ready[god.key]) return;
   ready[god.key] = line;
-  meanings.set(line, typeof data.meaning === 'string' ? data.meaning.trim().toLowerCase().slice(0, 40) : '');
+  meanings.set(line, typeof data.meaning === 'string' ? data.meaning.trim().replace(/[.!]+$/, '').toLowerCase().slice(0, 40) : '');
 }
 
-// Two words of 4 to 12 plain letters, with enough consonants to be told apart by sound.
+// Two sayable words of 4 to 11 plain letters, with enough consonants to be told apart by sound.
 function tidy(text) {
   if (typeof text !== 'string') return null;
   const parts = text.replace(/[^A-Za-z ]/g, ' ').trim().split(/\s+/);
-  if (parts.length !== 2 || parts.some((w) => w.length < 4 || w.length > 12)) return null;
+  if (parts.length !== 2 || parts.some((w) => w.length < 4 || w.length > 11)) return null;
   const line = parts.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-  return consonants(sound(line)) >= 5 ? line : null;
+  return pronounceable(line) && consonants(sound(line)) >= 5 ? line : null;
+}
+
+/**
+ * Can an English speaker read it aloud at first sight? Plain syllables only: no three vowels in a row or hard
+ * vowel pairs ("Pauo", "Triaina"), no pile-ups of consonants, no Greek openings English never uses ("Pneuma", "Chthonios").
+ */
+export function pronounceable(line) {
+  return String(line)
+    .toLowerCase()
+    .split(/\s+/)
+    .every((w) => {
+      if (/^(ps|pn|pt|mn|gn|kn|tl|dm|ks|x|ts|tz|chth|phth|bd)/.test(w)) return false;
+      if (/[aeiouy]{3}|ao|uo|uu|ii|aa/.test(w)) return false;
+      const runs = w.replace(/th|ph|ch|kh|sh|rh/g, 'T').match(/[^aeiouy]+/g) || [];
+      if (runs.some((r) => r.length > 3 || (r.length === 3 && !/[srl]/.test(r)))) return false;
+      const syllables = (w.match(/[aeiouy]+/g) || []).length;
+      return syllables >= 2 && syllables <= 4;
+    });
 }
 
 /* ---------- hearing: does what the player said sound like a scroll they carry? ---------- */

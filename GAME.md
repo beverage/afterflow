@@ -24,7 +24,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
   - **Speed**: the river scrolls faster, so more souls and shrines per minute (more money, more risk).
   - **Handling**: quicker, snappier boat movement.
   - **Hold**: +1 soul capacity (starts at 3).
-  - **Scrolls** (Athena, Ares, Poseidon): usables. You carry at most one per god. Each has a two-word incantation in crypto-Greek, like the crypto-Latin spells of Harry Potter but built from Greek roots tied to its god, solemn and never silly ("Galene Thalassa": calm, O sea). It's shown on its card with its meaning; say it aloud on the river and the scroll is used at once: that god loses half its rage. Price: 6 souls' worth at your distance.
+  - **Scrolls** (Athena, Ares, Poseidon): usables. You carry at most one per god. Each has a two-word incantation in crypto-Greek, like the crypto-Latin spells of Harry Potter but built from Greek roots tied to its god, solemn and never silly ("Galene Thalassa": calm, O sea). Every word must be easy for an English speaker to read aloud at first sight. It's shown on its card with its meaning; say it aloud on the river and the scroll is used at once: that god loses half its rage. Price: 6 souls' worth at your distance.
 - Scrolls are a memory game: Space (or a tap on the scrolls panel) shows your scrolls for 5 s, over the left bank, and the river never slows.
 - Economy: upgrade prices grow exponentially per level. Soul value also grows the further downstream you get, then streak and clutch multiply it, so income keeps pace and the numbers keep climbing. Big numbers shown as 1.2K, 3.4M.
 - Difficulty ramps through density: more souls per second, shrines further apart.
