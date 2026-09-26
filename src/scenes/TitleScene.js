@@ -27,7 +27,7 @@ export class TitleScene extends Phaser.Scene {
     [
       'Steer with WASD, ZQSD or the arrow keys',
       'Touch a soul to take it aboard',
-      "Dock at its god's shrine before it fades",
+      "Dock at its god's shrine before it burns out",
       'Missed souls anger their god. A full rage bar ends the run',
     ].forEach((line, i) => this.add.text(W / 2, 400 + i * 30, line, { fontFamily: FONT, fontSize: '18px', color: COLORS.dim }).setOrigin(0.5));
     const play = this.add.text(W / 2, 572, 'Click or press Space to play', { fontFamily: FONT, fontSize: '22px', fontStyle: '600', color: '#ffffff' }).setOrigin(0.5);

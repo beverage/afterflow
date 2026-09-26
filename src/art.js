@@ -3,12 +3,16 @@
 // public/assets/, add one line to src/assets.js, and it replaces the placeholder.
 // The water, light, glows and portal swirls are drawn live by RiverScene, not here.
 import { GODS, WIDTH as W, HEIGHT as H } from './config.js';
-import { rgbOf } from './color.js';
+import { rgbOf, mixColor, hexCss } from './color.js';
 
 const TAU = Math.PI * 2;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (a) => a[(Math.random() * a.length) | 0];
 const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+
+// Shore rocks, smallest to largest. RiverScene lines both banks with them.
+export const SHORE_SIZES = [16, 20, 24, 28, 34, 40, 50, 60];
+const STONE = [0x444d4a, 0x3c4442, 0x4a5350, 0x3a4046, 0x44445a, 0x4e5652, 0x353b3a];
 
 function make(scene, key, w, h, draw) {
   if (scene.textures.exists(key)) return;
@@ -23,6 +27,11 @@ export function makeArt(scene) {
   for (let i = 1; i <= 3; i++) make(scene, `lily${i}`, 44, 44, drawLily);
   make(scene, 'rock', 26, 22, drawRock);
   make(scene, 'reeds', 26, 24, drawReeds);
+  SHORE_SIZES.forEach((size, i) => {
+    make(scene, `shore_l${i + 1}`, size, size, (g) => drawShoreRock(g, size, true)); // left bank: water on its right
+    make(scene, `shore_r${i + 1}`, size, size, (g) => drawShoreRock(g, size, false));
+  });
+  for (let i = 1; i <= 3; i++) make(scene, `gravel${i}`, 44, 28, drawGravel);
   make(scene, 'glow', 64, 64, drawGlow);
   make(scene, 'ring', 64, 64, drawRing);
   make(scene, 'rim', 44, 44, drawRim);
@@ -249,6 +258,91 @@ function drawReeds(g) {
     g.lineTo(x + rnd(-3, 3), y - 9 - (i % 3) * 3);
   }
   g.stroke();
+}
+
+// A shore stone seen from above: faceted, wet and dark at the waterline, lit violet by the river on one side.
+function drawShoreRock(g, size, waterOnRight) {
+  const c = size / 2, R = size * 0.4;
+  const n = 7 + ((Math.random() * 3) | 0);
+  const pts = Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * TAU + rnd(-0.22, 0.22), r = R * rnd(0.74, 1);
+    return [c + Math.cos(a) * r, c + Math.sin(a) * r * 0.84];
+  });
+  const outline = (dx, dy) => {
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i ? g.lineTo(x + dx, y + dy) : g.moveTo(x + dx, y + dy)));
+    g.closePath();
+  };
+  outline(size * 0.07, size * 0.09);
+  g.fillStyle = 'rgba(3,4,8,.55)';
+  g.fill();
+  const base = pick(STONE);
+  const body = g.createLinearGradient(c - R, c - R, c + R, c + R);
+  body.addColorStop(0, hexCss(mixColor(base, 0xdfe8e4, 0.16)));
+  body.addColorStop(0.55, hexCss(base));
+  body.addColorStop(1, hexCss(mixColor(base, 0x06070b, 0.62)));
+  outline(0, 0);
+  g.fillStyle = body;
+  g.fill();
+  g.save();
+  g.clip();
+  for (let k = 0; k < 3; k++) {
+    g.fillStyle = Math.random() < 0.5 ? `rgba(255,255,255,${rnd(0.04, 0.09)})` : `rgba(0,0,0,${rnd(0.06, 0.12)})`;
+    g.beginPath();
+    g.moveTo(c + rnd(-R, R), c - R);
+    g.lineTo(c + rnd(-R, R), c + R);
+    g.lineTo(c + rnd(-R, R) * 1.2, c + rnd(-R, R));
+    g.closePath();
+    g.fill();
+  }
+  const wet = g.createLinearGradient(0, c + R * 0.9, 0, c - R * 0.1);
+  wet.addColorStop(0, 'rgba(6,6,16,.55)');
+  wet.addColorStop(1, 'rgba(8,8,18,0)');
+  g.fillStyle = wet;
+  g.fillRect(0, 0, size, size);
+  const rim = g.createLinearGradient(waterOnRight ? c + R : c - R, 0, c, 0);
+  rim.addColorStop(0, 'rgba(165,135,255,.38)');
+  rim.addColorStop(1, 'rgba(165,135,255,0)');
+  g.fillStyle = rim;
+  g.fillRect(0, 0, size, size);
+  for (let k = 0; k < 4; k++) {
+    g.fillStyle = `rgba(${(88 + rnd(0, 30)) | 0},${(116 + rnd(0, 30)) | 0},${(84 + rnd(0, 20)) | 0},${rnd(0.2, 0.45)})`;
+    g.beginPath();
+    g.ellipse(c + rnd(-R * 0.6, R * 0.3), c - rnd(0, R * 0.6), rnd(1.2, R * 0.32), rnd(0.8, R * 0.18), 0, 0, TAU);
+    g.fill();
+  }
+  for (let k = 0; k < size * 3; k++) {
+    g.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.12)';
+    g.fillRect(rnd(0, size), rnd(0, size), 1, 1);
+  }
+  g.restore();
+  const edge = g.createLinearGradient(c - R, c - R, c + R, c + R);
+  edge.addColorStop(0, 'rgba(230,240,236,.22)');
+  edge.addColorStop(0.5, 'rgba(230,240,236,.05)');
+  edge.addColorStop(1, 'rgba(0,0,0,.45)');
+  outline(0, 0);
+  g.strokeStyle = edge;
+  g.lineWidth = 1.1;
+  g.stroke();
+}
+
+// A scatter of pebbles for the gaps between shore rocks.
+function drawGravel(g, w, h) {
+  for (let i = 0; i < 16; i++) {
+    const x = rnd(4, w - 4), y = rnd(4, h - 4), rx = rnd(1.2, 3.2), ry = rx * rnd(0.6, 0.9);
+    g.fillStyle = 'rgba(4,6,8,.45)';
+    g.beginPath();
+    g.ellipse(x + 0.8, y + 1, rx, ry, 0, 0, TAU);
+    g.fill();
+    g.fillStyle = hexCss(pick(STONE));
+    g.beginPath();
+    g.ellipse(x, y, rx, ry, rnd(0, 3), 0, TAU);
+    g.fill();
+    g.fillStyle = 'rgba(230,240,236,.18)';
+    g.beginPath();
+    g.ellipse(x - rx * 0.3, y - ry * 0.35, rx * 0.4, ry * 0.3, 0, 0, TAU);
+    g.fill();
+  }
 }
 
 /* ---------- light and effects (white, tinted in game) ---------- */

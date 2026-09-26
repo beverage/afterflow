@@ -4,12 +4,12 @@ Single source of truth for humans and agents. Keep it short and current: when a 
 
 ## One-liner
 
-_Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifting souls and deliver each to its god's shrine before it fades, or the gods' rage sinks you.
+_Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifting souls and deliver each to its god's shrine before it burns out, or the gods' rage sinks you.
 
 ## Core loop (v1: what the player does every few seconds)
 
-1. **Scoop.** The river scrolls down the middle of the screen. Move the boat anywhere on the water with WASD and touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it goes *poof*.
-2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into a shrine's dock to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to poof is a **CLUTCH**, with its own sound and a bonus.
+1. **Scoop.** The river scrolls down the middle of the screen. Move the boat anywhere on the water with WASD and touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it burns out in a flash.
+2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into a shrine's dock to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to burn out is a **CLUTCH**, with its own sound and a bonus.
 3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially.
 
 ## Rules (v1)
@@ -17,8 +17,8 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - One continuous run. Nothing is saved: no accounts, no best score. Game over, press a key, fresh run.
 - 3 gods, one rage bar each in the HUD: **Athena** (gold, owl), **Ares** (crimson, spear), **Poseidon** (seafoam, trident). Souls carry their god's symbol too, not just a color.
 - Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100% = death.
-- Souls shrink over their lifespan and poof at zero, which forces regular deliveries.
-- The streak resets when a soul poofs. Skipped souls already cost rage, so they don't also break it.
+- Souls shrink and flicker over their lifespan and burn out in a flash at zero, which forces regular deliveries.
+- The streak resets when a soul burns out. Skipped souls already cost rage, so they don't also break it.
 - Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Items:
   - **Speed**: the river scrolls faster, so more souls and shrines per minute (more money, more risk).
   - **Handling**: quicker, snappier boat movement.
@@ -34,7 +34,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## Open questions (defaults in use until someone decides)
 
-- Does a soul that poofs in your hold anger its god? Default: yes, it counts as skipped.
+- Does a soul that burns out in your hold anger its god? Default: yes, it counts as skipped.
 - Does a delivery calm its god's rage? Default: yes, a little per soul.
 - Does a soul's lifespan start when you catch it? Default: yes.
 
@@ -62,7 +62,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines drawn as stone-arch portals with a swirl in their god's color. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
 - Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
-- Drawn by code, not art: the water, light streaks, glows, portal swirls, soul trails and sparks.
+- Drawn by code, not art: the water, light streaks, glows, portal swirls, soul trails, sparks, and the rocky shore (stones and gravel lining both banks).
 - Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
 
 | Key | Size (px) | Notes |
@@ -79,7 +79,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | `obol` | 40x40 | Coin with Athena's owl |
 | `icon_speed`, `icon_handling`, `icon_hold` | 96x96 | Shop icons |
 
-- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, poof, skip, coin, shop open, buy, can't afford, rage warning, smite, and an ambient drone. Real audio can replace them later. Owner: TBD.
+- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite, and a quiet flowing-water ambience with the odd droplet. Real audio can replace them later. Owner: TBD.
 
 ## Voices (Gradium, v2)
 

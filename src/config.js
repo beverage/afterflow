@@ -48,7 +48,7 @@ export const TUNING = {
   boatStartY: 540,
   boatTop: 110,
   boatBottom: 650,
-  boatEdgeMargin: 30, // keep the hull's centre this far inside the banks
+  boatEdgeMargin: 36, // keep the hull's centre this far inside the banks (clear of the shore rocks)
   boatMaxSpeed: 330, // px/s at Handling level 0
   boatAccel: 2400, // px/s² at Handling level 0
   boatDrag: 7, // how quickly the boat glides to a stop when you let go
@@ -58,7 +58,7 @@ export const TUNING = {
 
   // Souls
   holdStart: 3,
-  lifespan: 16, // seconds a soul lasts in the hold before it goes poof
+  lifespan: 16, // seconds a soul lasts in the hold before it burns out
   clutchBelow: 0.2, // delivering a soul with less life than this is a CLUTCH
   soulRadius: 17,
   soulGapStart: 150, // px of river between soul spawns at the start
@@ -75,7 +75,7 @@ export const TUNING = {
 
   // Rage
   ragePerSkip: 0.14, // a soul floats past uncaught
-  ragePerPoof: 0.14, // a soul fades in your hold
+  ragePerBurnOut: 0.14, // a soul burns out in your hold
   calmPerSoul: 0.04, // each soul delivered to its god
   rageWarn: 0.75,
 

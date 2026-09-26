@@ -43,3 +43,6 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 14:58 · Fonts: Cormorant Garamond and Source Sans 3 from Google Fonts · the River Flow prototype's typefaces · Claude
 - 14:58 · Keys read by physical position (event.code), so WASD works as ZQSD on AZERTY with one binding · simpler than binding both letter sets · Claude
 - 14:58 · The streak resets when a soul poofs, not on skipped souls · skips already cost rage; breaking the streak too felt like double punishment · Claude
+- 15:32 · Souls burn out with a flash (flare, shockwave, embers, fizzle sound) instead of going poof; they flicker before they go · team's call · team
+- 15:32 · Rocky shore: stones and gravel line both banks, big boulders set back; boat keeps 36 px from the edge · team asked for a rockier shore · team
+- 15:32 · The ambient hum was a synth drone; replaced by quiet flowing water with the odd droplet (AMBIENCE_VOLUME in sfx.js, 0 turns it off) · the hum sounded like a fault · Claude
