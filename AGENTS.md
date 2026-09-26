@@ -66,6 +66,6 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 - `npm run build`: production build, must pass before every commit
 - `npm run check:ai`: one real call each to Gemini and Gradium
 - `npm run voices`, `npm run voice:design -- "description"`, `npm run voice:keep -- <id> "Name"`: Gradium voices
-- `npm run npc:audio`: records every god's lines into `public/npc-voices/` and rewrites the manifest (skips existing files); `npm run test:npc` checks the picker
+- `npm run npc:audio`: records every god's lines into `public/npc-voices/` as MP3 and rewrites the manifest (skips existing files; needs ffmpeg, WAV originals kept in `voice-candidates/masters/`); `npm run test:npc` checks the picker
 - `npm run decide -- "Cut the leaderboard · no time"`: appends a timestamped line to DECISIONS.md
 - Add `?debug` to the URL to see the hull and dock zones, and whether AI and voice are live. `window.game` is exposed in the console.

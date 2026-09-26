@@ -1,10 +1,12 @@
-// Records every god's lines with Gradium into public/npc-voices/<god>/<moment>_<text>.wav
-// and writes src/npc-voices/manifest.js, the list getHeroAudio() picks from.
+// Records every god's lines with Gradium and ships them as public/npc-voices/<god>/<moment>_<text>.mp3,
+// then writes src/npc-voices/manifest.js, the list getHeroAudio() picks from.
 //   npm run npc:audio
-// Gods without a kept voice (voiceId: null) are skipped. Files that already exist are kept,
-// so re-running only records new or changed lines. One request at a time: Gradium allows 2.
-// Needs GRADIUM_API_KEY in .env (never printed).
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+// Per line: the MP3 exists -> kept. Else the WAV original in voice-candidates/masters/ (gitignored)
+// is converted. Else the line is recorded with Gradium (WAV), then converted. So re-running only
+// pays for new or changed lines. Gods without a kept voice (voiceId: null) are skipped.
+// Needs GRADIUM_API_KEY in .env (never printed) to record, and ffmpeg to convert (not to play the game).
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { handleTTS } from '../server/tts.js';
 import { NPCS, slugify } from '../src/npc-voices/heroes.js';
 
@@ -15,24 +17,27 @@ try {
 }
 
 const OUT = 'public/npc-voices';
+const MASTERS = 'voice-candidates/masters';
+const MP3 = ['-codec:a', 'libmp3lame', '-ac', '1', '-b:a', '64k']; // mono 64 kbps: plenty for one voice
 const MANIFEST = 'src/npc-voices/manifest.js';
 const MAX_SECONDS = 2.5;
 const RETRIES = 5;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Length of a WAV file in seconds, from its header. */
-function wavSeconds(buf) {
-  let offset = 12;
-  let byteRate = 0;
-  while (offset + 8 <= buf.length) {
-    const id = buf.toString('ascii', offset, offset + 4);
-    const size = buf.readUInt32LE(offset + 4);
-    if (id === 'fmt ') byteRate = buf.readUInt32LE(offset + 16);
-    if (id === 'data') return byteRate ? Math.min(size, buf.length - offset - 8) / byteRate : 0;
-    offset += 8 + size + (size & 1);
+function hasTool(name) {
+  try {
+    execFileSync(name, ['-version'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
   }
-  return 0;
 }
+
+const toMp3 = (wav, mp3) => execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', wav, ...MP3, mp3]);
+
+/** Length of an audio file in seconds. */
+const seconds = (file) =>
+  Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]).toString());
 
 async function record(text, voice, file) {
   for (let attempt = 1; attempt <= RETRIES; attempt++) {
@@ -45,13 +50,14 @@ async function record(text, voice, file) {
   }
 }
 
-if (!process.env.GRADIUM_API_KEY) {
-  console.log('No GRADIUM_API_KEY in .env: nothing recorded.');
+if (!hasTool('ffmpeg') || !hasTool('ffprobe')) {
+  console.log('ffmpeg is needed to make the MP3s: sudo apt install ffmpeg (Linux/WSL) or brew install ffmpeg (Mac).');
   process.exit(1);
 }
 
 const audio = {};
 let made = 0;
+let converted = 0;
 let failed = 0;
 const long = [];
 
@@ -61,20 +67,29 @@ for (const [hero, npc] of Object.entries(NPCS)) {
     continue;
   }
   const dir = `${OUT}/${hero}`;
+  const masters = `${MASTERS}/${hero}`;
   mkdirSync(dir, { recursive: true });
+  mkdirSync(masters, { recursive: true });
   const expected = new Set();
   audio[hero] = {};
 
   for (const [moment, lines] of Object.entries(npc.lines)) {
     audio[hero][moment] = [];
     for (const text of lines) {
-      const name = `${moment}_${slugify(text)}.wav`;
+      const base = `${moment}_${slugify(text)}`;
+      const name = `${base}.mp3`;
       const file = `${dir}/${name}`;
+      const wav = `${masters}/${base}.wav`;
       expected.add(name);
       if (!existsSync(file)) {
         try {
-          await record(text, npc.voiceId, file);
-          made++;
+          if (!existsSync(wav)) {
+            if (!process.env.GRADIUM_API_KEY) throw new Error('not recorded yet and no GRADIUM_API_KEY in .env');
+            await record(text, npc.voiceId, wav);
+            made++;
+          }
+          toMp3(wav, file);
+          converted++;
           console.log(`  + ${hero}/${name}  "${text}"`);
         } catch (err) {
           failed++;
@@ -82,13 +97,13 @@ for (const [hero, npc] of Object.entries(NPCS)) {
           continue;
         }
       }
-      const seconds = Math.round(wavSeconds(readFileSync(file)) * 100) / 100;
-      if (seconds > MAX_SECONDS) long.push(`${hero}/${name} (${seconds}s)  "${text}"`);
-      audio[hero][moment].push({ path: `/npc-voices/${hero}/${name}`, text, seconds });
+      const length = Math.round(seconds(file) * 100) / 100;
+      if (length > MAX_SECONDS) long.push(`${hero}/${name} (${length}s)  "${text}"`);
+      audio[hero][moment].push({ path: `/npc-voices/${hero}/${name}`, text, seconds: length });
     }
   }
 
-  const stale = readdirSync(dir).filter((f) => f.endsWith('.wav') && !expected.has(f));
+  const stale = readdirSync(dir).filter((f) => !expected.has(f));
   if (stale.length) console.log(`${npc.name}: files no longer in the lines, safe to delete:\n    ${stale.join('\n    ')}`);
   console.log(`${npc.name}: ${Object.values(audio[hero]).flat().length} lines`);
 }
@@ -99,6 +114,6 @@ writeFileSync(
     `export const AUDIO = ${JSON.stringify(audio, null, 2)};\n`,
 );
 
-console.log(`\nRecorded ${made} new file(s), ${failed} failed. Manifest: ${MANIFEST}`);
+console.log(`\nRecorded ${made} line(s) with Gradium, made ${converted} MP3(s), ${failed} failed. Manifest: ${MANIFEST}`);
 if (long.length) console.log(`Longer than ${MAX_SECONDS}s, consider shortening:\n  ${long.join('\n  ')}`);
 if (failed) process.exit(1);

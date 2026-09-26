@@ -3,484 +3,484 @@ export const AUDIO = {
   "ares": {
     "run_start": [
       {
-        "path": "/npc-voices/ares/run_start_row-ferryman.wav",
+        "path": "/npc-voices/ares/run_start_row-ferryman.mp3",
         "text": "Row, ferryman.",
-        "seconds": 1.84
+        "seconds": 1.87
       },
       {
-        "path": "/npc-voices/ares/run_start_my-warriors-wait.wav",
+        "path": "/npc-voices/ares/run_start_my-warriors-wait.mp3",
         "text": "My warriors wait.",
-        "seconds": 1.84
+        "seconds": 1.87
       }
     ],
     "rage_50": [
       {
-        "path": "/npc-voices/ares/rage_50_i-saw-that.wav",
+        "path": "/npc-voices/ares/rage_50_i-saw-that.mp3",
         "text": "I saw that.",
-        "seconds": 1.2
+        "seconds": 1.22
       },
       {
-        "path": "/npc-voices/ares/rage_50_careful-ferryman.wav",
+        "path": "/npc-voices/ares/rage_50_careful-ferryman.mp3",
         "text": "Careful, ferryman.",
-        "seconds": 2.32
+        "seconds": 2.35
       }
     ],
     "rage_80": [
       {
-        "path": "/npc-voices/ares/rage_80_last-warning.wav",
+        "path": "/npc-voices/ares/rage_80_last-warning.mp3",
         "text": "Last warning!",
-        "seconds": 1.6
+        "seconds": 1.63
       },
       {
-        "path": "/npc-voices/ares/rage_80_deliver-them-now.wav",
+        "path": "/npc-voices/ares/rage_80_deliver-them-now.mp3",
         "text": "Deliver them now!",
-        "seconds": 2
+        "seconds": 2.04
       }
     ],
     "hurry": [
       {
-        "path": "/npc-voices/ares/hurry_hurry.wav",
+        "path": "/npc-voices/ares/hurry_hurry.mp3",
         "text": "Hurry!",
-        "seconds": 1.04
+        "seconds": 1.08
       },
       {
-        "path": "/npc-voices/ares/hurry_hurry-ferryman.wav",
+        "path": "/npc-voices/ares/hurry_hurry-ferryman.mp3",
         "text": "HURRY, ferryman!",
-        "seconds": 2.08
+        "seconds": 2.11
       },
       {
-        "path": "/npc-voices/ares/hurry_row-faster-hurry.wav",
+        "path": "/npc-voices/ares/hurry_row-faster-hurry.mp3",
         "text": "Row faster! Hurry!",
-        "seconds": 2.32
+        "seconds": 2.35
       },
       {
-        "path": "/npc-voices/ares/hurry_souls-can-wait.wav",
+        "path": "/npc-voices/ares/hurry_souls-can-wait.mp3",
         "text": "Souls can wait!",
-        "seconds": 1.84
+        "seconds": 1.87
       }
     ],
     "shout": [
       {
-        "path": "/npc-voices/ares/shout_row.wav",
+        "path": "/npc-voices/ares/shout_row.mp3",
         "text": "Row!",
-        "seconds": 0.8
+        "seconds": 0.84
       },
       {
-        "path": "/npc-voices/ares/shout_faster.wav",
+        "path": "/npc-voices/ares/shout_faster.mp3",
         "text": "Faster!",
-        "seconds": 1.04
+        "seconds": 1.08
       },
       {
-        "path": "/npc-voices/ares/shout_ferryman.wav",
+        "path": "/npc-voices/ares/shout_ferryman.mp3",
         "text": "Ferryman!",
-        "seconds": 1.28
+        "seconds": 1.32
       },
       {
-        "path": "/npc-voices/ares/shout_now.wav",
+        "path": "/npc-voices/ares/shout_now.mp3",
         "text": "Now!",
-        "seconds": 1.04
+        "seconds": 1.08
       },
       {
-        "path": "/npc-voices/ares/shout_fool.wav",
+        "path": "/npc-voices/ares/shout_fool.mp3",
         "text": "Fool!",
-        "seconds": 0.88
+        "seconds": 0.91
       },
       {
-        "path": "/npc-voices/ares/shout_coward.wav",
+        "path": "/npc-voices/ares/shout_coward.mp3",
         "text": "Coward!",
-        "seconds": 1.12
+        "seconds": 1.15
       },
       {
-        "path": "/npc-voices/ares/shout_mine.wav",
+        "path": "/npc-voices/ares/shout_mine.mp3",
         "text": "Mine!",
-        "seconds": 0.96
+        "seconds": 0.98
       },
       {
-        "path": "/npc-voices/ares/shout_you-worm.wav",
+        "path": "/npc-voices/ares/shout_you-worm.mp3",
         "text": "You worm!",
-        "seconds": 1.36
+        "seconds": 1.39
       },
       {
-        "path": "/npc-voices/ares/shout_row-now.wav",
+        "path": "/npc-voices/ares/shout_row-now.mp3",
         "text": "Row. Now!",
-        "seconds": 1.6
+        "seconds": 1.63
       },
       {
-        "path": "/npc-voices/ares/shout_move-ferryman.wav",
+        "path": "/npc-voices/ares/shout_move-ferryman.mp3",
         "text": "Move, ferryman!",
-        "seconds": 2.16
+        "seconds": 2.18
       }
     ],
     "streak": [
       {
-        "path": "/npc-voices/ares/streak_better.wav",
+        "path": "/npc-voices/ares/streak_better.mp3",
         "text": "Better.",
-        "seconds": 0.96
+        "seconds": 0.98
       },
       {
-        "path": "/npc-voices/ares/streak_keep-rowing.wav",
+        "path": "/npc-voices/ares/streak_keep-rowing.mp3",
         "text": "Keep rowing.",
-        "seconds": 1.52
+        "seconds": 1.56
       }
     ],
     "smite": [
       {
-        "path": "/npc-voices/ares/smite_enough-you-sink.wav",
+        "path": "/npc-voices/ares/smite_enough-you-sink.mp3",
         "text": "Enough! You sink.",
-        "seconds": 2.32
+        "seconds": 2.35
       },
       {
-        "path": "/npc-voices/ares/smite_the-river-takes-you.wav",
+        "path": "/npc-voices/ares/smite_the-river-takes-you.mp3",
         "text": "The river takes you.",
-        "seconds": 1.92
+        "seconds": 1.94
       }
     ]
   },
   "hades": {
     "run_start": [
       {
-        "path": "/npc-voices/hades/run_start_charon-row.wav",
+        "path": "/npc-voices/hades/run_start_charon-row.mp3",
         "text": "Charon. Row.",
-        "seconds": 1.6
+        "seconds": 1.63
       },
       {
-        "path": "/npc-voices/hades/run_start_the-dead-are-waiting.wav",
+        "path": "/npc-voices/hades/run_start_the-dead-are-waiting.mp3",
         "text": "The dead are waiting.",
-        "seconds": 1.76
+        "seconds": 1.8
       }
     ],
     "rage_50": [
       {
-        "path": "/npc-voices/hades/rage_50_losing-my-dead.wav",
+        "path": "/npc-voices/hades/rage_50_losing-my-dead.mp3",
         "text": "Losing my dead?",
-        "seconds": 1.92
+        "seconds": 1.94
       },
       {
-        "path": "/npc-voices/hades/rage_50_i-am-watching-charon.wav",
+        "path": "/npc-voices/hades/rage_50_i-am-watching-charon.mp3",
         "text": "I am watching, Charon.",
-        "seconds": 2.4
+        "seconds": 2.42
       }
     ],
     "rage_80": [
       {
-        "path": "/npc-voices/hades/rage_80_careful-charon.wav",
+        "path": "/npc-voices/hades/rage_80_careful-charon.mp3",
         "text": "Careful, Charon.",
-        "seconds": 2.32
+        "seconds": 2.35
       },
       {
-        "path": "/npc-voices/hades/rage_80_my-patience-ends-here.wav",
+        "path": "/npc-voices/hades/rage_80_my-patience-ends-here.mp3",
         "text": "My patience ends here.",
-        "seconds": 2.4
+        "seconds": 2.42
       }
     ],
     "hurry": [
       {
-        "path": "/npc-voices/hades/hurry_faster-charon.wav",
+        "path": "/npc-voices/hades/hurry_faster-charon.mp3",
         "text": "Faster, Charon.",
-        "seconds": 2
+        "seconds": 2.04
       },
       {
-        "path": "/npc-voices/hades/hurry_the-dead-do-not-wait.wav",
+        "path": "/npc-voices/hades/hurry_the-dead-do-not-wait.mp3",
         "text": "The dead do not wait.",
-        "seconds": 1.84
+        "seconds": 1.87
       }
     ],
     "shout": [
       {
-        "path": "/npc-voices/hades/shout_charon.wav",
+        "path": "/npc-voices/hades/shout_charon.mp3",
         "text": "Charon!",
-        "seconds": 1.12
+        "seconds": 1.15
       },
       {
-        "path": "/npc-voices/hades/shout_row.wav",
+        "path": "/npc-voices/hades/shout_row.mp3",
         "text": "Row.",
-        "seconds": 0.88
+        "seconds": 0.91
       },
       {
-        "path": "/npc-voices/hades/shout_faster.wav",
+        "path": "/npc-voices/hades/shout_faster.mp3",
         "text": "Faster.",
-        "seconds": 1.12
+        "seconds": 1.15
       },
       {
-        "path": "/npc-voices/hades/shout_mine.wav",
+        "path": "/npc-voices/hades/shout_mine.mp3",
         "text": "Mine.",
-        "seconds": 0.96
+        "seconds": 0.98
       },
       {
-        "path": "/npc-voices/hades/shout_careless.wav",
+        "path": "/npc-voices/hades/shout_careless.mp3",
         "text": "Careless.",
-        "seconds": 1.2
+        "seconds": 1.22
       },
       {
-        "path": "/npc-voices/hades/shout_pathetic.wav",
+        "path": "/npc-voices/hades/shout_pathetic.mp3",
         "text": "Pathetic.",
-        "seconds": 1.28
+        "seconds": 1.32
       },
       {
-        "path": "/npc-voices/hades/shout_lost-again.wav",
+        "path": "/npc-voices/hades/shout_lost-again.mp3",
         "text": "Lost. Again.",
-        "seconds": 2
+        "seconds": 2.04
       },
       {
-        "path": "/npc-voices/hades/shout_enough.wav",
+        "path": "/npc-voices/hades/shout_enough.mp3",
         "text": "Enough!",
-        "seconds": 0.88
+        "seconds": 0.91
       }
     ],
     "streak": [
       {
-        "path": "/npc-voices/hades/streak_good.wav",
+        "path": "/npc-voices/hades/streak_good.mp3",
         "text": "Good.",
-        "seconds": 0.8
+        "seconds": 0.84
       },
       {
-        "path": "/npc-voices/hades/streak_the-underworld-is-fed.wav",
+        "path": "/npc-voices/hades/streak_the-underworld-is-fed.mp3",
         "text": "The underworld is fed.",
-        "seconds": 2.32
+        "seconds": 2.35
       }
     ],
     "smite": [
       {
-        "path": "/npc-voices/hades/smite_your-river-ends.wav",
+        "path": "/npc-voices/hades/smite_your-river-ends.mp3",
         "text": "Your river ends.",
-        "seconds": 1.68
+        "seconds": 1.7
       },
       {
-        "path": "/npc-voices/hades/smite_you-belong-to-me-now.wav",
+        "path": "/npc-voices/hades/smite_you-belong-to-me-now.mp3",
         "text": "You belong to me now.",
-        "seconds": 2.08
+        "seconds": 2.11
       }
     ]
   },
   "athena": {
     "run_start": [
       {
-        "path": "/npc-voices/athena/run_start_think-before-you-row.wav",
+        "path": "/npc-voices/athena/run_start_think-before-you-row.mp3",
         "text": "Think before you row.",
-        "seconds": 2.16
+        "seconds": 2.18
       },
       {
-        "path": "/npc-voices/athena/run_start_be-precise.wav",
+        "path": "/npc-voices/athena/run_start_be-precise.mp3",
         "text": "Be precise.",
-        "seconds": 1.84
+        "seconds": 1.87
       }
     ],
     "rage_50": [
       {
-        "path": "/npc-voices/athena/rage_50_that-soul-was-mine.wav",
+        "path": "/npc-voices/athena/rage_50_that-soul-was-mine.mp3",
         "text": "That soul was mine.",
-        "seconds": 1.6
+        "seconds": 1.63
       },
       {
-        "path": "/npc-voices/athena/rage_50_i-expected-more.wav",
+        "path": "/npc-voices/athena/rage_50_i-expected-more.mp3",
         "text": "I expected more.",
-        "seconds": 1.84
+        "seconds": 1.87
       }
     ],
     "rage_80": [
       {
-        "path": "/npc-voices/athena/rage_80_i-am-counting.wav",
+        "path": "/npc-voices/athena/rage_80_i-am-counting.mp3",
         "text": "I am counting.",
-        "seconds": 1.44
+        "seconds": 1.46
       },
       {
-        "path": "/npc-voices/athena/rage_80_last-warning-ferryman.wav",
+        "path": "/npc-voices/athena/rage_80_last-warning-ferryman.mp3",
         "text": "Last warning, ferryman.",
-        "seconds": 2.48
+        "seconds": 2.52
       }
     ],
     "hurry": [
       {
-        "path": "/npc-voices/athena/hurry_hurry-charon.wav",
+        "path": "/npc-voices/athena/hurry_hurry-charon.mp3",
         "text": "Hurry, Charon.",
-        "seconds": 2.24
+        "seconds": 2.28
       },
       {
-        "path": "/npc-voices/athena/hurry_they-are-fading.wav",
+        "path": "/npc-voices/athena/hurry_they-are-fading.mp3",
         "text": "They are fading.",
-        "seconds": 1.52
+        "seconds": 1.56
       }
     ],
     "shout": [
       {
-        "path": "/npc-voices/athena/shout_ferryman.wav",
+        "path": "/npc-voices/athena/shout_ferryman.mp3",
         "text": "Ferryman!",
-        "seconds": 1.28
+        "seconds": 1.32
       },
       {
-        "path": "/npc-voices/athena/shout_focus.wav",
+        "path": "/npc-voices/athena/shout_focus.mp3",
         "text": "Focus.",
-        "seconds": 1.04
+        "seconds": 1.08
       },
       {
-        "path": "/npc-voices/athena/shout_wrong.wav",
+        "path": "/npc-voices/athena/shout_wrong.mp3",
         "text": "Wrong.",
-        "seconds": 0.96
+        "seconds": 0.98
       },
       {
-        "path": "/npc-voices/athena/shout_careless.wav",
+        "path": "/npc-voices/athena/shout_careless.mp3",
         "text": "Careless.",
-        "seconds": 1.12
+        "seconds": 1.15
       },
       {
-        "path": "/npc-voices/athena/shout_think.wav",
+        "path": "/npc-voices/athena/shout_think.mp3",
         "text": "Think!",
-        "seconds": 0.96
+        "seconds": 0.98
       },
       {
-        "path": "/npc-voices/athena/shout_mine.wav",
+        "path": "/npc-voices/athena/shout_mine.mp3",
         "text": "Mine.",
-        "seconds": 0.88
+        "seconds": 0.91
       },
       {
-        "path": "/npc-voices/athena/shout_again.wav",
+        "path": "/npc-voices/athena/shout_again.mp3",
         "text": "Again?",
-        "seconds": 0.88
+        "seconds": 0.91
       },
       {
-        "path": "/npc-voices/athena/shout_enough.wav",
+        "path": "/npc-voices/athena/shout_enough.mp3",
         "text": "Enough!",
-        "seconds": 0.96
+        "seconds": 0.98
       }
     ],
     "streak": [
       {
-        "path": "/npc-voices/athena/streak_good-you-are-learning.wav",
+        "path": "/npc-voices/athena/streak_good-you-are-learning.mp3",
         "text": "Good. You are learning.",
-        "seconds": 2.4
+        "seconds": 2.42
       },
       {
-        "path": "/npc-voices/athena/streak_precise.wav",
+        "path": "/npc-voices/athena/streak_precise.mp3",
         "text": "Precise.",
-        "seconds": 1.52
+        "seconds": 1.56
       }
     ],
     "smite": [
       {
-        "path": "/npc-voices/athena/smite_you-wasted-every-chance.wav",
+        "path": "/npc-voices/athena/smite_you-wasted-every-chance.mp3",
         "text": "You wasted every chance.",
-        "seconds": 2
+        "seconds": 2.04
       },
       {
-        "path": "/npc-voices/athena/smite_a-foolish-end.wav",
+        "path": "/npc-voices/athena/smite_a-foolish-end.mp3",
         "text": "A foolish end.",
-        "seconds": 1.6
+        "seconds": 1.63
       }
     ]
   },
   "poseidon": {
     "run_start": [
       {
-        "path": "/npc-voices/poseidon/run_start_sail-ferryman.wav",
+        "path": "/npc-voices/poseidon/run_start_sail-ferryman.mp3",
         "text": "Sail, ferryman.",
-        "seconds": 1.68
+        "seconds": 1.7
       },
       {
-        "path": "/npc-voices/poseidon/run_start_the-tide-is-turning.wav",
+        "path": "/npc-voices/poseidon/run_start_the-tide-is-turning.mp3",
         "text": "The tide is turning.",
-        "seconds": 1.68
+        "seconds": 1.7
       }
     ],
     "rage_50": [
       {
-        "path": "/npc-voices/poseidon/rage_50_the-sea-grows-restless.wav",
+        "path": "/npc-voices/poseidon/rage_50_the-sea-grows-restless.mp3",
         "text": "The sea grows restless.",
-        "seconds": 2.4
+        "seconds": 2.42
       },
       {
-        "path": "/npc-voices/poseidon/rage_50_you-lost-one-of-mine.wav",
+        "path": "/npc-voices/poseidon/rage_50_you-lost-one-of-mine.mp3",
         "text": "You lost one of mine.",
-        "seconds": 2.08
+        "seconds": 2.11
       }
     ],
     "rage_80": [
       {
-        "path": "/npc-voices/poseidon/rage_80_a-storm-is-coming.wav",
+        "path": "/npc-voices/poseidon/rage_80_a-storm-is-coming.mp3",
         "text": "A storm is coming!",
-        "seconds": 1.92
+        "seconds": 1.94
       },
       {
-        "path": "/npc-voices/poseidon/rage_80_i-will-drown-you.wav",
+        "path": "/npc-voices/poseidon/rage_80_i-will-drown-you.mp3",
         "text": "I will drown you!",
-        "seconds": 2.08
+        "seconds": 2.11
       }
     ],
     "hurry": [
       {
-        "path": "/npc-voices/poseidon/hurry_faster-ferryman.wav",
+        "path": "/npc-voices/poseidon/hurry_faster-ferryman.mp3",
         "text": "Faster, ferryman!",
-        "seconds": 2
+        "seconds": 2.04
       },
       {
-        "path": "/npc-voices/poseidon/hurry_the-tide-waits-for-no-one.wav",
+        "path": "/npc-voices/poseidon/hurry_the-tide-waits-for-no-one.mp3",
         "text": "The tide waits for no one.",
-        "seconds": 2.4
+        "seconds": 2.42
       }
     ],
     "shout": [
       {
-        "path": "/npc-voices/poseidon/shout_ferryman.wav",
+        "path": "/npc-voices/poseidon/shout_ferryman.mp3",
         "text": "Ferryman!",
-        "seconds": 1.28
+        "seconds": 1.32
       },
       {
-        "path": "/npc-voices/poseidon/shout_sink.wav",
+        "path": "/npc-voices/poseidon/shout_sink.mp3",
         "text": "Sink!",
-        "seconds": 0.96
+        "seconds": 0.98
       },
       {
-        "path": "/npc-voices/poseidon/shout_faster.wav",
+        "path": "/npc-voices/poseidon/shout_faster.mp3",
         "text": "Faster!",
-        "seconds": 1.12
+        "seconds": 1.15
       },
       {
-        "path": "/npc-voices/poseidon/shout_mine.wav",
+        "path": "/npc-voices/poseidon/shout_mine.mp3",
         "text": "Mine!",
-        "seconds": 1.12
+        "seconds": 1.15
       },
       {
-        "path": "/npc-voices/poseidon/shout_fool.wav",
+        "path": "/npc-voices/poseidon/shout_fool.mp3",
         "text": "Fool!",
-        "seconds": 0.96
+        "seconds": 0.98
       },
       {
-        "path": "/npc-voices/poseidon/shout_drown.wav",
+        "path": "/npc-voices/poseidon/shout_drown.mp3",
         "text": "Drown!",
-        "seconds": 1.12
+        "seconds": 1.15
       },
       {
-        "path": "/npc-voices/poseidon/shout_enough.wav",
+        "path": "/npc-voices/poseidon/shout_enough.mp3",
         "text": "Enough!",
-        "seconds": 0.96
+        "seconds": 0.98
       },
       {
-        "path": "/npc-voices/poseidon/shout_row.wav",
+        "path": "/npc-voices/poseidon/shout_row.mp3",
         "text": "Row!",
-        "seconds": 1.04
+        "seconds": 1.08
       }
     ],
     "streak": [
       {
-        "path": "/npc-voices/poseidon/streak_calm-waters.wav",
+        "path": "/npc-voices/poseidon/streak_calm-waters.mp3",
         "text": "Calm waters.",
-        "seconds": 1.44
+        "seconds": 1.46
       },
       {
-        "path": "/npc-voices/poseidon/streak_the-sea-approves.wav",
+        "path": "/npc-voices/poseidon/streak_the-sea-approves.mp3",
         "text": "The sea approves.",
-        "seconds": 1.6
+        "seconds": 1.63
       }
     ],
     "smite": [
       {
-        "path": "/npc-voices/poseidon/smite_the-sea-takes-you.wav",
+        "path": "/npc-voices/poseidon/smite_the-sea-takes-you.mp3",
         "text": "The sea takes you.",
-        "seconds": 1.76
+        "seconds": 1.8
       },
       {
-        "path": "/npc-voices/poseidon/smite_down-you-go.wav",
+        "path": "/npc-voices/poseidon/smite_down-you-go.mp3",
         "text": "Down you go.",
-        "seconds": 1.28
+        "seconds": 1.32
       }
     ]
   }
