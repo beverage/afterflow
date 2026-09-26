@@ -8,7 +8,7 @@ let musicBus = null;
 let noiseBuf = null;
 let ambience = null;
 
-const AMBIENCE_VOLUME = 0.25; // the ambient track, well under the effects; 0 turns it off (and skips the download)
+const AMBIENCE_VOLUME = 0.23; // the ambient track, well under the effects; 0 turns it off (and skips the download)
 let muted = false;
 
 export function unlockAudio() {
@@ -167,16 +167,16 @@ export const sfx = {
   },
 };
 
-// The ambient track is 100 BPM, 2.4 s a bar: four quiet bars of intro, then one four-bar phrase played
-// four times. It plays through once, then loops its last 8 bars.
+// The ambient track ("Sacred River Echoes", 3.5 min) fades in over its first seconds and out over its last.
+// It loops whole, its last LOOP_FADE seconds blended with its first, so the fade-out flows back into the intro.
 const AMBIENT_URL = 'assets/ambient.mp3';
-const BAR = 2.4;
-const LOOP_BARS = 8;
+const LOOP_FADE = 8; // seconds
 
 // Fetched while the game loads (at low priority, so the art comes first), decoded on the first tap.
+// Decoding holds the whole track in memory (about 80 MB for 3.5 min of stereo), so keep it to a few minutes.
 const ambientFile = AMBIENCE_VOLUME > 0 ? fetch(AMBIENT_URL, { priority: 'low' }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null) : null;
 
-/** The ambient track under everything: fades in, plays through once, then loops. Safe to call twice. */
+/** The ambient track under everything: fades in, then loops for good. Safe to call twice. */
 export function startAmbient() {
   if (!ac || ambience || !ambientFile) return;
   const out = ac.createGain();
@@ -189,7 +189,7 @@ export function startAmbient() {
       if (!buffer) return;
       const track = ac.createBufferSource();
       track.buffer = buffer;
-      loopLastBars(track, LOOP_BARS);
+      loopWhole(track);
       track.connect(out);
       const t = ac.currentTime;
       out.gain.setValueAtTime(0, t);
@@ -199,22 +199,24 @@ export function startAmbient() {
     .catch(() => {}); // no track (offline, or it won't decode): the effects play on over silence
 }
 
-// Loops the last `bars` bars without a seam: the bar leading into the loop start is blended into the last bar,
-// so when playback jumps back it lands where the music already is.
-function loopLastBars(track, bars) {
+// Loops the whole track without a gap: its first LOOP_FADE seconds are blended into its last, and the loop
+// restarts just after them, so when playback jumps back it lands where the music already is.
+function loopWhole(track) {
   const buf = track.buffer;
   const rate = buf.sampleRate;
-  const end = Math.floor((buf.duration - 0.1) * rate); // short of the silence and padding at the end of an mp3
-  const start = end - Math.round(bars * BAR * rate);
-  const fade = Math.round(BAR * rate);
+  const fade = Math.round(LOOP_FADE * rate);
+  const end = Math.floor((buf.duration - 0.1) * rate); // short of the padding at the end of an mp3
   track.loop = true;
-  if (start < fade) return; // not the track we measured: loop all of it
+  if (end < 2 * fade) return; // too short to blend: a plain loop
   for (let c = 0; c < buf.numberOfChannels; c++) {
     const d = buf.getChannelData(c);
-    // A straight crossfade: the two bars are nearly the same, so it doesn't dip in the middle.
-    for (let i = 0; i < fade; i++) d[end - fade + i] += (d[start - fade + i] - d[end - fade + i]) * ((i + 1) / fade);
+    for (let i = 0; i < fade; i++) {
+      // Equal power: the fade-out and the intro are different music, and a straight crossfade would dip between them.
+      const k = ((i + 1) / fade) * (Math.PI / 2);
+      d[end - fade + i] = d[end - fade + i] * Math.cos(k) + d[i] * Math.sin(k);
+    }
   }
-  track.loopStart = start / rate;
+  track.loopStart = fade / rate;
   track.loopEnd = end / rate;
 }
 
