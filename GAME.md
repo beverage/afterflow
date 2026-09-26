@@ -96,7 +96,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | `icon_speed`, `icon_handling`, `icon_hold` | 96x96 | Shop icons |
 | `scroll_athena`, `scroll_ares`, `scroll_poseidon` | 88x64 | A scroll sealed in its god's color, for the stall and the HUD |
 
-- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite, lantern lit, new best, scrolls unrolling and a scroll calming its god. No background ambience: silence between effects. Real audio can replace them later. Owner: TBD.
+- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite, lantern lit, new best, scrolls unrolling and a scroll calming its god. Under them, one recorded ambient track (`public/assets/ambient.mp3`, dark ambient at 100 BPM) starts on the first click and plays on through restarts: it fades in, plays through once, then loops its last 8 bars without a seam, well under the effects (`AMBIENCE_VOLUME` in `src/sfx.js`). A hidden tab goes silent. Real audio can replace the effects later. Owner: TBD.
 
 ## Voices (Gradium, v2)
 

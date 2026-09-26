@@ -33,7 +33,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 | `src/assets.js` | Asset manifest: key -> file in `public/assets/`. A real file replaces that key's placeholder |
 | `src/art.js` | Placeholder art drawn by code at boot, under the same keys as the manifest |
 | `src/controls.js` | All input: `moveVector()` (keys, or the touch stick) plus actions (pause, mute, confirm, help, buy1-6) by physical key; `isTouch()`, `onAway()` |
-| `src/sfx.js` | Sound effects and the ambient drone, synthesized with Web Audio (no files) |
+| `src/sfx.js` | Sound effects synthesized with Web Audio, and the looping ambient track (`public/assets/ambient.mp3`) |
 | `src/save.js` | What this device remembers between runs (localStorage): best run, last run, lifetime totals. `?fresh` forgets it |
 | `src/river.js`, `src/economy.js` | River shape; soul value, prices, upgrade stats, Charon's fee, number formats |
 | `src/ai.js` | `askAI({ prompt, system, schema, fallback })`, `getAIStatus()` |

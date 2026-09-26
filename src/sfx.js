@@ -1,4 +1,4 @@
-// Synthesized sound effects, all Web Audio: no audio files to load. No background ambience by default.
+// Sound effects synthesized with Web Audio, over one recorded ambient track (public/assets/ambient.mp3).
 // Browsers only start audio after a click or key press, so call unlockAudio() from one.
 
 let ac = null;
@@ -8,7 +8,7 @@ let musicBus = null;
 let noiseBuf = null;
 let ambience = null;
 
-const AMBIENCE_VOLUME = 0; // flowing-water bed under everything; off (the team prefers silence between effects), ~0.12 turns it on
+const AMBIENCE_VOLUME = 0.25; // the ambient track, well under the effects; 0 turns it off (and skips the download)
 let muted = false;
 
 export function unlockAudio() {
@@ -167,48 +167,60 @@ export const sfx = {
   },
 };
 
-/** The river under everything: soft water noise that slowly swells, and now and then a droplet. Safe to call twice. */
+// The ambient track is 100 BPM, 2.4 s a bar: four quiet bars of intro, then one four-bar phrase played
+// four times. It plays through once, then loops its last 8 bars.
+const AMBIENT_URL = 'assets/ambient.mp3';
+const BAR = 2.4;
+const LOOP_BARS = 8;
+
+// Fetched while the game loads (at low priority, so the art comes first), decoded on the first tap.
+const ambientFile = AMBIENCE_VOLUME > 0 ? fetch(AMBIENT_URL, { priority: 'low' }).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null) : null;
+
+/** The ambient track under everything: fades in, plays through once, then loops. Safe to call twice. */
 export function startAmbient() {
-  if (!ac || ambience || AMBIENCE_VOLUME <= 0) return;
-  const t = ac.currentTime;
+  if (!ac || ambience || !ambientFile) return;
   const out = ac.createGain();
-  out.gain.setValueAtTime(0.0001, t);
-  out.gain.exponentialRampToValueAtTime(AMBIENCE_VOLUME, t + 3);
+  out.gain.value = 0;
   out.connect(musicBus);
-  const flow = ac.createBufferSource();
-  flow.buffer = pinkNoise();
-  flow.loop = true;
-  const band = ac.createBiquadFilter();
-  band.type = 'bandpass';
-  band.frequency.value = 900;
-  band.Q.value = 0.5;
-  flow.connect(band).connect(out);
-  const lfo = ac.createOscillator();
-  const depth = ac.createGain();
-  lfo.frequency.value = 0.08;
-  depth.gain.value = 350;
-  lfo.connect(depth).connect(band.frequency);
-  lfo.start();
-  flow.start();
-  const drip = () => {
-    tone(1400 + Math.random() * 1200, { dur: 0.12, vol: 0.02, slide: 1.6 });
-    ambience.timer = setTimeout(drip, 800 + Math.random() * 1700);
-  };
-  ambience = { out, flow, lfo, timer: setTimeout(drip, 1500) };
+  ambience = { out };
+  ambientFile
+    .then((bytes) => bytes && ac.decodeAudioData(bytes))
+    .then((buffer) => {
+      if (!buffer) return;
+      const track = ac.createBufferSource();
+      track.buffer = buffer;
+      loopLastBars(track, LOOP_BARS);
+      track.connect(out);
+      const t = ac.currentTime;
+      out.gain.setValueAtTime(0, t);
+      out.gain.linearRampToValueAtTime(AMBIENCE_VOLUME, t + 2);
+      track.start(t);
+    })
+    .catch(() => {}); // no track (offline, or it won't decode): the effects play on over silence
 }
 
-// Pink noise sounds like moving water; white noise sounds like static.
-function pinkNoise() {
-  const len = ac.sampleRate * 4;
-  const buf = ac.createBuffer(1, len, ac.sampleRate);
-  const d = buf.getChannelData(0);
-  let b0 = 0, b1 = 0, b2 = 0;
-  for (let i = 0; i < len; i++) {
-    const w = Math.random() * 2 - 1;
-    b0 = 0.99765 * b0 + w * 0.099046;
-    b1 = 0.963 * b1 + w * 0.2965164;
-    b2 = 0.57 * b2 + w * 1.0526913;
-    d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.18;
+// Loops the last `bars` bars without a seam: the bar leading into the loop start is blended into the last bar,
+// so when playback jumps back it lands where the music already is.
+function loopLastBars(track, bars) {
+  const buf = track.buffer;
+  const rate = buf.sampleRate;
+  const end = Math.floor((buf.duration - 0.1) * rate); // short of the silence and padding at the end of an mp3
+  const start = end - Math.round(bars * BAR * rate);
+  const fade = Math.round(BAR * rate);
+  track.loop = true;
+  if (start < fade) return; // not the track we measured: loop all of it
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const d = buf.getChannelData(c);
+    // A straight crossfade: the two bars are nearly the same, so it doesn't dip in the middle.
+    for (let i = 0; i < fade; i++) d[end - fade + i] += (d[start - fade + i] - d[end - fade + i]) * ((i + 1) / fade);
   }
-  return buf;
+  track.loopStart = start / rate;
+  track.loopEnd = end / rate;
 }
+
+// A hidden tab goes silent, so the music doesn't play on behind other tabs; it comes back with the tab.
+document.addEventListener('visibilitychange', () => {
+  if (!ac) return;
+  if (document.hidden) ac.suspend().catch(() => {});
+  else ac.resume().catch(() => {});
+});
