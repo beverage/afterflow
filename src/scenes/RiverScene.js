@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, VOICE, PORTAL, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, VOICE, PORTAL, STALL, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { tutorialPending } from './TutorialScene.js';
 import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
@@ -277,14 +277,18 @@ export class RiverScene extends Phaser.Scene {
     return f;
   }
 
+  // Hermes' stall, at the portals' angle: its base on the bank's edge, facing the water, the dock at the jetty's end.
   makeShop(wy, side) {
-    const { x, tip } = this.bankSpot(wy, side);
-    const f = { kind: 'shop', wy, side, x, tip, dockDy: -6, used: false, parts: [] };
-    this.attach(f, this.makePier(x, tip, side), -6);
-    f.glow = this.attach(f, this.add.image(x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(3.6).setAlpha(0.35).setDepth(5), -58);
-    f.dockGlow = this.attach(f, this.add.image(tip, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.6).setAlpha(0.3).setDepth(5), -6);
-    this.attach(f, this.add.image(x, 0, 'shop').setOrigin(0.5, 138 / 150).setDepth(7), 0);
-    f.label = this.attach(f, this.add.text(x, 0, spaced('HERMES'), { fontFamily: FONT, fontSize: '12px', fontStyle: '600', color: '#f1e6c8' }).setOrigin(0.5).setAlpha(0.85).setDepth(7), -122);
+    const q = riverAt(wy), dir = side === 'left' ? 1 : -1;
+    const ax = side === 'left' ? q.l - 8 : q.r + 8;
+    const at = ([dx, dy]) => ({ x: ax + dir * dx, dy });
+    const dock = at(STALL.dock), lamp = at(STALL.lamp), medal = at(STALL.medal);
+    const f = { kind: 'shop', wy, side, x: ax, tip: dock.x, dockDy: dock.dy, used: false, parts: [] };
+    f.glow = this.attach(f, this.add.image(lamp.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.2).setAlpha(0.35).setDepth(6.4), lamp.dy);
+    f.dockGlow = this.attach(f, this.add.image(dock.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.6).setAlpha(0.3).setDepth(5), dock.dy);
+    this.attach(f, this.add.image(ax, 0, 'shop').setOrigin(STALL.anchor[0] / STALL.frameWidth, STALL.anchor[1] / STALL.frameHeight).setScale(dir, 1).setDepth(6.5), 0);
+    this.attach(f, this.add.image(medal.x, 0, 'medal_hermes').setScale(1.45).setDepth(6.6), medal.dy);
+    f.label = this.attach(f, this.add.text(medal.x, 0, spaced('HERMES'), { fontFamily: FONT, fontSize: '12px', fontStyle: '600', color: '#f1e6c8' }).setOrigin(0.5).setAlpha(0.85).setDepth(6.6), medal.dy - 36);
     return f;
   }
 
@@ -293,7 +297,7 @@ export class RiverScene extends Phaser.Scene {
     return this.features.some(
       (f) =>
         (Math.abs(x - f.x) < 80 + pad && wy > f.wy - 150 - pad && wy < f.wy + 20 + pad) ||
-        (x > Math.min(f.x, f.tip) - pad && x < Math.max(f.x, f.tip) + pad && Math.abs(wy - (f.wy + f.dockDy)) < (f.portal ? 50 : 18) + pad),
+        (x > Math.min(f.x, f.tip) - pad && x < Math.max(f.x, f.tip) + pad && Math.abs(wy - (f.wy + f.dockDy)) < (f.portal || f.kind === 'shop' ? 50 : 18) + pad),
     );
   }
 
