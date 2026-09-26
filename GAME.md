@@ -11,6 +11,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 1. **Scoop.** The river scrolls down the middle of the screen. Move the boat anywhere on the water with WASD and touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it burns out in a flash.
 2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into the pool of light at a shrine's portal to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to burn out is a **CLUTCH**, with its own sound and a bonus.
 3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and one of your lanterns goes out; when the last one goes out, the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially.
+4. **Faster and faster.** Tetris style: every 6 souls delivered is a level, and every 3 levels the boat reaches a new river of the underworld, each 25% faster than the last.
 4. **Remember and recite.** Each scroll has a two-word incantation in crypto-Greek. Say it aloud on the river and the scroll calms its god. You can glance at your scrolls, but the river never slows: learn the words.
 
 ## Rules (v1)
@@ -21,20 +22,22 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - **Lanterns** are your lives: you start with 2 and can hold 3 (small lanterns under the rage bars). A smite puts one out and takes the souls aboard and the streak with it; the god who struck is appeased (rage back to 0) and the others cool by 25%, then for 3 s the boat flickers and passing souls anger no one. When the last lantern goes out, the run ends. Every 8th delivery in a row lights one. Obstacles (v2) will put them out too.
 - **Charon's fee:** when the last lantern goes out, the game-over screen offers to pay Charon to return with one lantern (the god who struck is appeased, as after any smite). The fee starts at 150 obols and climbs on the same curve as Hermes' prices, ×1.8 each time it's paid in a run (150, 270, 490, 870...), so obols not spent at Hermes' stall are a way back. Out of reach, the screen shows the fee next to your obols.
 - **Your best:** your best distance is marked on the river, a line of floating lights across the water labelled on the bank; crossing it pops "New best!". The game-over screen says how the run compares (a new best, your first mark, or how far short), and the title shows your best and the souls you've ferried.
-- Souls shrink and flicker over their lifespan and burn out in a flash at zero, which forces regular deliveries.
+- Souls shrink and flicker over their lifespan and burn out in a flash at zero, which forces regular deliveries. A soul lasts the same stretch of river at any speed (16 s at the starting pace), so on faster rivers they burn out sooner.
+- **Levels and rivers**, Tetris style: every 6 souls delivered is a level; every 3 levels, a new river: the Acheron, the Styx, the Lethe, the Cocytus, the Phlegethon. Past the Phlegethon it keeps quickening, like Tetris's kill screen. A level brings the souls closer together; a new river runs 25% faster and spreads them back out, so only one thing gets harder at a time. A new river gets a banner ("II · Styx · the river quickens"), a rising whoosh, 1.5 s with no new souls, and its speed eases in over 1.5 s. A small panel under the obols shows the river, your level and a bar of souls to the next one; the game-over screen leads with the level and river.
 - The streak resets when a soul burns out. Skipped souls already cost rage, so they don't also break it.
 - Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Hermes' stall is 3x2: upgrades on top, one scroll per god below.
-  - **Speed**: the river scrolls faster, so more souls and shrines per minute (more money, more risk).
+  - **Speed**: the river scrolls 12% faster per level (up to 4), on top of the rivers' own pace: more souls and shrines per minute (more money, more risk).
   - **Handling**: quicker, snappier boat movement.
   - **Hold**: +1 soul capacity (starts at 3).
   - **Scrolls** (Athena, Ares, Poseidon): usables. You carry at most one per god. Each has a two-word incantation in crypto-Greek, like the crypto-Latin spells of Harry Potter but built from Greek roots tied to its god, solemn and never silly ("Galene Thalassa": calm, O sea). Every word must be easy for an English speaker to read aloud at first sight. It's shown on its card with its meaning; say it aloud on the river and the scroll is used at once: that god loses half its rage. Price: 6 souls' worth at your distance.
 - Scrolls are a memory game: Space (or a tap on the scrolls panel) shows your scrolls for 5 s, over the left bank, and the river never slows.
 - Economy: upgrade prices grow exponentially per level. Soul value also grows the further downstream you get, then streak and clutch multiply it, so income keeps pace and the numbers keep climbing. Big numbers shown as 1.2K, 3.4M.
-- Difficulty ramps through density: more souls per second, shrines further apart.
+- Difficulty ramps through the levels and rivers (above); shrines also drift further apart the further you go.
 
 ## Tuning targets
 
 - A first-timer loses a first lantern after 60-90 s; a good run lasts 3-5 min.
+- The first new river (the Styx) comes after about a minute of decent play, so it lands inside the demo.
 - At every shop you can afford about one upgrade, sometimes two.
 - All numbers live in `src/config.js`.
 
@@ -71,7 +74,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 - View: 3/4 top-down 2D (2.5D) on a landscape 1280x720 canvas.
 - Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines are Ines's animated stone portals, set at an angle on the bank and spilling a pool of light in their god's color onto the water (sail into it to deliver). Hermes' stall stands at the same angle: a striped awning over a counter of wares, a jetty out into warm light, a caduceus medallion. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
-- Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars, lanterns and distance on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
+- Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars, lanterns and distance on the left; obols, streak and next shrines on the right, with the river and your level under them. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
 - Atmosphere after Ines's river study: drifting fog banks, a grey tint and haze at the top and bottom (under souls and the boat so they stay crisp), floating spores, darkened edges. `fogAmount` in `src/config.js` sets the fog (her slider; default 0.75).
 - Banks after Ines's river study too: uneven shoreline with a muddy strip, and pines, ferns, rocks and spider lilies scattered at her densities, clear of shrines and stalls.
@@ -126,7 +129,7 @@ Fede's recorded lines (MP3s in `public/npc-voices/`) play in the game:
 
 ## v1 status
 
-Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives), death and Charon's fee, Hermes' stall with exponential prices, scrolls with spoken incantations written by Gemini, the gods' recorded voices, pause, game over and instant restart, your best run saved on this device and marked on the river, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
+Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, levels and rivers that speed up Tetris style, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives), death and Charon's fee, Hermes' stall with exponential prices, scrolls with spoken incantations written by Gemini, the gods' recorded voices, pause, game over and instant restart, your best run saved on this device and marked on the river, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
 
 Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
 

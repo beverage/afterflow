@@ -161,6 +161,17 @@ export const sfx = {
   tap() {
     tone(1200, { dur: 0.05, vol: 0.08 });
   },
+  // A level: two soft rising notes.
+  levelUp() {
+    tone(587.33, { type: 'triangle', dur: 0.3, vol: 0.14 });
+    tone(880, { type: 'triangle', dur: 0.5, vol: 0.12, at: 0.09 });
+  },
+  // A new river: a rush of water rising in pitch over a low swell, then a bright chord.
+  newRiver() {
+    noise({ dur: 1.4, vol: 0.22, freq: 400, q: 0.7, sweep: 5 });
+    tone(55, { dur: 1.6, vol: 0.32, attack: 0.35, slide: 2 });
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, { type: 'triangle', dur: 1.2, vol: 0.1, attack: 0.04, at: 0.55 + i * 0.08 }));
+  },
   // A scroll read aloud: a slow chord in the god's key swelling up, with a breath of air on top.
   appease(god = 0) {
     const f = (GOD_NOTE[god] || 880) / 2;
