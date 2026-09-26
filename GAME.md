@@ -46,7 +46,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## The AI hook (v2, after the river works)
 
-- What Gemini generates: scroll incantations (built), the gods' voiced reactions (run start, rage at 50% and 80%, big streaks), a death verdict from the god who sank you, a one-line life story for each soul.
+- What Gemini generates: scroll incantations (built), later fresh god reactions and a one-line life story for each soul. The gods' reactions and Hades's death verdict are recorded lines for now (built, see Voices).
 - Scrolls (built): Gemini writes each scroll's incantation (two crypto-Greek words and their meaning), prepared in the background so buying never waits. The browser's speech recognition listens while you carry a scroll. It hears invented words as English ("Thalassa" comes back as "the lasso"), so incantations are matched by sound, and both words must be there. What the mic heard shows like a subtitle under the river.
 - When it is called: run start, shop docks, game over, in the background. Never per frame. Lines are prepared ahead so they play instantly.
 - If the AI is slow or offline: canned lines and canned incantations per god. With no mic (Firefox, mic refused), Space then 1 / 2 / 3 reads a scroll.
@@ -95,7 +95,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | `icon_speed`, `icon_handling`, `icon_hold` | 96x96 | Shop icons |
 | `scroll_athena`, `scroll_ares`, `scroll_poseidon` | 88x64 | A scroll sealed in its god's color, for the stall and the HUD |
 
-- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite, lantern lit, new best, scrolls unrolling and a scroll calming its god. No background ambience: silence between effects. Real audio can replace them later. Owner: TBD.
+- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite, lantern lit, new best, scrolls unrolling and a scroll calming its god. No background ambience: silence between effects. Real audio can replace them later. Owner: TBD. The gods' voices are recorded (see Voices).
 
 ## Voices (Gradium, v2)
 
@@ -105,7 +105,13 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | Athena | `athena` | "Athena", designed (`xejWGWmOKQHMxQbh`) | Cool teacher: calm alto, precise, disappointed. Lines and prompt in `src/npc-voices/athena.js` |
 | Ares | `ares` | "Ares", designed (`bYo8Un6hIP7WoPZ2`) | Viking warlord: extremely low, gravelly, slow, enraged. Lines and full prompt in `src/npc-voices/ares.js` |
 | Poseidon | `poseidon` | "Poseidon", designed (`Dd8EiWWMQldQ7SeM`) | Storm king: booming bass, weathered but clear, bursts into roars. Lines and prompts in `src/npc-voices/poseidon.js` |
-| Hades | `hades` | "Hades", designed (`oyNt5tAW0wzf4qMN`) | Not one of the 3 gods yet, voice only. Cold aristocrat: deep, quiet, contemptuous. `src/npc-voices/hades.js` |
+| Hades | `hades` | "Hades", designed (`oyNt5tAW0wzf4qMN`) | Not one of the 3 gods: Charon's master, who speaks at run start and gives the verdict at game over. Cold aristocrat: deep, quiet, contemptuous. `src/npc-voices/hades.js` |
+
+Fede's recorded lines (MP3s in `public/npc-voices/`) play in the game:
+
+- **When:** Hades at run start (after the tour, on a first run); the god whose soul you lose (missed or burnt out) shouts half the time; a soul about to burn out makes its god say hurry, once per soul; rage at 50% and 75%; streaks of 3, 5 and every 8th; every smite (each lantern lost); and Hades's verdict on the game-over screen, which stops when you pay Charon or drift again.
+- **One at a time:** a more urgent line cuts in (verdict, then smite and run start, then the rage warnings), and small talk (shout, hurry, streak) waits 2.5 s after the last line. While the mic listens for an incantation, shouts and hurries stay quiet.
+- **On screen too:** each line shows in a bubble pointing at its god's rage bar; Hades's at the top of the river and under the game-over screen. M mutes the voices with everything else. Tuning: `VOICE` in `src/config.js`.
 
 ## Scope
 
@@ -119,7 +125,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## v1 status
 
-Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives), death and Charon's fee, Hermes' stall with exponential prices, scrolls with spoken incantations written by Gemini, pause, game over and instant restart, your best run saved on this device and marked on the river, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
+Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives), death and Charon's fee, Hermes' stall with exponential prices, scrolls with spoken incantations written by Gemini, the gods' recorded voices, pause, game over and instant restart, your best run saved on this device and marked on the river, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
 
 Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
 

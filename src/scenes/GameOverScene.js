@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, COLORS, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, VOICE, COLORS, FONT, DISPLAY_FONT } from '../config.js';
 import { formatObols, formatMeters } from '../economy.js';
 import { onAction, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
-import { hexCss } from '../color.js';
+import { hexCss, lighten } from '../color.js';
 import { spaced } from '../ui.js';
+import { godSay, stopGodVoice } from '../npc-voices/index.js';
 
 // The last lantern is out: the god whose rage filled up smote the boat. Charon offers to take you back
 // for a fee (1, or a click or tap on his offer); Space or a tap anywhere else starts a fresh run.
-// v2 adds the god's spoken verdict.
+// Hades, Charon's master, gives his verdict on the run (Fede's recorded lines) until you move on.
 export class GameOverScene extends Phaser.Scene {
   constructor() {
     super('GameOver');
@@ -45,6 +46,8 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.tweens.add({ targets: again, alpha: 0.35, duration: 800, yoyo: true, repeat: -1 });
 
+    this.time.delayedCall(VOICE.verdictDelay * 1000, () => this.verdict());
+
     // Short delay so the key that was held when you died doesn't restart instantly.
     this.ready = false;
     this.time.delayedCall(800, () => (this.ready = true));
@@ -58,6 +61,18 @@ export class GameOverScene extends Phaser.Scene {
       if (this.feeZone && over.includes(this.feeZone)) this.payFee();
       else this.restart();
     });
+  }
+
+  // Hades's verdict, spoken and on screen under everything else. It stops when you pay or drift again.
+  verdict() {
+    const line = godSay('hades', 'verdict');
+    if (!line) return;
+    const color = VOICE.hadesColor;
+    const name = this.add.text(W / 2, 612, spaced('HADES'), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: hexCss(color) }).setOrigin(0.5);
+    const words = this.add
+      .text(W / 2, 634, `“${line.text}”`, { fontFamily: DISPLAY_FONT, fontSize: '22px', fontStyle: 'italic 500', color: hexCss(lighten(color, 0.35)), align: 'center', wordWrap: { width: 960 } })
+      .setOrigin(0.5, 0);
+    this.tweens.add({ targets: [name, words], alpha: { from: 0, to: 1 }, duration: 400 });
   }
 
   // How this run compares with your best on this device: a new best, the first mark, or how far short.
@@ -113,6 +128,7 @@ export class GameOverScene extends Phaser.Scene {
       return;
     }
     clearKeys();
+    stopGodVoice();
     sfx.buy();
     const river = this.scene.get('River');
     river.run.obols -= this.fee;
@@ -122,6 +138,7 @@ export class GameOverScene extends Phaser.Scene {
 
   restart() {
     clearKeys();
+    stopGodVoice();
     this.scene.stop();
     this.scene.get('River').scene.restart({ play: true });
   }

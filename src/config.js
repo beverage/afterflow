@@ -146,6 +146,17 @@ export const SCROLLS = {
   heardSeconds: 2.5, // the words the mic caught stay on screen this long
 };
 
+// The gods' recorded lines (src/npc-voices/), one at a time. Each line is on screen too, beside its god's rage bar.
+export const VOICE = {
+  gap: 2.5, // s of quiet after any line before a shout, hurry or streak line can play
+  shoutChance: 0.5, // a lost soul (missed or burnt out) makes its god shout this often, when nobody is speaking
+  rageHalf: 0.5, // a god speaks up when its rage passes this, and again at TUNING.rageWarn
+  streakAt: [3, 5], // streaks the delivering god praises, and every LANTERNS.streakForLantern-th
+  startDelay: 0.8, // s into a run before Hades speaks (after the tour, on a first run)
+  verdictDelay: 1.5, // s into the game-over screen before Hades's verdict, once the smite line has ended
+  hadesColor: 0xb8a8ff, // Hades has no rage bar: his lines show over the river, in this color
+};
+
 // Touch steering on phones: a floating stick under the thumb, in screen px (see controls.js).
 export const STICK = {
   deadZone: 10, // a slide shorter than this doesn't move the boat, so taps don't steer

@@ -33,7 +33,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 | `src/assets.js` | Asset manifest: key -> file in `public/assets/`. A real file replaces that key's placeholder |
 | `src/art.js` | Placeholder art drawn by code at boot, under the same keys as the manifest |
 | `src/controls.js` | All input: `moveVector()` (keys, or the touch stick) plus actions (pause, mute, confirm, help, buy1-6) by physical key; `isTouch()`, `onAway()` |
-| `src/sfx.js` | Sound effects and the ambient drone, synthesized with Web Audio (no files) |
+| `src/sfx.js` | Sound effects and the ambient drone, synthesized with Web Audio (no files); `voiceOut()`, where the gods' recorded lines play |
 | `src/save.js` | What this device remembers between runs (localStorage): best run, last run, lifetime totals. `?fresh` forgets it |
 | `src/river.js`, `src/economy.js` | River shape; soul value, prices, upgrade stats, Charon's fee, number formats |
 | `src/ai.js` | `askAI({ prompt, system, schema, fallback })`, `getAIStatus()` |
@@ -41,7 +41,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 | `src/listen.js` | `setListening()`, `useHeard()`, `canListen()`: the browser's speech recognition for incantations |
 | `src/voice.js` | `speak(text, { voice })`, `prepareSpeech()`, `stopSpeaking()`, `getVoiceStatus()` |
 | `src/voices.js` | Voice manifest: character key -> Gradium voice id |
-| `src/npc-voices/` | Gods' voice lines (`ares.js`...), `getHeroAudio(name, moment)` picks a pre-recorded line from `manifest.js` (generated). Audio in `public/npc-voices/<god>/` |
+| `src/npc-voices/` | Gods' voice lines (`ares.js`...), `getHeroAudio(name, moment)` picks a pre-recorded line from `manifest.js` (generated), `godSay(name, moment)` plays it in the game, one line at a time (`player.js`). Audio in `public/npc-voices/<god>/` |
 | `src/scenes/BootScene.js` | Loads the manifest, draws placeholder art, waits for fonts |
 | `src/scenes/RiverScene.js` | The game: river, souls, shrines, shops, boat, rage, lanterns (lives), HUD. Attract mode behind the title |
 | `src/scenes/TitleScene.js`, `TutorialScene.js`, `ShopScene.js`, `PauseScene.js`, `GameOverScene.js` | Overlays on top of the river (the tutorial is the first-run how-to-play tour, its steps at the top of the file) |

@@ -6,12 +6,14 @@
 //   const { text } = npcSay('ares', 'rage_80'); // plays a random line, show `text` on screen
 // Try it from the browser console on the dev server:
 //   (await import('/src/npc-voices/index.js')).npcSay('ares', 'run_start')
-// Pre-recorded lines (public/npc-voices/, no network at play time): getHeroAudio() in picker.js.
+// Pre-recorded lines (public/npc-voices/, no network at play time): getHeroAudio() in picker.js picks one,
+// godSay() in player.js plays it in the game (RiverScene, GameOverScene).
 import { speak, prepareSpeech } from '../voice.js';
 import { NPCS } from './heroes.js';
 
 export { NPCS, heroKey } from './heroes.js';
 export { getHeroAudio, resetHeroAudio, COOLDOWN_S } from './picker.js';
+export { godSay, prepareGodVoices, stopGodVoice, godVoiceStatus } from './player.js';
 
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 

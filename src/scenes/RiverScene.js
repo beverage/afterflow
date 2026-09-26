@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, VOICE, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { tutorialPending } from './TutorialScene.js';
 import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
@@ -12,6 +12,7 @@ import { Water } from '../water.js';
 import { ROCK_R } from '../art.js';
 import { setListening, useHeard, canListen, listenStatus } from '../listen.js';
 import { prepareIncantations, takeIncantation, heardScroll } from '../scrolls.js';
+import { godSay, prepareGodVoices } from '../npc-voices/index.js';
 
 const TAU = Math.PI * 2;
 const clamp = Phaser.Math.Clamp;
@@ -77,6 +78,8 @@ export class RiverScene extends Phaser.Scene {
     else if (tutorialPending()) this.events.once('postupdate', () => this.showTutorial()); // after one frame, so the river is drawn under it
     else this.startHints();
     if (this.playing) prepareIncantations(); // Gemini writes this run's first incantations in the background
+    prepareGodVoices(); // downloads the gods' lines behind the title, and decodes them once a run has unlocked sound
+    if (this.playing) this.time.delayedCall(VOICE.startDelay * 1000, () => this.say('hades', 'run_start')); // the clock waits under the tour
     this.events.once('shutdown', () => setListening(false));
   }
 
@@ -435,10 +438,12 @@ export class RiverScene extends Phaser.Scene {
     sfx.skip();
     this.addRage(god, TUNING.ragePerSkip);
     this.hint('skip', `Missed souls anger ${GODS[god].name}`, GODS[god].color);
+    this.shout(god);
   }
 
   addRage(god, amount) {
-    this.rage[god] = Math.min(1, this.rage[god] + amount);
+    const before = this.rage[god];
+    this.rage[god] = Math.min(1, before + amount);
     this.rageFlash[god] = 1;
     if (this.rage[god] >= 1) {
       this.smite(god);
@@ -448,7 +453,8 @@ export class RiverScene extends Phaser.Scene {
       this.rageWarned[god] = true;
       sfx.rageWarn();
       this.toast(`${GODS[god].name} is furious`, GODS[god].color, true);
-    }
+      this.say(god, 'rage_80');
+    } else if (before < VOICE.rageHalf && this.rage[god] >= VOICE.rageHalf) this.say(god, 'rage_50');
   }
 
   /* ---------- the hold: souls aboard, each fading on its own timer ---------- */
@@ -462,8 +468,14 @@ export class RiverScene extends Phaser.Scene {
   updateHold(dt) {
     const cap = this.stats.capacity, small = cap > 4, g = this.ringsG;
     for (let i = this.hold.length - 1; i >= 0; i--) {
-      if (!this.ended) this.hold[i].life -= dt / TUNING.lifespan;
-      if (this.hold[i].life <= 0) this.burnOut(i);
+      const o = this.hold[i];
+      if (!o) continue; // a burn-out that set off a smite emptied the hold
+      if (!this.ended) o.life -= dt / TUNING.lifespan;
+      if (o.life <= 0) this.burnOut(i);
+      else if (o.life < TUNING.clutchBelow && !o.hurried) {
+        o.hurried = true; // once per soul, and not while the mic listens for an incantation
+        if (!this.micOpen()) this.say(o.god, 'hurry');
+      }
     }
     g.clear();
     this.hold.forEach((o, i) => {
@@ -493,6 +505,7 @@ export class RiverScene extends Phaser.Scene {
     this.run.streak = 0;
     this.hint('burnout', 'Souls burn out: deliver them before their ring runs out');
     this.addRage(o.god, TUNING.ragePerBurnOut);
+    this.shout(o.god);
   }
 
   deliver(f) {
@@ -521,6 +534,7 @@ export class RiverScene extends Phaser.Scene {
     if (clutch) sfx.clutch();
     if (this.run.streak === 3) this.hint('streak', 'Back-to-back deliveries build your streak');
     if (this.run.streak % LANTERNS.streakForLantern === 0) this.gainLantern();
+    if (VOICE.streakAt.includes(this.run.streak) || this.run.streak % LANTERNS.streakForLantern === 0) this.say(f.god, 'streak');
   }
 
   arrived(f, gain, clutch, count) {
@@ -983,7 +997,8 @@ export class RiverScene extends Phaser.Scene {
     if (this.ended) return;
     const { name, color } = GODS[god], b = this.boat;
     sfx.smite();
-    const bolt = this.add.graphics().setDepth(35).setBlendMode(Phaser.BlendModes.ADD);
+    this.say(god, 'smite'); // every lantern it puts out, the last one too
+    const bolt =this.add.graphics().setDepth(35).setBlendMode(Phaser.BlendModes.ADD);
     const pts = [];
     let x = b.x + rnd(-60, 60);
     for (let y = -20; y < b.y; y += rnd(28, 46)) {
@@ -1091,6 +1106,66 @@ export class RiverScene extends Phaser.Scene {
       const puff = this.add.image(l.x + rnd(-3, 3), l.y - 6, 'glow').setTint(0x9a96a8).setScale(rnd(0.12, 0.2)).setAlpha(0.5).setDepth(52);
       this.tweens.add({ targets: puff, x: puff.x + rnd(-10, 10), y: puff.y - rnd(22, 36), scale: puff.scale * 2.4, alpha: 0, duration: rnd(700, 1000), delay: k * 90, ease: 'Quad.easeOut', onComplete: () => puff.destroy() });
     }
+  }
+
+  /* ---------- the gods' voices: Fede's recorded lines (src/npc-voices/) ---------- */
+
+  // god: an index into GODS, or 'hades', who has no rage bar. The player module keeps it to one line at a time.
+  say(god, moment) {
+    if (!this.playing) return;
+    const line = godSay(god === 'hades' ? 'hades' : GODS[god].key, moment);
+    if (line) this.showLine(god, line);
+  }
+
+  // A lost soul: now and then its god shouts, but never while the mic listens for an incantation.
+  shout(god) {
+    if (Math.random() < VOICE.shoutChance && !this.micOpen()) this.say(god, 'shout');
+  }
+
+  // The game listens whenever you carry a scroll and the mic works (see updateScrolls).
+  micOpen() {
+    return canListen() && this.run.scrolls.some(Boolean);
+  }
+
+  // Every line is on screen too, since phones are often muted: in a bubble pointing at the god's rage bar,
+  // or for Hades, over the top of the river.
+  showLine(god, { text, seconds }) {
+    const hades = god === 'hades', color = hades ? VOICE.hadesColor : GODS[god].color;
+    this.lineCaps ??= {};
+    const old = this.lineCaps[god];
+    if (old) {
+      this.tweens.killTweensOf(old);
+      old.destroy();
+    }
+    const words = this.add.text(0, 0, `“${text}”`, { fontFamily: DISPLAY_FONT, fontSize: '21px', fontStyle: 'italic 600', color: hexCss(lighten(color, 0.35)) }).setOrigin(hades ? 0.5 : 0, 0.5);
+    const bubble = this.add.graphics();
+    const cap = this.add.container(0, 0, [bubble, words]).setDepth(58).setAlpha(0);
+    if (hades) {
+      const w = words.width + 40;
+      words.y = 9;
+      bubble.fillStyle(0x080b0a, 0.72).fillRoundedRect(-w / 2, -30, w, 60, 10);
+      bubble.lineStyle(1, color, 0.3).strokeRoundedRect(-w / 2, -30, w, 60, 10);
+      cap.add(this.add.text(0, -15, spaced('HADES'), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: hexCss(color) }).setOrigin(0.5).setAlpha(0.8));
+      cap.setPosition(W / 2, 170); // under the toasts
+    } else {
+      const w = words.width + 26;
+      words.x = 13;
+      bubble.fillStyle(0x080b0a, 0.72).fillRoundedRect(0, -17, w, 34, 10).fillTriangle(0, -7, -9, 0, 0, 7);
+      bubble.lineStyle(1, color, 0.35).strokeRoundedRect(0, -17, w, 34, 10);
+      cap.setPosition(160, 76 + god * 46 - 4); // beside the god's row in the rage panel
+    }
+    this.lineCaps[god] = cap;
+    this.tweens.add({ targets: cap, alpha: 1, duration: 180, ease: 'Quad.easeOut' });
+    this.tweens.add({
+      targets: cap,
+      alpha: 0,
+      duration: 400,
+      delay: (seconds + 1.2) * 1000,
+      onComplete: () => {
+        cap.destroy();
+        if (this.lineCaps[god] === cap) delete this.lineCaps[god];
+      },
+    });
   }
 
   /* ---------- scrolls: say a carried scroll's incantation aloud to calm its god ---------- */
