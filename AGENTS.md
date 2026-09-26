@@ -39,7 +39,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 | `src/voice.js` | `speak(text, { voice })`, `prepareSpeech()`, `stopSpeaking()`, `getVoiceStatus()` |
 | `src/voices.js` | Voice manifest: character key -> Gradium voice id |
 | `src/scenes/BootScene.js` | Loads the manifest, draws placeholder art, waits for fonts |
-| `src/scenes/RiverScene.js` | The game: river, souls, shrines, shops, boat, rage, HUD. Attract mode behind the title |
+| `src/scenes/RiverScene.js` | The game: river, souls, shrines, shops, boat, rage, lanterns (lives), HUD. Attract mode behind the title |
 | `src/scenes/TitleScene.js`, `ShopScene.js`, `PauseScene.js`, `GameOverScene.js` | Overlays on top of the river |
 | `server/gemini.js`, `server/tts.js` | The proxies, shared by the dev server, Vercel and `server.js` |
 | `api/*.js`, `server.js` | Deploy adapters (Vercel, and Node/Docker for Fly) |

@@ -56,3 +56,7 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 16:28 · No background ambience: the flowing-water bed read as a constant hiss; silence between sound effects (AMBIENCE_VOLUME = 0 in sfx.js) · team
 - 16:37 · Banks from Ines's river study: her ground (moss, earth, grass, pale flowers), uneven shoreline with a muddy strip, her pines, ferns, rocks (half on the waterline, with eddies) and spider lilies; reeds dropped · the team liked her banks · team
 - 16:41 · Feature freeze moves from 17:30 to 18:30 · one more hour of feature work before the demo · Alex
+- 16:49 · Lanterns are lives: start with 2, hold at most 3; a full rage bar puts one out instead of ending the run, and the last one ends it · second chances and stickiness, and a safety net for the live demo; obstacles will put out the same lanterns later · Alex
+- 16:49 · After a smite the god who struck is appeased (rage to 0), the others cool by 25%, the souls aboard and the streak are lost, then 3 s of grace (the boat flickers, passing souls anger no one) · stops one full bar from chaining straight into the next, while the smite still costs something · Claude
+- 16:49 · Every 8th delivery in a row lights a lantern · the streak multiplier caps at ×8, so long streaks had nothing left to chase · Claude
+- 16:49 · HUD lanterns are small copies of the boat's bow lantern, under the rage bars; on the last one they and the bow light gutter · reads as lives without new art · Claude

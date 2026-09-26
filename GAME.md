@@ -10,13 +10,14 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 1. **Scoop.** The river scrolls down the middle of the screen. Move the boat anywhere on the water with WASD and touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it burns out in a flash.
 2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into a shrine's dock to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to burn out is a **CLUTCH**, with its own sound and a bonus.
-3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially.
+3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and one of your lanterns goes out; when the last one goes out, the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially.
 
 ## Rules (v1)
 
 - One continuous run. Nothing is saved: no accounts, no best score. Game over, press a key, fresh run.
 - 3 gods, one rage bar each in the HUD: **Athena** (gold, owl), **Ares** (crimson, spear), **Poseidon** (seafoam, trident). Souls carry their god's symbol too, not just a color.
-- Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100% = death.
+- Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100%: that god smites you and a lantern goes out.
+- **Lanterns** are your lives: you start with 2 and can hold 3 (small lanterns under the rage bars). A smite puts one out and takes the souls aboard and the streak with it; the god who struck is appeased (rage back to 0) and the others cool by 25%, then for 3 s the boat flickers and passing souls anger no one. When the last lantern goes out, the run ends. Every 8th delivery in a row lights one. Obstacles (v2) will put them out too.
 - Souls shrink and flicker over their lifespan and burn out in a flash at zero, which forces regular deliveries.
 - The streak resets when a soul burns out. Skipped souls already cost rage, so they don't also break it.
 - Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Items:
@@ -28,7 +29,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## Tuning targets
 
-- A first-timer dies after 60-90 s; a good run lasts 3-5 min.
+- A first-timer loses a first lantern after 60-90 s; a good run lasts 3-5 min.
 - At every shop you can afford about one upgrade, sometimes two.
 - All numbers live in `src/config.js`.
 
@@ -63,7 +64,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 - View: 3/4 top-down 2D (2.5D) on a landscape 1280x720 canvas.
 - Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines drawn as stone-arch portals with a swirl in their god's color. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
-- Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
+- Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars, lanterns and distance on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
 - Banks after Ines's river study too: uneven shoreline with a muddy strip, and pines, ferns, rocks and spider lilies scattered at her densities, clear of shrines and stalls.
 - Drawn by code, not art: the water (ported from Ines's river study `afterflow-riviere.html`: shallow-to-deep body, flowing surface, current lines faster mid-stream, serpentine lifestream ribbons, glints, foam along the banks), glows, portal swirls, soul trails and sparks.
@@ -84,7 +85,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | `obol` | 40x40 | Coin with Athena's owl |
 | `icon_speed`, `icon_handling`, `icon_hold` | 96x96 | Shop icons |
 
-- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning and smite. No background ambience: silence between effects. Real audio can replace them later. Owner: TBD.
+- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite and lantern lit. No background ambience: silence between effects. Real audio can replace them later. Owner: TBD.
 
 ## Voices (Gradium, v2)
 
@@ -107,7 +108,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## v1 status
 
-Built and playable: title over a self-steering river, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars and death, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
+Built and playable: title over a self-steering river, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives) and death, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
 
 Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
 

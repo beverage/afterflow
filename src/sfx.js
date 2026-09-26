@@ -139,6 +139,12 @@ export const sfx = {
     noise({ dur: 1.6, vol: 0.5, freq: 900, type: 'lowpass', sweep: 0.15 });
     tone(80, { dur: 1.2, vol: 0.45, slide: 0.4 });
   },
+  // A lantern is lit: a match strike, then a warm rising swell.
+  lanternLit() {
+    noise({ dur: 0.07, vol: 0.18, freq: 3200, q: 1.2 });
+    [392, 587.33, 783.99].forEach((f, i) => tone(f, { type: 'triangle', dur: 0.7, vol: 0.13, attack: 0.03, at: 0.05 + i * 0.07 }));
+    tone(1567.98, { dur: 0.9, vol: 0.05, attack: 0.08, at: 0.2 });
+  },
   tap() {
     tone(1200, { dur: 0.05, vol: 0.08 });
   },

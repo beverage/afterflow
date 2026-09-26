@@ -88,6 +88,16 @@ export const TUNING = {
   priceGrowth: 1.8,
 };
 
+// Lanterns are lives. A god's smite puts one out (a wrecked hull will too, once there are obstacles);
+// when the last one goes out, the run ends.
+export const LANTERNS = {
+  start: 2,
+  max: 3,
+  graceSeconds: 3, // after a smite, souls that float past anger no one and the boat flickers
+  coolOthers: 0.25, // a smite appeases the god who struck (rage to 0) and cools the others by this much
+  streakForLantern: 8, // every 8th delivery in a row lights one
+};
+
 // Hermes' stall. Each level costs basePrice * priceGrowth^level.
 export const UPGRADES = [
   {

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { soulValue, statsFor, formatObols, formatMeters } from '../economy.js';
 import { moveVector, onAction, onAway, clearKeys, isTouch } from '../controls.js';
@@ -37,6 +37,8 @@ export class RiverScene extends Phaser.Scene {
     this.rage = GODS.map(() => 0);
     this.rageFlash = GODS.map(() => 0);
     this.rageWarned = GODS.map(() => false);
+    this.lanterns = LANTERNS.start;
+    this.graceUntil = 0; // after a smite, until this.t, missed souls anger no one
     this.ended = false;
     this.hints = {};
     this.souls = [];
@@ -387,7 +389,7 @@ export class RiverScene extends Phaser.Scene {
   }
 
   skipped(god) {
-    if (!this.playing || this.ended) return;
+    if (!this.playing || this.ended || this.t < this.graceUntil) return;
     sfx.skip();
     this.addRage(god, TUNING.ragePerSkip);
     this.hint('skip', `Missed souls anger ${GODS[god].name}`, GODS[god].color);
@@ -476,6 +478,7 @@ export class RiverScene extends Phaser.Scene {
     sfx.deliver(this.run.streak);
     if (clutch) sfx.clutch();
     if (this.run.streak === 3) this.hint('streak', 'Back-to-back deliveries build your streak');
+    if (this.run.streak % LANTERNS.streakForLantern === 0) this.gainLantern();
   }
 
   arrived(f, gain, clutch, count) {
@@ -551,10 +554,12 @@ export class RiverScene extends Phaser.Scene {
       b.vx = Math.min(0, b.vx);
     }
     b.tilt += (clamp(b.vx * 0.0011, -0.3, 0.3) - b.tilt) * Math.min(1, dt * 7);
-    this.boatImg.setPosition(b.x, b.y).setRotation(b.tilt);
+    const blink = this.t < this.graceUntil && Math.sin(this.t * 38) > 0; // the boat flickers through the grace after a smite
+    this.boatImg.setPosition(b.x, b.y).setRotation(b.tilt).setAlpha(blink ? 0.35 : 1);
     const bow = this.local(0, -66);
-    this.lantern.setPosition(bow.x, bow.y);
-    this.lanternCore.setPosition(bow.x, bow.y - 1);
+    const gutter = this.playing && this.lanterns === 1 ? 0.45 + 0.55 * Math.abs(Math.sin(this.t * 7.3) * Math.sin(this.t * 3.1)) : 1; // on the last lantern the bow light gutters
+    this.lantern.setPosition(bow.x, bow.y).setAlpha(0.5 * gutter);
+    this.lanternCore.setPosition(bow.x, bow.y - 1).setAlpha(0.9 * gutter);
     b.wakeT -= dt;
     if (b.wakeT <= 0) {
       b.wakeT = 0.03;
@@ -704,9 +709,9 @@ export class RiverScene extends Phaser.Scene {
   buildHud() {
     const d = 50;
     const panel = this.add.graphics().setDepth(d);
-    for (const x of [14, HUD_RIGHT]) {
-      panel.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, 14, 134, 238, 10);
-      panel.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, 14, 134, 238, 10);
+    for (const [x, h] of [[14, 298], [HUD_RIGHT, 238]]) {
+      panel.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, 14, 134, h, 10);
+      panel.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, 14, 134, h, 10);
       drawMeander(panel, x + 12, 24, 110);
     }
     const label = (text, x, y) => this.add.text(x, y, spaced(text), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55).setDepth(d + 1);
@@ -717,8 +722,17 @@ export class RiverScene extends Phaser.Scene {
       this.add.text(60, y - 17, god.name, { fontFamily: DISPLAY_FONT, fontSize: '19px', fontStyle: 'italic 600', color: '#e6eeea' }).setDepth(d + 1);
     });
     this.hudG = this.add.graphics().setDepth(d + 1);
-    label('DISTANCE', 26, 204);
-    this.distText = this.add.text(26, 220, '0 m', { fontFamily: FONT, fontSize: '19px', fontStyle: '600', color: '#e6eeea' }).setDepth(d + 1);
+    // Lanterns: small copies of the boat's bow lantern. The frames are drawn in updateHud, the flames are glows.
+    label('LANTERNS', 26, 204);
+    this.lanternIcons = Array.from({ length: LANTERNS.max }, (_, i) => {
+      const x = 38 + i * 30, y = 238;
+      const glow = this.add.image(x, y + 1, 'glow').setTint(0xffc478).setBlendMode('ADD').setDepth(d + 1);
+      const core = this.add.image(x, y + 1, 'glow').setTint(0xffe6aa).setBlendMode('ADD').setDepth(d + 1);
+      return { x, y, glow, core };
+    });
+    this.lanternPulse = this.lanternIcons.map(() => 0);
+    label('DISTANCE', 26, 262);
+    this.distText = this.add.text(26, 278, '0 m', { fontFamily: FONT, fontSize: '19px', fontStyle: '600', color: '#e6eeea' }).setDepth(d + 1);
     label('OBOLS', HUD_RIGHT + 12, 38);
     this.add.image(HUD_RIGHT + 25, 70, 'obol').setScale(0.62).setDepth(d + 1);
     this.obolText = this.add.text(HUD_RIGHT + 44, 70, '0', { fontFamily: FONT, fontSize: '25px', fontStyle: '600', color: '#f1e6c8' }).setOrigin(0, 0.5).setDepth(d + 1);
@@ -754,6 +768,17 @@ export class RiverScene extends Phaser.Scene {
       const alarm = Math.max(hot * (0.5 + 0.5 * Math.sin(this.t * 8)), this.rageFlash[i]) * 0.6;
       if (alarm > 0.01) g.lineStyle(2, 0xff5a46, alarm).strokeRoundedRect(bx - 2, by - 2, bw + 4, bh + 4, 4);
       this.rageFlash[i] = Math.max(0, this.rageFlash[i] - dt * 2);
+    });
+    this.lanternIcons.forEach((l, i) => {
+      const lit = i < this.lanterns, p = this.lanternPulse[i];
+      const flicker = this.lanterns === 1 ? 0.5 + 0.5 * Math.abs(Math.sin(this.t * 9)) : 1; // the last one gutters
+      g.lineStyle(1.5, 0xf1e6c8, lit ? 0.7 : 0.22).strokeRoundedRect(l.x - 7, l.y - 8, 14, 18, 4);
+      g.beginPath();
+      g.arc(l.x, l.y - 8, 4, Math.PI, TAU);
+      g.strokePath();
+      l.glow.setVisible(lit).setScale(0.6 * (1 + 0.6 * p)).setAlpha((0.5 + 0.08 * Math.sin(this.t * 3 + i * 2)) * flicker);
+      l.core.setVisible(lit).setScale(0.17 * (1 + 0.6 * p)).setAlpha(0.95 * flicker);
+      this.lanternPulse[i] = Math.max(0, p - dt * 2.5);
     });
     const cap = this.stats.capacity;
     for (let i = 0; i < cap; i++) {
@@ -847,10 +872,12 @@ export class RiverScene extends Phaser.Scene {
     this.stats = statsFor(this.levels);
   }
 
+  /* ---------- lanterns: the boat's lives ---------- */
+
+  // A god's rage is full: lightning strikes the boat and puts out a lantern.
   smite(god) {
     if (this.ended) return;
-    this.ended = true;
-    const { color } = GODS[god], b = this.boat;
+    const { name, color } = GODS[god], b = this.boat;
     sfx.smite();
     const bolt = this.add.graphics().setDepth(35).setBlendMode(Phaser.BlendModes.ADD);
     const pts = [];
@@ -869,18 +896,64 @@ export class RiverScene extends Phaser.Scene {
     this.cameras.main.shake(420, 0.012);
     this.ringFx(b.x, b.y, color, 0.9, 40);
     this.boatImg.setTint(color);
-    this.tweens.add({ targets: this.boatImg, scale: 0.6, alpha: 0, angle: '+=40', duration: 900, delay: 200, ease: 'Quad.easeIn' });
-    this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
+    this.loseLantern({ god });
+    if (this.ended) return;
+    // Still afloat: the god who struck is appeased and the others cool off a little.
+    this.rage = this.rage.map((v, i) => (i === god ? 0 : Math.max(0, v - LANTERNS.coolOthers)));
+    this.rageWarned = this.rageWarned.map((w, i) => w && this.rage[i] >= TUNING.rageWarn - 0.1);
+    this.time.delayedCall(400, () => !this.ended && this.boatImg.clearTint());
+    this.toast(`${name} struck: ${this.lanterns === 1 ? 'one lantern left' : `${this.lanterns} lanterns left`}`, color, true);
+  }
+
+  // A lantern goes out: a god's smite, and a wrecked hull once there are obstacles. The souls aboard
+  // and the streak go with it, then a few seconds of grace. The last one ends the run.
+  loseLantern(cause) {
+    this.lanterns = Math.max(0, this.lanterns - 1);
+    this.lanternOutFx(this.lanterns);
     this.hold.forEach((o) => {
       this.burnOutFx(o.img.x, o.img.y, o.god);
       o.img.destroy();
     });
     this.hold = [];
-    const result = { god, distance: this.scroll, delivered: this.run.delivered, earned: this.run.earned, bestStreak: this.run.bestStreak, clutches: this.run.clutches };
+    this.run.streak = 0;
+    if (this.lanterns === 0) this.sink(cause);
+    else this.graceUntil = this.t + LANTERNS.graceSeconds;
+  }
+
+  // The last lantern is out: the boat goes under and the run ends.
+  sink(cause) {
+    this.ended = true;
+    this.tweens.add({ targets: this.boatImg, scale: 0.6, alpha: 0, angle: '+=40', duration: 900, delay: 200, ease: 'Quad.easeIn' });
+    this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
+    const result = { god: cause.god, distance: this.scroll, delivered: this.run.delivered, earned: this.run.earned, bestStreak: this.run.bestStreak, clutches: this.run.clutches };
     this.time.delayedCall(1100, () => {
       this.scene.pause();
       this.scene.launch('GameOver', result);
     });
+  }
+
+  // Every 8th delivery in a row lights a lantern, up to the max.
+  gainLantern() {
+    if (this.lanterns >= LANTERNS.max) return;
+    this.lanternPulse[this.lanterns] = 1;
+    this.lanterns += 1;
+    sfx.lanternLit();
+    const bow = this.local(0, -66);
+    this.ringFx(bow.x, bow.y, 0xffc478, 0.7, 24);
+    this.popup('+1 lantern', this.boat.x + 64, this.boat.y - 50, 0xffc478, 24);
+    this.hint('lantern', `Every ${LANTERNS.streakForLantern} deliveries in a row light a lantern`, 0xffc478);
+  }
+
+  // A lantern in the HUD goes out: a last flare, then a wisp of smoke.
+  lanternOutFx(i) {
+    const l = this.lanternIcons?.[i];
+    if (!l) return;
+    const flare = this.add.image(l.x, l.y, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(0.9).setDepth(52);
+    this.tweens.add({ targets: flare, scale: 1.8, alpha: { from: 0.9, to: 0 }, duration: 450, ease: 'Quad.easeOut', onComplete: () => flare.destroy() });
+    for (let k = 0; k < 4; k++) {
+      const puff = this.add.image(l.x + rnd(-3, 3), l.y - 6, 'glow').setTint(0x9a96a8).setScale(rnd(0.12, 0.2)).setAlpha(0.5).setDepth(52);
+      this.tweens.add({ targets: puff, x: puff.x + rnd(-10, 10), y: puff.y - rnd(22, 36), scale: puff.scale * 2.4, alpha: 0, duration: rnd(700, 1000), delay: k * 90, ease: 'Quad.easeOut', onComplete: () => puff.destroy() });
+    }
   }
 
   drawDebug() {
