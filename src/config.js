@@ -183,3 +183,14 @@ export const PORTAL = {
   medal: [-16, -160], // her medallion, which ours covers so the symbol matches the souls
   scale: 1,
 };
+
+// Hermes' stall (`shop`), drawn by code at the portals' angle and in the same frame, so Ines's file can replace it.
+// Offsets are from the base point, facing right (toward the water on the left bank; mirrored on the right).
+export const STALL = {
+  frameWidth: 327,
+  frameHeight: 299,
+  anchor: [80, 195], // the counter's base point inside the frame
+  dock: [95, 28], // the end of the jetty, in the warm light on the water: sail in here to shop
+  lamp: [50, -86], // the lantern hanging from the awning
+  medal: [8, -152], // the caduceus medallion above the awning
+};

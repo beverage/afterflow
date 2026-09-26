@@ -73,7 +73,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 ## Look and sound
 
 - View: 3/4 top-down 2D (2.5D) on a landscape 1280x720 canvas.
-- Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines are Ines's animated stone portals, set at an angle on the bank and spilling a pool of light in their god's color onto the water (sail into it to deliver). Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
+- Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines are Ines's animated stone portals, set at an angle on the bank and spilling a pool of light in their god's color onto the water (sail into it to deliver). Hermes' stall stands at the same angle: a striped awning over a counter of wares, a jetty out into warm light, a caduceus medallion. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
 - Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars, lanterns and distance on the left; obols, streak and next shrines on the right, with the river and your level under them. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
 - Atmosphere after Ines's river study: drifting fog banks, a grey tint and haze at the top and bottom (under souls and the boat so they stay crisp), floating spores, darkened edges. `fogAmount` in `src/config.js` sets the fog (her slider; default 0.75).
@@ -88,7 +88,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | `boat` | 100x170 | Charon's ferry from above, bow up, hull centred at (40, 72) |
 | `portal_athena`, `portal_ares`, `portal_poseidon` | 2616x1196 | Ines's animated portals (Afterflow): sprite sheets of 8x4 frames, 327x299 each, played at 8 fps. Gate base at (80, 195) in a frame, facing right; mirrored on the right bank. Matched by color: her gold Apollo sheet is Athena, her red Persephone sheet is Ares, her Poseidon sheet hue-shifted to seafoam is Poseidon. Our god medallions sit over her symbols (`PORTAL` in `src/config.js` has the offsets) |
 | `arch` | 150x150 | Fallback shrine arch, used only if a portal sheet fails to load. Base centre at (75, 138); leave the opening transparent: the portal shows through |
-| `shop` | 150x150 | Hermes' stall, base centre at (75, 138) |
+| `shop` | 327x299 | Hermes' stall, at the portals' angle and in their frame: base point at (80, 195), facing right (mirrored on the right bank), the dock at the jetty's end, (+95, +28) from the base (`STALL` in `src/config.js`). Placeholder drawn by code (awning, counter of wares, jetty, pool of warm light) until Ines draws hers |
 | `pier` | 100x34 | Planks with posts at the right (water) end, stretched to length |
 | `pine1`, `pine2`, `pine3` | about 98 to 136 square | Pines seen from above (Ines's radiating needles); trunk up-left of centre, shadow down-right |
 | `fern1`, `fern2`, `fern3` | about 44 to 64 square | Ferns seen from above |
