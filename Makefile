@@ -29,7 +29,7 @@ up: node_modules
 		nohup $(VITE) --port $(PORT) --strictPort > $(LOG_FILE) 2>&1 & echo $$! > $(PID_FILE); \
 		sleep 2; \
 		if kill -0 $$(cat $(PID_FILE)) 2>/dev/null; then \
-			echo "Soul Drift is up (PID $$(cat $(PID_FILE)), logs: make logs)"; \
+			echo "Afterflow is up (PID $$(cat $(PID_FILE)), logs: make logs)"; \
 			echo ""; \
 			echo "  ➜  http://localhost:$(PORT)"; \
 			grep -a "Network:" $(LOG_FILE) | sed 's/\x1b\[[0-9;]*m//g'; \
