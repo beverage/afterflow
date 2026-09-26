@@ -3,6 +3,8 @@ import { WIDTH as W, HEIGHT as H, GODS, COLORS, FONT, DISPLAY_FONT } from '../co
 import { onAction, isTouch } from '../controls.js';
 import { unlockAudio, startAmbient, sfx } from '../sfx.js';
 import { hexCss } from '../color.js';
+import { formatMeters } from '../economy.js';
+import { getSave } from '../save.js';
 
 // Title card over the river running in attract mode. A click, tap or key starts a run
 // (and unlocks audio, which browsers only allow after a user gesture).
@@ -28,11 +30,19 @@ export class TitleScene extends Phaser.Scene {
     [
       touch ? 'Slide a thumb anywhere to steer' : 'Steer with WASD, ZQSD or the arrow keys',
       'Touch a soul to take it aboard',
-      "Dock at its god's shrine before it fades",
-      'Missed souls anger their god. A full rage bar ends the run',
+      "Dock at its god's shrine before it burns out",
+      'Missed souls anger their god. A full rage bar puts out one of your lanterns',
+      "Buy scrolls at Hermes' stall, then say their words aloud to calm a god",
     ].forEach((line, i) => this.add.text(W / 2, 400 + i * 30, line, { fontFamily: FONT, fontSize: '18px', color: COLORS.dim }).setOrigin(0.5));
     const play = this.add.text(W / 2, 572, touch ? 'Tap to play' : 'Click or press Space to play', { fontFamily: FONT, fontSize: '22px', fontStyle: '600', color: '#ffffff' }).setOrigin(0.5);
     this.tweens.add({ targets: play, alpha: 0.4, duration: 800, yoyo: true, repeat: -1 });
+    const { best, souls } = getSave(); // remembered on this device
+    if (best) {
+      this.add
+        .text(W / 2, 628, `Your best ${formatMeters(best.distance)}` + (souls ? `  ·  ${souls.toLocaleString('en-US')} soul${souls === 1 ? '' : 's'} ferried` : ''), { fontFamily: FONT, fontSize: '16px', fontStyle: '600', color: '#f1e6c8' })
+        .setOrigin(0.5)
+        .setAlpha(0.8);
+    }
     if (new URLSearchParams(location.search).has('debug')) this.addStatusBadge();
 
     onAction(this, (action) => action === 'confirm' && this.start());

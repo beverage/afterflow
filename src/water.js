@@ -3,52 +3,14 @@
 // current lines that run faster mid-stream, serpentine lifestream ribbons, glints, and foam
 // sliding along the banks. Drawn with Canvas 2D into one texture each frame, clipped to the river.
 import { WIDTH as W, HEIGHT as H } from './config.js';
+import { rng, fbm, sstep, mixRGB } from './noise.js';
 
 const SW = 1024; // surface sheet width (texels)
 const SH = 1024; // surface sheet height: the surface repeats along the flow every SH px
 const S = 4; // strip height: the surface is drawn in 4 px rows, each bent to the river
 
-// Seeded random and periodic value noise, as in Ines's file.
-function rng(a) {
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 const R = rng(20260926);
 const rnd = (a, b) => a + R() * (b - a);
-function lattice(gx, gy, seed) {
-  const r = rng(seed), v = new Float32Array(gx * gy);
-  for (let i = 0; i < v.length; i++) v[i] = r();
-  return (u, w) => {
-    const x = u * gx, y = w * gy, x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
-    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-    const X0 = ((x0 % gx) + gx) % gx, X1 = (X0 + 1) % gx, Y0 = ((y0 % gy) + gy) % gy, Y1 = (Y0 + 1) % gy;
-    const a = v[Y0 * gx + X0], b = v[Y0 * gx + X1], c = v[Y1 * gx + X0], d = v[Y1 * gx + X1];
-    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
-  };
-}
-function fbm(gx, gy, oct, seed) {
-  const L = [];
-  for (let i = 0; i < oct; i++) L.push(lattice(gx << i, gy << i, seed + i * 97));
-  return (u, w) => {
-    let s = 0, a = 0.5, n = 0;
-    for (const f of L) {
-      s += f(u, w) * a;
-      n += a;
-      a *= 0.5;
-    }
-    return s / n;
-  };
-}
-const sstep = (a, b, x) => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
-const mixRGB = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 // Built once and shared by every run (a few hundred ms at boot).
 let assets = null;
@@ -156,7 +118,7 @@ export class Water {
   }
 
   /** Draw one frame. scroll = px travelled (world y + scroll = screen y), waterSpeed = px/s of the current. */
-  update(dt, scroll, waterSpeed) {
+  update(dt, scroll, waterSpeed, rocks = []) {
     const b = this.ctx, riverAt = this.riverAt;
     this.t += dt;
     this.wat += waterSpeed * dt;
@@ -166,7 +128,7 @@ export class Water {
     const rows = [];
     for (let y = 0; y < H; y += S) {
       const q = riverAt(y + S / 2 - scroll);
-      rows.push({ y, cx: q.cx, hw: q.hw });
+      rows.push({ y, cx: q.cx, hw: q.hw, l: q.l, r: q.r });
     }
 
     b.globalAlpha = 1;
@@ -174,7 +136,7 @@ export class Water {
     b.clearRect(0, 0, W, H);
 
     // The water body, bank to bank.
-    for (const r of rows) b.drawImage(assets.body, 0, 0, 256, 1, r.cx - r.hw, r.y, r.hw * 2, S);
+    for (const r of rows) b.drawImage(assets.body, 0, 0, 256, 1, r.l, r.y, r.r - r.l, S);
 
     // The surface: sheets drawn in strips centred on the river and wobbled by the turbulence.
     const strips = (sheet, spd, alpha, k, comp) => {
@@ -254,6 +216,25 @@ export class Water {
       }
     }
 
+    // Eddies behind rocks on the waterline: turning arcs and a wake curling off downstream.
+    b.globalAlpha = 1;
+    b.globalCompositeOperation = 'source-over';
+    b.lineWidth = 1.2;
+    for (const rk of rocks) {
+      b.strokeStyle = 'rgba(230,228,250,.32)';
+      for (let j = 0; j < 2; j++) {
+        const a = t * 2.2 + j * 3.14 + rk.x;
+        b.beginPath();
+        b.arc(rk.x + rk.side * rk.r * 0.6, rk.y + rk.r * 1.8, rk.r * (0.5 + 0.25 * j), a, a + 2);
+        b.stroke();
+      }
+      b.strokeStyle = 'rgba(230,228,250,.22)';
+      b.beginPath();
+      b.moveTo(rk.x + rk.side * rk.r, rk.y);
+      b.quadraticCurveTo(rk.x + rk.side * rk.r * 2.2, rk.y + rk.r * 2.5, rk.x + rk.side * rk.r * 2.6, rk.y + rk.r * 5);
+      b.stroke();
+    }
+
     // Foam sliding along both banks.
     b.globalAlpha = 1;
     b.globalCompositeOperation = 'source-over';
@@ -266,7 +247,7 @@ export class Water {
         b.lineDashOffset = -wat * 0.9;
         b.beginPath();
         for (let y = -10; y <= H + 10; y += 6) {
-          const q = riverAt(y - scroll), x = q.cx + side * (q.hw - inset);
+          const q = riverAt(y - scroll), x = side < 0 ? q.l + inset : q.r - inset;
           y === -10 ? b.moveTo(x, y) : b.lineTo(x, y);
         }
         b.stroke();
@@ -288,11 +269,11 @@ export class Water {
     b.beginPath();
     for (let y = -S; y <= H + S; y += S) {
       const q = riverAt(y - scroll);
-      y === -S ? b.moveTo(q.cx - q.hw, y) : b.lineTo(q.cx - q.hw, y);
+      y === -S ? b.moveTo(q.l, y) : b.lineTo(q.l, y);
     }
     for (let y = H + S; y >= -S; y -= S) {
       const q = riverAt(y - scroll);
-      b.lineTo(q.cx + q.hw, y);
+      b.lineTo(q.r, y);
     }
     b.closePath();
     b.fill();

@@ -1,12 +1,18 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, LEVELS, SCROLLS, VOICE, PORTAL, STALL, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
-import { soulValue, statsFor, formatObols, formatMeters } from '../economy.js';
+import { tutorialPending } from './TutorialScene.js';
+import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
+import { getSave, recordRun } from '../save.js';
 import { moveVector, onAction, onAway, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
 import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
 import { spaced } from '../ui.js';
 import { Water } from '../water.js';
+import { ROCK_R } from '../art.js';
+import { setListening, useHeard, canListen, listenStatus } from '../listen.js';
+import { prepareIncantations, takeIncantation, heardScroll } from '../scrolls.js';
+import { godSay, prepareGodVoices } from '../npc-voices/index.js';
 
 const TAU = Math.PI * 2;
 const clamp = Phaser.Math.Clamp;
@@ -16,6 +22,9 @@ const pickOne = (a) => a[(Math.random() * a.length) | 0];
 const DEBUG = new URLSearchParams(location.search).has('debug'); // ?debug draws the hull and dock zones
 
 const HUD_RIGHT = W - 148;
+const SCROLLS_Y = 322; // the scrolls panel, under the left panel (rage bars, lanterns, distance)
+const LEVEL_Y = 262; // the level panel, under the right panel (obols, streak, hold, next)
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
 // The game: an endless top-down river. Scoop up souls, deliver them to their god's shrine,
 // spend obols at Hermes' stall, and never let a god's rage fill up.
@@ -32,10 +41,18 @@ export class RiverScene extends Phaser.Scene {
     this.scroll = 0; // px travelled this run: world y + scroll = screen y
     this.levels = { speed: 0, handling: 0, hold: 0 };
     this.stats = statsFor(this.levels);
-    this.run = { obols: 0, earned: 0, delivered: 0, clutches: 0, streak: 0, bestStreak: 0 };
+    this.run = { obols: 0, earned: 0, delivered: 0, clutches: 0, streak: 0, bestStreak: 0, feesPaid: 0, scrolls: GODS.map(() => null) };
     this.rage = GODS.map(() => 0);
     this.rageFlash = GODS.map(() => 0);
     this.rageWarned = GODS.map(() => false);
+    this.lanterns = LANTERNS.start;
+    this.level = 1; // Tetris style: every LEVELS.soulsPerLevel souls delivered, the next level
+    this.levelSouls = 0; // souls delivered toward the next level
+    this.riverPace = 1; // the current river's speed, eased in when a new one starts
+    this.paceEase = { from: 1, to: 1, k: 1 };
+    this.lullUntil = 0; // while a new river quickens, until this.t, no new souls
+    this.graceUntil = 0; // after a smite, until this.t, missed souls anger no one
+    this.mark = null; // your best distance on the river, if you have one
     this.ended = false;
     this.hints = {};
     this.souls = [];
@@ -52,37 +69,65 @@ export class RiverScene extends Phaser.Scene {
     this.buildWorld();
     this.buildBoat();
     this.buildEffects();
-    if (this.playing) this.buildHud();
+    if (this.playing) {
+      this.runId = Date.now(); // lets the save tell a run revived by Charon's fee from a new one
+      this.buildHud();
+      const best = getSave().best?.distance ?? 0;
+      if (best >= TUNING.markFrom) this.buildMark(best);
+    }
     this.spawnAhead();
     for (const k of this.playing ? [0.1, 0.3] : [0.15, 0.35, 0.55]) this.spawnSoul(H * k);
 
     onAction(this, (action) => this.handleAction(action));
     onAway(this, () => this.pauseGame());
 
-    if (this.playing) this.startHints();
-    else this.scene.launch('Title');
+    if (!this.playing) this.scene.launch('Title');
+    else if (tutorialPending()) this.events.once('postupdate', () => this.showTutorial()); // after one frame, so the river is drawn under it
+    else this.startHints();
+    if (this.playing) prepareIncantations(); // Gemini writes this run's first incantations in the background
+    prepareGodVoices(); // downloads the gods' lines behind the title, and decodes them once a run has unlocked sound
+    if (this.playing) this.time.delayedCall(VOICE.startDelay * 1000, () => this.say('hades', 'run_start')); // the clock waits under the tour
+    this.events.once('shutdown', () => setListening(false));
   }
 
   get speed() {
-    return this.stats.scrollSpeed;
+    return this.stats.scrollSpeed * this.riverPace;
+  }
+
+  // Which river of the underworld you're on: 0 for the Acheron. Every LEVELS.levelsPerRiver levels.
+  get river() {
+    return Math.floor((this.level - 1) / LEVELS.levelsPerRiver);
+  }
+
+  riverName(river = this.river) {
+    return LEVELS.rivers[Math.min(river, LEVELS.rivers.length - 1)];
   }
 
   update(_time, delta) {
     const dt = Math.min(delta, 50) / 1000;
     this.t += dt;
+    this.easePace(dt);
     this.scroll += this.speed * dt * (this.ended ? 0.3 : 1);
     this.bank.tilePositionY = -this.scroll;
     this.spawnAhead();
-    this.updateFog(dt);
+    this.updateAtmosphere(dt);
     this.drawShore();
-    this.water.update(dt, this.scroll, this.speed * TUNING.currentFactor * (this.ended ? 0.3 : 1));
-    for (const p of this.props) p.y = p.wy + this.scroll;
+    const eddyRocks = [];
+    for (const p of this.props) {
+      p.y = p.wy + this.scroll;
+      if (p.nearWater && p.y > -40 && p.y < H + 60) eddyRocks.push({ x: p.x, y: p.y, r: p.rr, side: p.side });
+    }
+    this.water.update(dt, this.scroll, this.speed * TUNING.currentFactor * (this.ended ? 0.3 : 1), eddyRocks);
     this.updateFeatures(dt);
     this.updateSouls(dt);
+    if (this.mark) this.updateMark();
     if (!this.ended) this.updateBoat(dt);
     this.updateHold(dt);
     this.drawWake(dt);
-    if (this.playing) this.updateHud(dt);
+    if (this.playing) {
+      this.updateHud(dt);
+      this.updateScrolls(dt);
+    }
     if (DEBUG) this.drawDebug();
   }
 
@@ -92,41 +137,69 @@ export class RiverScene extends Phaser.Scene {
     this.bank = this.add.tileSprite(0, 0, W, H, 'bank').setOrigin(0).setDepth(0);
     this.shoreG = this.add.graphics().setDepth(0.5);
     this.water = new Water(this, riverAt, 1); // Ines's water: body, flowing surface, current lines, lifestream, foam
-    this.fog = Array.from({ length: 8 }, (_, i) => {
-      const f = this.add.image(rnd(0, W), rnd(-100, H + 100), 'glow').setTint(0xc8d6d2).setScale(rnd(4.6, 8.6)).setDepth(i < 5 ? 9 : 26);
-      f.setAlpha(rnd(0.05, 0.09) * (i < 5 ? 1 : 0.7));
-      f.vx = rnd(4, 11) * (Math.random() < 0.5 ? -1 : 1);
-      return f;
-    });
+    this.buildAtmosphere();
   }
 
-  updateFog(dt) {
+  // Ines's atmosphere. Fog, tint and haze sit over the river and banks but under the souls and boat,
+  // so those stay crisp; a few lighter fog banks and the spores drift above everything but the HUD.
+  buildAtmosphere() {
+    const fog = TUNING.fogAmount;
+    this.add.rectangle(0, 0, W, H, 0x8c96a2, 0.05 * fog).setOrigin(0).setDepth(9.2);
+    this.fog = Array.from({ length: 16 }, (_, i) => {
+      const f = this.add.image(rnd(-100, W + 100), rnd(0, H), 'fog').setTint(0x9ea8b2).setDepth(i < 11 ? 9.3 : 26);
+      f.r = rnd(180, 400);
+      f.sx = rnd(1, 2.4); // stretched sideways
+      f.vx = rnd(-9, 9);
+      f.vy = rnd(-4, 4);
+      f.setScale((f.r * 2 * f.sx) / 256, (f.r * 2) / 256).setAlpha(rnd(0.07, 0.16) * fog * 1.35 * (i < 11 ? 1 : 0.6));
+      return f;
+    });
+    this.add.image(0, 0, 'haze').setOrigin(0).setTint(0xaab2c3).setAlpha(fog).setDepth(9.4);
+    this.spores = Array.from({ length: 70 }, () => ({ x: rnd(0, W), y: rnd(0, H), r: rnd(0.8, 2.2), a: rnd(0.15, 0.45), ph: rnd(0, TAU), v: rnd(8, 22) }));
+    this.sporeG = this.add.graphics().setDepth(27);
+    this.add.image(0, 0, 'shade').setOrigin(0).setDepth(44);
+  }
+
+  updateAtmosphere(dt) {
     const v = this.speed;
     for (const f of this.fog) {
-      const r = f.displayWidth / 2;
+      const half = f.r * f.sx;
       f.x += f.vx * dt;
-      f.y += v * 0.9 * dt;
-      if (f.y - r > H) {
-        f.y = -r;
-        f.x = rnd(0, W);
+      f.y += (f.vy + v * 0.6) * dt;
+      if (f.y - f.r > H) f.y = -f.r;
+      if (f.x > W + half) f.x = -half;
+      if (f.x < -half) f.x = W + half;
+    }
+    const g = this.sporeG;
+    g.clear();
+    for (const s of this.spores) {
+      s.y += (s.v + v * 0.5) * dt;
+      s.x += Math.sin(this.t * 0.8 + s.ph) * 15 * dt;
+      if (s.y > H + 5) {
+        s.y = -5;
+        s.x = rnd(0, W);
       }
-      if (f.x > W + r) f.x = -r;
-      if (f.x < -r) f.x = W + r;
+      g.fillStyle(0xe1e4f0, s.a * (0.7 + 0.3 * Math.sin(this.t * 2 + s.ph)));
+      g.fillCircle(s.x, s.y, s.r);
     }
   }
 
-  // A soft shadow on the banks along the water's edge.
+  // The shore, after Ines's banks: a muddy strip at the waterline and ground that darkens toward the water.
   drawShore() {
     const g = this.shoreG;
     g.clear();
+    const edges = [];
+    for (let sy = -16; sy <= H + 16; sy += 8) {
+      const q = riverAt(sy - this.scroll);
+      edges.push({ sy, l: q.l, r: q.r });
+    }
     for (const side of [-1, 1]) {
-      const pts = [];
-      for (let sy = -16; sy <= H + 16; sy += 8) {
-        const q = riverAt(sy - this.scroll);
-        pts.push({ x: q.cx + side * (q.hw + 6), y: sy });
+      // [from px, to px] out from the water, color, alpha
+      for (const [a, b, color, alpha] of [[0, 7, 0x24231e, 0.7], [7, 16, 0x24231e, 0.35], [16, 28, 0x0c100e, 0.12], [28, 40, 0x0c100e, 0.06]]) {
+        const pts = edges.map((e) => ({ x: (side < 0 ? e.l : e.r) + side * a, y: e.sy }));
+        for (let i = edges.length - 1; i >= 0; i--) pts.push({ x: (side < 0 ? edges[i].l : edges[i].r) + side * b, y: edges[i].sy });
+        g.fillStyle(color, alpha).fillPoints(pts, true);
       }
-      g.lineStyle(16, 0x0a0d0c, 0.55);
-      g.strokePoints(pts);
     }
   }
 
@@ -149,10 +222,15 @@ export class RiverScene extends Phaser.Scene {
       }
     }
     if (this.scroll >= this.nextSoulAt) {
-      this.spawnSoul();
-      const gap = Math.max(TUNING.soulGapMin, TUNING.soulGapStart - this.scroll * TUNING.soulGapRamp);
-      this.nextSoulAt = this.scroll + gap * rnd(0.7, 1.3);
+      if (this.t >= this.lullUntil) this.spawnSoul();
+      this.nextSoulAt = this.scroll + this.soulGap() * rnd(0.7, 1.3);
     }
+  }
+
+  // Px of river between souls: closer each level, spread back out a little on each new river.
+  soulGap() {
+    const step = (this.level - 1) % LEVELS.levelsPerRiver;
+    return Math.max(TUNING.soulGapMin, TUNING.soulGapStart * Math.pow(LEVELS.levelGap, step) * Math.pow(LEVELS.riverGap, this.river));
   }
 
   spawnFeature(wy) {
@@ -186,10 +264,31 @@ export class RiverScene extends Phaser.Scene {
     return this.add.image(Math.min(from, to), 0, 'pier').setOrigin(0, 14 / 34).setScale(Math.abs(to - from) / 96, 1).setFlipX(side === 'right').setDepth(4);
   }
 
+  // Ines's angled portal: an animated gate on the waterline whose light pools into the river.
+  // The dock is that pool of light: sail into it to deliver. Falls back to the stone arch without the sheet.
   makeShrine(wy, side, god) {
+    const { key, color } = GODS[god], sheet = `portal_${key}`;
+    if (!this.textures.exists(sheet) || !this.anims.exists(sheet)) return this.makeArchShrine(wy, side, god);
+    const q = riverAt(wy), dir = side === 'left' ? 1 : -1, s = PORTAL.scale;
+    const ax = side === 'left' ? q.l - 8 : q.r + 8;
+    const at = ([dx, dy]) => ({ x: ax + dir * dx * s, dy: dy * s });
+    const swirl = at(PORTAL.swirl), dock = at(PORTAL.dock), medal = at(PORTAL.medal);
+    const f = { kind: 'shrine', portal: true, wy, side, god, x: swirl.x, tip: dock.x, dockDy: dock.dy, swirlDy: swirl.dy, popDy: medal.dy - 55, pulse: 0, parts: [] };
+    f.dockZone = PORTAL.dockZone.map(at);
+    f.dockReach = PORTAL.dockReach * s;
+    f.glow = this.attach(f, this.add.image(f.x, 0, 'glow').setTint(color).setBlendMode('ADD').setScale(3).setAlpha(0).setDepth(6.4), swirl.dy);
+    const gate = this.add.sprite(ax, 0, sheet).setOrigin(PORTAL.anchor[0] / PORTAL.frameWidth, PORTAL.anchor[1] / PORTAL.frameHeight).setScale(dir * s, s).setDepth(6.5);
+    gate.play({ key: sheet, startFrame: (Math.random() * PORTAL.frames) | 0 });
+    this.attach(f, gate, 0);
+    this.attach(f, this.add.image(medal.x, 0, `medal_${key}`).setScale(1.45 * s).setDepth(6.6), medal.dy);
+    f.beam = this.attach(f, this.add.image(f.x, 0, 'beam').setOrigin(0.5, 1).setTint(color).setBlendMode('ADD').setAlpha(0).setDepth(6.7), swirl.dy - 75);
+    return f;
+  }
+
+  makeArchShrine(wy, side, god) {
     const { x, tip } = this.bankSpot(wy, side);
     const { key, color } = GODS[god];
-    const f = { kind: 'shrine', wy, side, god, x, tip, pulse: 0, parts: [] };
+    const f = { kind: 'shrine', wy, side, god, x, tip, dockDy: -6, swirlDy: -46, popDy: -150, pulse: 0, parts: [] };
     this.attach(f, this.makePier(x, tip, side), -6);
     f.glow = this.attach(f, this.add.image(x, 0, 'glow').setTint(color).setBlendMode('ADD').setScale(4).setAlpha(0.3).setDepth(5), -44);
     f.dockGlow = this.attach(f, this.add.image(tip, 0, 'glow').setTint(color).setBlendMode('ADD').setScale(2.8).setAlpha(0.25).setDepth(5), -6);
@@ -202,38 +301,71 @@ export class RiverScene extends Phaser.Scene {
     return f;
   }
 
+  // Hermes' stall, at the portals' angle: its base on the bank's edge, facing the water, the dock at the jetty's end.
   makeShop(wy, side) {
-    const { x, tip } = this.bankSpot(wy, side);
-    const f = { kind: 'shop', wy, side, x, tip, used: false, parts: [] };
-    this.attach(f, this.makePier(x, tip, side), -6);
-    f.glow = this.attach(f, this.add.image(x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(3.6).setAlpha(0.35).setDepth(5), -58);
-    f.dockGlow = this.attach(f, this.add.image(tip, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.6).setAlpha(0.3).setDepth(5), -6);
-    this.attach(f, this.add.image(x, 0, 'shop').setOrigin(0.5, 138 / 150).setDepth(7), 0);
-    f.label = this.attach(f, this.add.text(x, 0, spaced('HERMES'), { fontFamily: FONT, fontSize: '12px', fontStyle: '600', color: '#f1e6c8' }).setOrigin(0.5).setAlpha(0.85).setDepth(7), -122);
+    const q = riverAt(wy), dir = side === 'left' ? 1 : -1;
+    const ax = side === 'left' ? q.l - 8 : q.r + 8;
+    const at = ([dx, dy]) => ({ x: ax + dir * dx, dy });
+    const dock = at(STALL.dock), lamp = at(STALL.lamp), medal = at(STALL.medal);
+    const f = { kind: 'shop', wy, side, x: ax, tip: dock.x, dockDy: dock.dy, used: false, parts: [] };
+    f.dockZone = STALL.dockZone.map(at);
+    f.dockReach = STALL.dockReach;
+    f.glow = this.attach(f, this.add.image(lamp.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.2).setAlpha(0.35).setDepth(6.4), lamp.dy);
+    f.dockGlow = this.attach(f, this.add.image(dock.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.6).setAlpha(0.3).setDepth(5), dock.dy);
+    this.attach(f, this.add.image(ax, 0, 'shop').setOrigin(STALL.anchor[0] / STALL.frameWidth, STALL.anchor[1] / STALL.frameHeight).setScale(dir, 1).setDepth(6.5), 0);
+    this.attach(f, this.add.image(medal.x, 0, 'medal_hermes').setScale(1.45).setDepth(6.6), medal.dy);
+    f.label = this.attach(f, this.add.text(medal.x, 0, spaced('HERMES'), { fontFamily: FONT, fontSize: '12px', fontStyle: '600', color: '#f1e6c8' }).setOrigin(0.5).setAlpha(0.85).setDepth(6.6), medal.dy - 36);
     return f;
   }
 
+  // True if (x, wy) would sit on a shrine or stall, or on its pier.
+  blocked(x, wy, pad = 0) {
+    return this.features.some(
+      (f) =>
+        (Math.abs(x - f.x) < 80 + pad && wy > f.wy - 150 - pad && wy < f.wy + 20 + pad) ||
+        (x > Math.min(f.x, f.tip) - pad && x < Math.max(f.x, f.tip) + pad && Math.abs(wy - (f.wy + f.dockDy)) < (f.portal || f.kind === 'shop' ? 50 : 18) + pad),
+    );
+  }
+
+  // Ines's banks: pines, ferns, rocks (half of them on the waterline) and spider lilies, at her densities.
   spawnPropRow(wy) {
-    const q = riverAt(wy);
-    for (const side of ['left', 'right']) {
-      if (Math.random() < 0.3) continue;
-      const near = this.features.some((f) => f.side === side && Math.abs(f.wy - wy) < 130);
-      const edge = side === 'left' ? q.l : q.r, dir = side === 'left' ? -1 : 1, roll = Math.random();
-      if (roll < 0.4) {
-        const a = side === 'left' ? 12 : edge + 46, b = side === 'left' ? edge - 46 : W - 12;
-        if (near || b - a < 20) continue;
-        this.addProp(this.add.image(rnd(a, b), 0, `pine${1 + ((Math.random() * 3) | 0)}`).setScale(rnd(0.8, 1.15)).setDepth(8), wy + rnd(-10, 10));
-      } else if (roll < 0.58) {
-        const a = side === 'left' ? 12 : edge + 20, b = side === 'left' ? edge - 20 : W - 12;
-        this.addProp(this.add.image(rnd(a, b), 0, 'rock').setScale(rnd(0.5, 1.1)).setRotation(rnd(0, TAU)).setDepth(3), wy);
-      } else if (roll < 0.84) {
-        if (near) continue;
-        const n = 2 + ((Math.random() * 3) | 0);
-        for (let i = 0; i < n; i++) {
-          this.addProp(this.add.image(edge + dir * rnd(14, 44), 0, `lily${1 + ((Math.random() * 3) | 0)}`).setScale(rnd(0.5, 0.8)).setDepth(3), wy + rnd(-16, 16));
+    const q = riverAt(wy), count = (m) => Math.floor(m + Math.random()), pickTex = (base, n) => `${base}${1 + ((Math.random() * n) | 0)}`;
+    for (const [edge, dir] of [[q.l, -1], [q.r, 1]]) {
+      for (let i = count(0.5); i > 0; i--) {
+        const x = edge + dir * rnd(80, 340), y = wy + rnd(-12, 12);
+        if (x < -30 || x > W + 30 || this.blocked(x, y, 30)) continue;
+        const pine = this.add.image(x, 0, pickTex('pine', 3)).setDepth(8);
+        pine.setOrigin((pine.width / 2 - 7) / pine.width);
+        this.addProp(pine, y);
+      }
+      for (let i = count(1.4); i > 0; i--) {
+        const x = edge + dir * rnd(16, 300), y = wy + rnd(-14, 14);
+        if (x < -20 || x > W + 20 || this.blocked(x, y, 10)) continue;
+        this.addProp(this.add.image(x, 0, pickTex('fern', 3)).setDepth(3.2), y);
+      }
+      for (let i = count(0.42); i > 0; i--) {
+        const k = (Math.random() * ROCK_R.length) | 0, x = edge + dir * rnd(-8, 10), y = wy + rnd(-12, 12);
+        if (this.blocked(x, y, 8)) continue;
+        const rock = this.add.image(x, 0, `rock${k + 1}`).setRotation(rnd(0, 3)).setDepth(3.4);
+        rock.setOrigin((rock.width / 2 - 2) / rock.width);
+        rock.nearWater = true;
+        rock.rr = ROCK_R[k];
+        rock.side = -dir; // eddies curl off toward mid-stream
+        this.addProp(rock, y);
+      }
+      for (let i = count(0.52); i > 0; i--) {
+        const k = (Math.random() * 4) | 0, x = edge + dir * rnd(14, 220), y = wy + rnd(-12, 12);
+        if (x < -20 || x > W + 20 || this.blocked(x, y, 8)) continue;
+        const rock = this.add.image(x, 0, `rock${k + 1}`).setRotation(rnd(0, 3)).setDepth(3.1);
+        rock.setOrigin((rock.width / 2 - 2) / rock.width);
+        this.addProp(rock, y);
+      }
+      if (Math.random() < 0.28) {
+        for (let i = 2 + ((Math.random() * 4) | 0); i > 0; i--) {
+          const x = edge + dir * rnd(4, 34), y = wy + rnd(-16, 16);
+          if (this.blocked(x, y, 6)) continue;
+          this.addProp(this.add.image(x, 0, pickTex('lily', 3)).setOrigin(0.5, 15 / 36).setDepth(3.3), y);
         }
-      } else if (!near) {
-        this.addProp(this.add.image(edge + dir * rnd(1, 6), 0, 'reeds').setFlipX(side === 'right').setDepth(3), wy);
       }
     }
   }
@@ -258,13 +390,16 @@ export class RiverScene extends Phaser.Scene {
       for (const p of f.parts) p.y = base + p.dy;
       if (f.kind === 'shrine') {
         f.pulse = Math.max(0, f.pulse - dt * 1.6);
-        f.swirl.rotation += dt * (1.4 + f.pulse * 4);
-        f.glow.setAlpha(0.28 + 0.4 * f.pulse + 0.05 * Math.sin(this.t * 1.8 + f.wy)).setScale(4 + 1.4 * f.pulse);
-        f.dockGlow.setAlpha(0.22 + 0.3 * f.pulse);
+        if (f.portal) f.glow.setAlpha(0.55 * f.pulse).setScale(3 + 2 * f.pulse); // the sheet animates itself; flare on delivery
+        else {
+          f.swirl.rotation += dt * (1.4 + f.pulse * 4);
+          f.glow.setAlpha(0.28 + 0.4 * f.pulse + 0.05 * Math.sin(this.t * 1.8 + f.wy)).setScale(4 + 1.4 * f.pulse);
+          f.dockGlow.setAlpha(0.22 + 0.3 * f.pulse);
+        }
       } else if (!f.used && base > 60) {
         this.hint('shop', "Dock at Hermes' stall to spend your obols");
       }
-      if (this.ended || this.hullDist(f.tip, base - 6) > TUNING.dockReach) continue;
+      if (this.ended || this.dockDist(f, base) > (f.dockReach ?? TUNING.dockReach)) continue;
       if (f.kind === 'shrine') this.deliver(f);
       else if (!f.used && this.playing) this.openShop(f);
     }
@@ -274,7 +409,7 @@ export class RiverScene extends Phaser.Scene {
   upcomingGods(n) {
     const line = this.boat.y - 30;
     return this.features
-      .filter((f) => f.kind === 'shrine' && f.wy + this.scroll - 6 < line)
+      .filter((f) => f.kind === 'shrine' && f.wy + this.scroll + f.dockDy < line)
       .sort((a, b) => b.wy - a.wy)
       .slice(0, n)
       .map((f) => f.god);
@@ -351,14 +486,16 @@ export class RiverScene extends Phaser.Scene {
   }
 
   skipped(god) {
-    if (!this.playing || this.ended) return;
+    if (!this.playing || this.ended || this.t < this.graceUntil) return;
     sfx.skip();
     this.addRage(god, TUNING.ragePerSkip);
     this.hint('skip', `Missed souls anger ${GODS[god].name}`, GODS[god].color);
+    this.shout(god);
   }
 
   addRage(god, amount) {
-    this.rage[god] = Math.min(1, this.rage[god] + amount);
+    const before = this.rage[god];
+    this.rage[god] = Math.min(1, before + amount);
     this.rageFlash[god] = 1;
     if (this.rage[god] >= 1) {
       this.smite(god);
@@ -368,7 +505,8 @@ export class RiverScene extends Phaser.Scene {
       this.rageWarned[god] = true;
       sfx.rageWarn();
       this.toast(`${GODS[god].name} is furious`, GODS[god].color, true);
-    }
+      this.say(god, 'rage_80');
+    } else if (before < VOICE.rageHalf && this.rage[god] >= VOICE.rageHalf) this.say(god, 'rage_50');
   }
 
   /* ---------- the hold: souls aboard, each fading on its own timer ---------- */
@@ -382,16 +520,23 @@ export class RiverScene extends Phaser.Scene {
   updateHold(dt) {
     const cap = this.stats.capacity, small = cap > 4, g = this.ringsG;
     for (let i = this.hold.length - 1; i >= 0; i--) {
-      if (!this.ended) this.hold[i].life -= dt / TUNING.lifespan;
-      if (this.hold[i].life <= 0) this.poof(i);
+      const o = this.hold[i];
+      if (!o) continue; // a burn-out that set off a smite emptied the hold
+      if (!this.ended) o.life -= (dt * this.speed) / (TUNING.lifespan * TUNING.scrollSpeed); // the same stretch of river at any speed
+      if (o.life <= 0) this.burnOut(i);
+      else if (o.life < TUNING.clutchBelow && !o.hurried) {
+        o.hurried = true; // once per soul, and not while the mic listens for an incantation
+        if (!this.micOpen()) this.say(o.god, 'hurry');
+      }
     }
     g.clear();
     this.hold.forEach((o, i) => {
       const p = this.slot(i, cap), k = Math.min(1, dt * 16);
       o.img.x += (p.x - o.img.x) * k;
       o.img.y += (p.y - o.img.y) * k;
-      o.img.setScale((small ? 0.38 : 0.5) * (0.55 + 0.45 * o.life));
       const r = small ? 9.5 : 12.5, low = o.life < 0.25;
+      o.img.setScale((small ? 0.38 : 0.5) * (0.55 + 0.45 * o.life));
+      o.img.setAlpha(low ? 0.55 + 0.45 * Math.abs(Math.sin(this.t * 19 + i)) : 1); // gutters like a candle before it burns out
       g.lineStyle(2, 0xffffff, 0.12);
       g.strokeCircle(o.img.x, o.img.y, r);
       g.lineStyle(2, low ? 0xff6e5a : GODS[o.god].color, low ? 0.55 + 0.45 * Math.sin(this.t * 16) : 0.9);
@@ -401,18 +546,18 @@ export class RiverScene extends Phaser.Scene {
     });
   }
 
-  poof(i) {
+  burnOut(i) {
     const o = this.hold[i], { x, y } = o.img;
     this.hold.splice(i, 1);
     o.img.destroy();
-    this.poofFx(x, y);
+    this.burnOutFx(x, y, o.god);
     if (!this.playing) return;
-    sfx.poof();
+    sfx.burnOut();
     if (this.run.streak > 1) sfx.streakBreak();
     this.run.streak = 0;
-    this.popup('poof', x + 38, y - 6, 0xcdc8de, 18);
-    this.hint('poof', 'Souls fade: deliver them before their ring runs out');
-    this.addRage(o.god, TUNING.ragePerPoof);
+    this.hint('burnout', 'Souls burn out: deliver them before their ring runs out');
+    this.addRage(o.god, TUNING.ragePerBurnOut);
+    this.shout(o.god);
   }
 
   deliver(f) {
@@ -433,6 +578,7 @@ export class RiverScene extends Phaser.Scene {
     });
     if (!this.playing) return;
     this.run.delivered += souls.length;
+    this.advanceLevel(souls.length);
     this.run.clutches += clutch;
     this.run.obols += gain;
     this.run.earned += gain;
@@ -440,20 +586,22 @@ export class RiverScene extends Phaser.Scene {
     sfx.deliver(this.run.streak);
     if (clutch) sfx.clutch();
     if (this.run.streak === 3) this.hint('streak', 'Back-to-back deliveries build your streak');
+    if (this.run.streak % LANTERNS.streakForLantern === 0) this.gainLantern();
+    if (VOICE.streakAt.includes(this.run.streak) || this.run.streak % LANTERNS.streakForLantern === 0) this.say(f.god, 'streak');
   }
 
   arrived(f, gain, clutch, count) {
     const base = f.wy + this.scroll, { color } = GODS[f.god];
     f.pulse = 1;
-    this.ringFx(f.x, base - 46, color, 0.9, 30);
+    this.ringFx(f.x, base + f.swirlDy, color, 0.9, 30);
     this.tweens.add({ targets: f.beam, alpha: { from: 0.85, to: 0 }, duration: 1600, ease: 'Quad.easeOut' });
     if (!this.playing) return;
-    this.popup('+' + formatObols(gain), f.x, base - 150, color, 30);
+    this.popup('+' + formatObols(gain), f.x, base + f.popDy, color, 30);
     if (clutch) {
-      this.popup('CLUTCH!', f.x, base - 194, color, 46, true);
+      this.popup('CLUTCH!', f.x, base + f.popDy - 44, color, 46, true);
       this.cameras.main.shake(180, 0.004);
     } else if (count >= 3) this.cameras.main.shake(140, 0.003);
-    this.coinFx(f.x, base - 46, Math.min(6, 2 + count));
+    this.coinFx(f.x, base + f.swirlDy, Math.min(6, 2 + count));
   }
 
   /* ---------- the boat ---------- */
@@ -478,6 +626,15 @@ export class RiverScene extends Phaser.Scene {
     const b = this.boat, c = Math.cos(b.tilt), s = Math.sin(b.tilt), dx = px - b.x, dy = py - b.y;
     const lx = dx * c + dy * s, ly = -dx * s + dy * c;
     return Math.hypot(lx, ly - clamp(ly, TUNING.hullFront, TUNING.hullBack));
+  }
+
+  // How far the hull is from a feature's dock: its tip, or anywhere along its dock zone (the pool of light at a portal or stall).
+  dockDist(f, base) {
+    if (!f.dockZone) return this.hullDist(f.tip, base + f.dockDy);
+    const [a, b] = f.dockZone, n = Math.ceil(Math.hypot(b.x - a.x, b.dy - a.dy) / 12);
+    let d = Infinity;
+    for (let i = 0; i <= n; i++) d = Math.min(d, this.hullDist(a.x + ((b.x - a.x) * i) / n, base + a.dy + ((b.dy - a.dy) * i) / n));
+    return d;
   }
 
   updateBoat(dt) {
@@ -515,10 +672,12 @@ export class RiverScene extends Phaser.Scene {
       b.vx = Math.min(0, b.vx);
     }
     b.tilt += (clamp(b.vx * 0.0011, -0.3, 0.3) - b.tilt) * Math.min(1, dt * 7);
-    this.boatImg.setPosition(b.x, b.y).setRotation(b.tilt);
+    const blink = this.t < this.graceUntil && Math.sin(this.t * 38) > 0; // the boat flickers through the grace after a smite
+    this.boatImg.setPosition(b.x, b.y).setRotation(b.tilt).setAlpha(blink ? 0.35 : 1);
     const bow = this.local(0, -66);
-    this.lantern.setPosition(bow.x, bow.y);
-    this.lanternCore.setPosition(bow.x, bow.y - 1);
+    const gutter = this.playing && this.lanterns === 1 ? 0.45 + 0.55 * Math.abs(Math.sin(this.t * 7.3) * Math.sin(this.t * 3.1)) : 1; // on the last lantern the bow light gutters
+    this.lantern.setPosition(bow.x, bow.y).setAlpha(0.5 * gutter);
+    this.lanternCore.setPosition(bow.x, bow.y - 1).setAlpha(0.9 * gutter);
     b.wakeT -= dt;
     if (b.wakeT <= 0) {
       b.wakeT = 0.03;
@@ -533,7 +692,7 @@ export class RiverScene extends Phaser.Scene {
     let tx = null, bestDy = Infinity;
     for (const f of this.features) {
       if (f.kind !== 'shrine' || !aboard.has(f.god)) continue;
-      const dy = b.y - (f.wy + this.scroll - 6);
+      const dy = b.y - (f.wy + this.scroll + f.dockDy);
       if (dy > -40 && dy < 340 && dy < bestDy) {
         bestDy = dy;
         tx = f.tip;
@@ -583,6 +742,9 @@ export class RiverScene extends Phaser.Scene {
     this.sparks = GODS.map((god) =>
       this.add.particles(0, 0, 'glow', { ...soft, lifespan: { min: 350, max: 700 }, speed: { min: 60, max: 190 }, angle: { min: 0, max: 360 }, scale: { start: 0.16, end: 0 }, alpha: { start: 1, end: 0 }, tint: god.color }).setDepth(30),
     );
+    this.embers = GODS.map((god) =>
+      this.add.particles(0, 0, 'glow', { ...soft, lifespan: { min: 700, max: 1200 }, speed: { min: 20, max: 70 }, angle: { min: 235, max: 305 }, gravityY: -30, scale: { start: 0.12, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: [god.color, 0xffe2a8] }).setDepth(31),
+    );
     this.wakeG = this.add.graphics().setDepth(19).setBlendMode(Phaser.BlendModes.ADD);
   }
 
@@ -591,11 +753,16 @@ export class RiverScene extends Phaser.Scene {
     this.tweens.add({ targets: img, scale: (radius * 3.2) / 29, alpha: { from: 0.9, to: 0 }, duration: dur * 1000, ease: 'Cubic.easeOut', onComplete: () => img.destroy() });
   }
 
-  poofFx(x, y) {
-    for (let i = 0; i < 8; i++) {
-      const img = this.add.image(x, y, 'glow').setTint(0xaca6c4).setScale(rnd(0.12, 0.28)).setAlpha(0.45).setDepth(30);
-      this.tweens.add({ targets: img, x: x + rnd(-40, 40), y: y + rnd(-40, 20), scale: img.scale * 2.2, alpha: 0, duration: rnd(600, 1000), ease: 'Quad.easeOut', onComplete: () => img.destroy() });
-    }
+  // A soul burning out: a white-hot flash in its god's color, a quick shockwave and a spray of embers.
+  burnOutFx(x, y, god) {
+    const { color } = GODS[god];
+    const flare = this.add.image(x, y, 'glow').setTint(color).setBlendMode('ADD').setScale(0.3).setDepth(31);
+    const core = this.add.image(x, y, 'glow').setBlendMode('ADD').setScale(0.15).setDepth(32);
+    this.tweens.add({ targets: flare, scale: 3.2, alpha: { from: 1, to: 0 }, duration: 500, ease: 'Cubic.easeOut', onComplete: () => flare.destroy() });
+    this.tweens.add({ targets: core, scale: 1.5, alpha: { from: 1, to: 0 }, duration: 260, ease: 'Quad.easeOut', onComplete: () => core.destroy() });
+    this.ringFx(x, y, color, 0.35, 12);
+    this.sparks[god].explode(22, x, y);
+    this.embers[god].explode(14, x, y);
   }
 
   // Motes of light arcing from the hold into the (moving) shrine.
@@ -609,7 +776,7 @@ export class RiverScene extends Phaser.Scene {
       delay,
       ease: 'Sine.easeInOut',
       onUpdate: (tw) => {
-        const e = tw.getValue(), u = 1 - e, ty = f.wy + this.scroll - 46;
+        const e = tw.getValue(), u = 1 - e, ty = f.wy + this.scroll + f.swirlDy;
         img.setPosition(u * u * x + 2 * u * e * cx + e * e * f.x, u * u * y + 2 * u * e * Math.min(cy, ty - 30) + e * e * ty);
       },
       onComplete: () => {
@@ -660,9 +827,9 @@ export class RiverScene extends Phaser.Scene {
   buildHud() {
     const d = 50;
     const panel = this.add.graphics().setDepth(d);
-    for (const x of [14, HUD_RIGHT]) {
-      panel.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, 14, 134, 238, 10);
-      panel.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, 14, 134, 238, 10);
+    for (const [x, h] of [[14, 298], [HUD_RIGHT, 238]]) {
+      panel.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, 14, 134, h, 10);
+      panel.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, 14, 134, h, 10);
     }
     const label = (text, x, y) => this.add.text(x, y, spaced(text), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55).setDepth(d + 1);
     label('RAGE', 26, 38);
@@ -672,8 +839,17 @@ export class RiverScene extends Phaser.Scene {
       this.add.text(60, y - 17, god.name, { fontFamily: DISPLAY_FONT, fontSize: '19px', fontStyle: 'italic 600', color: '#e6eeea' }).setDepth(d + 1);
     });
     this.hudG = this.add.graphics().setDepth(d + 1);
-    label('DISTANCE', 26, 204);
-    this.distText = this.add.text(26, 220, '0 m', { fontFamily: FONT, fontSize: '19px', fontStyle: '600', color: '#e6eeea' }).setDepth(d + 1);
+    // Lanterns: small copies of the boat's bow lantern. The frames are drawn in updateHud, the flames are glows.
+    label('LANTERNS', 26, 204);
+    this.lanternIcons = Array.from({ length: LANTERNS.max }, (_, i) => {
+      const x = 38 + i * 30, y = 238;
+      const glow = this.add.image(x, y + 1, 'glow').setTint(0xffc478).setBlendMode('ADD').setDepth(d + 1);
+      const core = this.add.image(x, y + 1, 'glow').setTint(0xffe6aa).setBlendMode('ADD').setDepth(d + 1);
+      return { x, y, glow, core };
+    });
+    this.lanternPulse = this.lanternIcons.map(() => 0);
+    label('DISTANCE', 26, 262);
+    this.distText = this.add.text(26, 278, '0 m', { fontFamily: FONT, fontSize: '19px', fontStyle: '600', color: '#e6eeea' }).setDepth(d + 1);
     label('OBOLS', HUD_RIGHT + 12, 38);
     this.add.image(HUD_RIGHT + 25, 70, 'obol').setScale(0.62).setDepth(d + 1);
     this.obolText = this.add.text(HUD_RIGHT + 44, 70, '0', { fontFamily: FONT, fontSize: '25px', fontStyle: '600', color: '#f1e6c8' }).setOrigin(0, 0.5).setDepth(d + 1);
@@ -682,11 +858,24 @@ export class RiverScene extends Phaser.Scene {
     label('HOLD', HUD_RIGHT + 12, 152);
     label('NEXT', HUD_RIGHT + 12, 196);
     this.nextIcons = [0, 1, 2].map((i) => this.add.image(HUD_RIGHT + 26 + i * 34, 229, `medal_${GODS[0].key}`).setScale(0.8).setDepth(d + 1));
+    this.buildLevelPanel(d);
     if (isTouch()) this.buildPauseButton(d);
+    this.buildScrolls(d);
     this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setTint(0xff2a1a).setAlpha(0).setDepth(45);
     this.obolShown = 0;
     this.obolPulse = 0;
     this.streakPulse = 0;
+  }
+
+  // Under the right panel: the river you're on, your level, and a bar of souls to the next one.
+  buildLevelPanel(d) {
+    const x = HUD_RIGHT, y = LEVEL_Y, g = this.add.graphics().setDepth(d);
+    g.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, y, 134, 70, 10);
+    g.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, y, 134, 70, 10);
+    this.riverLabel = this.add.text(x + 12, y + 12, '', { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55).setDepth(d + 1);
+    this.levelText = this.add.text(x + 12, y + 38, '', { fontFamily: DISPLAY_FONT, fontSize: '25px', fontStyle: 'italic 600', color: '#ffffff' }).setOrigin(0, 0.5).setDepth(d + 1);
+    this.levelShown = 0;
+    this.levelPulse = 0;
   }
 
   // No Esc key on a phone: a pause button beside the top of the right panel, out of the thumbs' way.
@@ -710,6 +899,17 @@ export class RiverScene extends Phaser.Scene {
       if (alarm > 0.01) g.lineStyle(2, 0xff5a46, alarm).strokeRoundedRect(bx - 2, by - 2, bw + 4, bh + 4, 4);
       this.rageFlash[i] = Math.max(0, this.rageFlash[i] - dt * 2);
     });
+    this.lanternIcons.forEach((l, i) => {
+      const lit = i < this.lanterns, p = this.lanternPulse[i];
+      const flicker = this.lanterns === 1 ? 0.5 + 0.5 * Math.abs(Math.sin(this.t * 9)) : 1; // the last one gutters
+      g.lineStyle(1.5, 0xf1e6c8, lit ? 0.7 : 0.22).strokeRoundedRect(l.x - 7, l.y - 8, 14, 18, 4);
+      g.beginPath();
+      g.arc(l.x, l.y - 8, 4, Math.PI, TAU);
+      g.strokePath();
+      l.glow.setVisible(lit).setScale(0.6 * (1 + 0.6 * p)).setAlpha((0.5 + 0.08 * Math.sin(this.t * 3 + i * 2)) * flicker);
+      l.core.setVisible(lit).setScale(0.17 * (1 + 0.6 * p)).setAlpha(0.95 * flicker);
+      this.lanternPulse[i] = Math.max(0, p - dt * 2.5);
+    });
     const cap = this.stats.capacity;
     for (let i = 0; i < cap; i++) {
       const cx = HUD_RIGHT + 18 + i * 14, o = this.hold[i];
@@ -723,6 +923,17 @@ export class RiverScene extends Phaser.Scene {
     this.streakText.setText('×' + clamp(this.run.streak, 1, TUNING.streakCap)).setScale(1 + 0.3 * this.streakPulse).setAlpha(this.run.streak ? 1 : 0.45);
     this.streakPulse = Math.max(0, this.streakPulse - dt * 2.5);
     this.distText.setText(formatMeters(this.scroll));
+    if (this.levelShown !== this.level) {
+      this.levelShown = this.level;
+      this.riverLabel.setText(spaced(this.riverName().toUpperCase()));
+      this.levelText.setText(`Level ${this.level}`);
+    }
+    this.levelText.setScale(1 + 0.3 * this.levelPulse);
+    this.levelPulse = Math.max(0, this.levelPulse - dt * 2.5);
+    const segW = (110 - (LEVELS.soulsPerLevel - 1) * 3) / LEVELS.soulsPerLevel; // souls to the next level, one segment each
+    for (let i = 0; i < LEVELS.soulsPerLevel; i++) {
+      g.fillStyle(0xf1e6c8, i < this.levelSouls ? 0.9 : 0.14).fillRoundedRect(HUD_RIGHT + 12 + i * (segW + 3), LEVEL_Y + 56, segW, 4, 2);
+    }
     const next = this.upcomingGods(3);
     this.nextIcons.forEach((icon, i) => {
       icon.setVisible(i < next.length);
@@ -775,12 +986,24 @@ export class RiverScene extends Phaser.Scene {
     if (!this.playing || this.ended) return;
     if (action === 'pause') this.pauseGame();
     else if (action === 'mute') this.toast(toggleMute() ? 'Sound off' : 'Sound on');
+    else if (action === 'confirm') this.toggleScrolls();
+    else if (/^buy[123]$/.test(action)) this.readScroll(Number(action.slice(3)) - 1);
+    else if (action === 'help') this.showTutorial();
   }
 
   pauseGame() {
     if (!this.playing || this.ended || !this.sys.isActive()) return;
+    setListening(false);
     clearKeys();
     this.scene.launch('Pause');
+    this.scene.pause();
+  }
+
+  // The how-to-play tour: on the first run of a session, or on H. It resumes the river when it closes.
+  showTutorial() {
+    if (!this.playing || this.ended || !this.sys.isActive()) return;
+    clearKeys();
+    this.scene.launch('Tutorial');
     this.scene.pause();
   }
 
@@ -802,12 +1025,109 @@ export class RiverScene extends Phaser.Scene {
     this.stats = statsFor(this.levels);
   }
 
+  /* ---------- your best, marked on the river ---------- */
+
+  // A line of floating lanterns across the water where your best run sank, labelled on the bank.
+  // It crosses the boat's usual line just as the distance counter reaches your best.
+  buildMark(best) {
+    const m = { best, wy: TUNING.boatStartY - best, passed: false };
+    m.lights = Array.from({ length: 7 }, (_, i) => ({
+      k: 0.08 + (0.84 * i) / 6,
+      ph: rnd(0, TAU),
+      glow: this.add.image(0, 0, 'glow').setTint(0xffe6aa).setBlendMode('ADD').setScale(0.9).setAlpha(0.45).setDepth(13),
+      core: this.add.image(0, 0, 'glow').setBlendMode('ADD').setScale(0.2).setAlpha(0.9).setDepth(13),
+    }));
+    m.label = this.add
+      .text(0, 0, `${spaced('YOUR BEST')}   ${formatMeters(best)}`, { fontFamily: FONT, fontSize: '13px', fontStyle: '600', color: '#f1e6c8' })
+      .setOrigin(1, 0.5)
+      .setAlpha(0.85)
+      .setDepth(9);
+    m.label.setShadow(0, 0, '#000000', 6, true, true);
+    this.mark = m;
+  }
+
+  updateMark() {
+    const m = this.mark, y = m.wy + this.scroll, q = riverAt(m.wy);
+    for (const l of m.lights) {
+      const x = q.l + (q.r - q.l) * l.k, by = y + 3 * Math.sin(this.t * 1.6 + l.ph);
+      l.glow.setPosition(x, by);
+      l.core.setPosition(x, by);
+    }
+    m.label.setPosition(q.l - 14, y);
+    if (m.passed || this.ended || this.scroll < m.best) return;
+    // Passing it: the lanterns flare and drift off, one after another.
+    m.passed = true;
+    sfx.newBest();
+    this.popup('New best!', this.boat.x, this.boat.y - 96, 0xffe6aa, 40, true);
+    m.lights.forEach((l, i) => {
+      this.tweens.add({ targets: l.glow, scale: 2.2, alpha: 0, duration: 700, delay: i * 70, ease: 'Quad.easeOut' });
+      this.tweens.add({ targets: l.core, scale: 0.5, alpha: 0, duration: 700, delay: i * 70, ease: 'Quad.easeOut' });
+    });
+    this.tweens.add({ targets: m.label, alpha: 0, duration: 900, delay: 400 });
+    this.time.delayedCall(1400, () => {
+      for (const l of m.lights) {
+        l.glow.destroy();
+        l.core.destroy();
+      }
+      m.label.destroy();
+      if (this.mark === m) this.mark = null;
+    });
+  }
+
+  /* ---------- levels and rivers, Tetris style ---------- */
+
+  // Every few souls delivered is a level; every few levels, a new river that runs faster.
+  advanceLevel(n) {
+    this.levelSouls += n;
+    while (this.levelSouls >= LEVELS.soulsPerLevel) {
+      this.levelSouls -= LEVELS.soulsPerLevel;
+      this.level += 1;
+      this.levelPulse = 1;
+      if ((this.level - 1) % LEVELS.levelsPerRiver === 0) this.newRiver();
+      else this.levelUp();
+    }
+  }
+
+  // A new river's speed comes in smoothly, on the game's clock like everything else that moves.
+  easePace(dt) {
+    const e = this.paceEase;
+    if (e.k >= 1) return;
+    e.k = Math.min(1, e.k + dt / LEVELS.easeSeconds);
+    this.riverPace = e.from + (e.to - e.from) * (0.5 - 0.5 * Math.cos(Math.PI * e.k));
+  }
+
+  levelUp() {
+    sfx.levelUp();
+    this.popup(`Level ${this.level}`, this.boat.x, this.boat.y - 96, 0xf1e6c8, 34, true);
+    this.hint('level', `Every ${LEVELS.soulsPerLevel} souls, a level. Every ${LEVELS.levelsPerRiver} levels, a faster river`, 0xf1e6c8);
+  }
+
+  // A new river: a banner, a short lull with no new souls, and the river quickens.
+  newRiver() {
+    const river = this.river;
+    sfx.newRiver();
+    this.lullUntil = this.t + LEVELS.lullSeconds;
+    this.paceEase = { from: this.riverPace, to: Math.pow(LEVELS.riverSpeed, river), k: 0 };
+    this.cameras.main.flash(420, 120, 96, 200);
+    this.cameras.main.shake(260, 0.004);
+    const numeral = this.add.text(W / 2, 150, ROMAN[river] ?? String(river + 1), { fontFamily: DISPLAY_FONT, fontSize: '40px', fontStyle: 'italic 600', color: '#f1e6c8' }).setOrigin(0.5);
+    const name = this.add.text(W / 2, 208, this.riverName(river), { fontFamily: DISPLAY_FONT, fontSize: '84px', fontStyle: 'italic 600', color: '#ffffff' }).setOrigin(0.5);
+    name.setShadow(0, 0, '#9d7bff', 26, true, true);
+    const sub = this.add.text(W / 2, 266, spaced('THE RIVER QUICKENS'), { fontFamily: FONT, fontSize: '14px', fontStyle: '600', color: '#dce6e2' }).setOrigin(0.5);
+    const banner = this.add.container(0, 0, [numeral, name, sub]).setDepth(60).setAlpha(0);
+    this.tweens.add({ targets: banner, alpha: 1, duration: 260, ease: 'Quad.easeOut' });
+    this.tweens.add({ targets: banner, alpha: 0, y: -16, duration: 700, delay: 2300, ease: 'Quad.easeIn', onComplete: () => banner.destroy() });
+  }
+
+  /* ---------- lanterns: the boat's lives ---------- */
+
+  // A god's rage is full: lightning strikes the boat and puts out a lantern.
   smite(god) {
     if (this.ended) return;
-    this.ended = true;
-    const { color } = GODS[god], b = this.boat;
+    const { name, color } = GODS[god], b = this.boat;
     sfx.smite();
-    const bolt = this.add.graphics().setDepth(35).setBlendMode(Phaser.BlendModes.ADD);
+    this.say(god, 'smite'); // every lantern it puts out, the last one too
+    const bolt =this.add.graphics().setDepth(35).setBlendMode(Phaser.BlendModes.ADD);
     const pts = [];
     let x = b.x + rnd(-60, 60);
     for (let y = -20; y < b.y; y += rnd(28, 46)) {
@@ -824,18 +1144,306 @@ export class RiverScene extends Phaser.Scene {
     this.cameras.main.shake(420, 0.012);
     this.ringFx(b.x, b.y, color, 0.9, 40);
     this.boatImg.setTint(color);
-    this.tweens.add({ targets: this.boatImg, scale: 0.6, alpha: 0, angle: '+=40', duration: 900, delay: 200, ease: 'Quad.easeIn' });
-    this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
+    this.loseLantern({ god });
+    if (this.ended) return;
+    this.appease(god);
+    this.time.delayedCall(400, () => !this.ended && this.boatImg.clearTint());
+    this.toast(`${name} struck: ${this.lanterns === 1 ? 'one lantern left' : `${this.lanterns} lanterns left`}`, color, true);
+  }
+
+  // After a smite you survive: the god who struck is appeased and the others cool off a little.
+  appease(god) {
+    this.rage = this.rage.map((v, i) => (i === god ? 0 : Math.max(0, v - LANTERNS.coolOthers)));
+    this.rageWarned = this.rageWarned.map((w, i) => w && this.rage[i] >= TUNING.rageWarn - 0.1);
+  }
+
+  // A lantern goes out: a god's smite, and a wrecked hull once there are obstacles. The souls aboard
+  // and the streak go with it, then a few seconds of grace. The last one ends the run.
+  loseLantern(cause) {
+    this.lanterns = Math.max(0, this.lanterns - 1);
+    this.lanternOutFx(this.lanterns);
     this.hold.forEach((o) => {
-      this.poofFx(o.img.x, o.img.y);
+      this.burnOutFx(o.img.x, o.img.y, o.god);
       o.img.destroy();
     });
     this.hold = [];
-    const result = { god, distance: this.scroll, delivered: this.run.delivered, earned: this.run.earned, bestStreak: this.run.bestStreak, clutches: this.run.clutches };
+    this.run.streak = 0;
+    if (this.lanterns === 0) this.sink(cause);
+    else this.graceUntil = this.t + LANTERNS.graceSeconds;
+  }
+
+  // The last lantern is out: the boat goes under and the run ends, unless Charon's fee is paid.
+  sink(cause) {
+    this.ended = true;
+    this.sunkBy = cause;
+    setListening(false);
+    this.showScrolls(false);
+    this.tweens.add({ targets: this.boatImg, scale: 0.6, alpha: 0, angle: '+=40', duration: 900, delay: 200, ease: 'Quad.easeIn' });
+    this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
+    const result = {
+      god: cause.god,
+      distance: this.scroll,
+      delivered: this.run.delivered,
+      earned: this.run.earned,
+      bestStreak: this.run.bestStreak,
+      clutches: this.run.clutches,
+      level: this.level,
+      river: this.riverName(),
+      obols: this.run.obols,
+      fee: charonFee(this.run.feesPaid),
+    };
+    result.previousBest = recordRun(this.runId, result);
     this.time.delayedCall(1100, () => {
       this.scene.pause();
       this.scene.launch('GameOver', result);
     });
+  }
+
+  // Called by the game-over screen once Charon's fee is paid: back on the water with one lantern.
+  revive() {
+    this.run.feesPaid += 1;
+    this.ended = false;
+    this.lanterns = 1;
+    this.graceUntil = this.t + LANTERNS.graceSeconds;
+    if (this.sunkBy.god !== undefined) this.appease(this.sunkBy.god);
+    this.tweens.killTweensOf([this.boatImg, this.lantern, this.lanternCore]);
+    this.boatImg.setScale(1).clearTint();
+    this.lanternPulse[0] = 1;
+    sfx.lanternLit();
+    this.ringFx(this.boat.x, this.boat.y, 0xffc478, 0.9, 40);
+    this.toast('Charon takes his fee: one lantern lit', 0xffc478, true);
+    this.scene.resume();
+  }
+
+  // Every 8th delivery in a row lights a lantern, up to the max.
+  gainLantern() {
+    if (this.lanterns >= LANTERNS.max) return;
+    this.lanternPulse[this.lanterns] = 1;
+    this.lanterns += 1;
+    sfx.lanternLit();
+    const bow = this.local(0, -66);
+    this.ringFx(bow.x, bow.y, 0xffc478, 0.7, 24);
+    this.popup('+1 lantern', this.boat.x + 64, this.boat.y - 50, 0xffc478, 24);
+    this.hint('lantern', `Every ${LANTERNS.streakForLantern} deliveries in a row light a lantern`, 0xffc478);
+  }
+
+  // A lantern in the HUD goes out: a last flare, then a wisp of smoke.
+  lanternOutFx(i) {
+    const l = this.lanternIcons?.[i];
+    if (!l) return;
+    const flare = this.add.image(l.x, l.y, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(0.9).setDepth(52);
+    this.tweens.add({ targets: flare, scale: 1.8, alpha: { from: 0.9, to: 0 }, duration: 450, ease: 'Quad.easeOut', onComplete: () => flare.destroy() });
+    for (let k = 0; k < 4; k++) {
+      const puff = this.add.image(l.x + rnd(-3, 3), l.y - 6, 'glow').setTint(0x9a96a8).setScale(rnd(0.12, 0.2)).setAlpha(0.5).setDepth(52);
+      this.tweens.add({ targets: puff, x: puff.x + rnd(-10, 10), y: puff.y - rnd(22, 36), scale: puff.scale * 2.4, alpha: 0, duration: rnd(700, 1000), delay: k * 90, ease: 'Quad.easeOut', onComplete: () => puff.destroy() });
+    }
+  }
+
+  /* ---------- the gods' voices: Fede's recorded lines (src/npc-voices/) ---------- */
+
+  // god: an index into GODS, or 'hades', who has no rage bar. The player module keeps it to one line at a time.
+  say(god, moment) {
+    if (!this.playing) return;
+    const line = godSay(god === 'hades' ? 'hades' : GODS[god].key, moment);
+    if (line) this.showLine(god, line);
+  }
+
+  // A lost soul: now and then its god shouts, but never while the mic listens for an incantation.
+  shout(god) {
+    if (Math.random() < VOICE.shoutChance && !this.micOpen()) this.say(god, 'shout');
+  }
+
+  // The game listens whenever you carry a scroll and the mic works (see updateScrolls).
+  micOpen() {
+    return canListen() && this.run.scrolls.some(Boolean);
+  }
+
+  // Every line is on screen too, since phones are often muted: in a bubble pointing at the god's rage bar,
+  // or for Hades, over the top of the river.
+  showLine(god, { text, seconds }) {
+    const hades = god === 'hades', color = hades ? VOICE.hadesColor : GODS[god].color;
+    this.lineCaps ??= {};
+    const old = this.lineCaps[god];
+    if (old) {
+      this.tweens.killTweensOf(old);
+      old.destroy();
+    }
+    const words = this.add.text(0, 0, `“${text}”`, { fontFamily: DISPLAY_FONT, fontSize: '21px', fontStyle: 'italic 600', color: hexCss(lighten(color, 0.35)) }).setOrigin(hades ? 0.5 : 0, 0.5);
+    const bubble = this.add.graphics();
+    const cap = this.add.container(0, 0, [bubble, words]).setDepth(58).setAlpha(0);
+    if (hades) {
+      const w = words.width + 40;
+      words.y = 9;
+      bubble.fillStyle(0x080b0a, 0.72).fillRoundedRect(-w / 2, -30, w, 60, 10);
+      bubble.lineStyle(1, color, 0.3).strokeRoundedRect(-w / 2, -30, w, 60, 10);
+      cap.add(this.add.text(0, -15, spaced('HADES'), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: hexCss(color) }).setOrigin(0.5).setAlpha(0.8));
+      cap.setPosition(W / 2, 170); // under the toasts
+    } else {
+      const w = words.width + 26;
+      words.x = 13;
+      bubble.fillStyle(0x080b0a, 0.72).fillRoundedRect(0, -17, w, 34, 10).fillTriangle(0, -7, -9, 0, 0, 7);
+      bubble.lineStyle(1, color, 0.35).strokeRoundedRect(0, -17, w, 34, 10);
+      cap.setPosition(160, 76 + god * 46 - 4); // beside the god's row in the rage panel
+    }
+    this.lineCaps[god] = cap;
+    this.tweens.add({ targets: cap, alpha: 1, duration: 180, ease: 'Quad.easeOut' });
+    this.tweens.add({
+      targets: cap,
+      alpha: 0,
+      duration: 400,
+      delay: (seconds + 1.2) * 1000,
+      onComplete: () => {
+        cap.destroy();
+        if (this.lineCaps[god] === cap) delete this.lineCaps[god];
+      },
+    });
+  }
+
+  /* ---------- scrolls: say a carried scroll's incantation aloud to calm its god ---------- */
+
+  // A small panel under the rage bars shows which scrolls you carry. Space (or a tap on it) unrolls them
+  // for a few seconds so you can re-read the words, over the bank, while the river keeps going.
+  buildScrolls(d) {
+    const x = 14, y = SCROLLS_Y, g = this.add.graphics().setDepth(d);
+    g.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, y, 134, 84, 10);
+    g.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, y, 134, 84, 10);
+    this.add.text(26, y + 12, spaced('SCROLLS'), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55).setDepth(d + 1);
+    this.micDot = this.add.circle(134, y + 19, 4, 0x4ade80).setDepth(d + 1);
+    this.scrollIcons = GODS.map((god, i) => this.add.image(36 + i * 45, y + 45, `scroll_${god.key}`).setScale(0.42).setDepth(d + 1));
+    this.scrollKey = this.add
+      .text(81, y + 70, isTouch() ? 'tap to read' : 'Space to read', { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' })
+      .setOrigin(0.5)
+      .setAlpha(0.5)
+      .setDepth(d + 1);
+    this.add.zone(x + 67, y + 42, 134, 84).setInteractive().on('pointerdown', () => this.toggleScrolls());
+
+    // The unrolled panel: every scroll's words, and how long until it rolls up again.
+    const p = (this.scrollPanel = this.add.container(0, 0).setDepth(d + 3).setVisible(false));
+    const bg = this.add.graphics();
+    bg.fillStyle(0x080b0a, 0.9).fillRoundedRect(x, y, 330, 214, 10);
+    bg.lineStyle(1, 0xf1e6c8, 0.25).strokeRoundedRect(x, y, 330, 214, 10);
+    p.add(bg);
+    p.add(this.add.text(26, y + 12, spaced('SCROLLS'), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55));
+    this.scrollRows = GODS.map((god, i) => {
+      const ry = y + 56 + i * 50;
+      const medal = this.add.image(40, ry, `medal_${god.key}`);
+      const words = this.add.text(64, ry, '', { fontFamily: DISPLAY_FONT, fontSize: '21px', fontStyle: 'italic 600', color: hexCss(lighten(god.color, 0.35)), wordWrap: { width: 270 }, lineSpacing: -4 }).setOrigin(0, 0.5);
+      p.add([medal, words]);
+      return { medal, words };
+    });
+    this.scrollFoot = this.add.text(26, y + 196, '', { fontFamily: FONT, fontSize: '12px', fontStyle: '600', color: '#dce6e2' }).setOrigin(0, 0.5).setAlpha(0.6);
+    this.scrollTimer = this.add.graphics();
+    p.add([this.scrollFoot, this.scrollTimer]);
+    // Taps on the panel: read a scroll when there's no mic, otherwise roll it up.
+    this.add
+      .zone(x + 165, y + 107, 330, 214)
+      .setInteractive()
+      .on('pointerdown', (ptr) => {
+        if (!this.scrollPanel.visible) return;
+        const row = Math.floor((ptr.worldY - (y + 31)) / 50);
+        if (!canListen() && row >= 0 && row < 3 && this.run.scrolls[row]) this.readScroll(row);
+        else this.showScrolls(false);
+      });
+    this.scrollOpenFor = 0;
+
+    // What the mic caught, like a subtitle under the river.
+    this.heardText = this.add
+      .text(W / 2, H - 30, '', { fontFamily: FONT, fontSize: '17px', fontStyle: '600', color: '#dce6e2', backgroundColor: 'rgba(8,11,10,0.55)', padding: { x: 12, y: 5 } })
+      .setOrigin(0.5)
+      .setDepth(d + 2)
+      .setAlpha(0);
+    this.heardFor = 0;
+  }
+
+  updateScrolls(dt) {
+    const carried = this.run.scrolls, any = carried.some(Boolean);
+    setListening(!this.ended && any && this.sys.isActive(), (c) => this.heard(c), carried);
+    const mic = listenStatus();
+    this.micPulse = Math.max(0, (this.micPulse || 0) - dt * 3);
+    this.micDot.setFillStyle(mic === 'listening' ? 0x4ade80 : canListen() ? 0x97aaa2 : 0xf87171).setAlpha(any ? (mic === 'listening' ? 0.6 + 0.4 * Math.sin(this.t * 4) : 0.7) : 0.25);
+    this.micDot.setScale(1 + 0.9 * this.micPulse);
+    const open = this.scrollPanel.visible;
+    this.scrollIcons.forEach((icon, i) => icon.setVisible(!open).setAlpha(carried[i] ? 1 : 0.22).setScale(carried[i] ? 0.42 + 0.02 * Math.sin(this.t * 3 + i) : 0.42));
+    this.scrollKey.setVisible(!open);
+    // First scroll aboard: once the mic has answered, say how to use it.
+    if (any && !this.hints.scroll && (mic === 'listening' || !canListen())) {
+      this.hint('scroll', canListen() ? "Say a scroll's words aloud to calm its god" : 'No mic: press Space, then 1, 2 or 3, to read a scroll', GODS[carried.findIndex(Boolean)].color);
+    }
+    if (this.scrollPanel.visible) {
+      this.scrollOpenFor -= dt;
+      if (this.scrollOpenFor <= 0) this.showScrolls(false);
+      const left = clamp(this.scrollOpenFor / SCROLLS.panelSeconds, 0, 1);
+      this.scrollTimer.clear().fillStyle(0xf1e6c8, 0.5).fillRect(24, SCROLLS_Y + 207, 310 * left, 2);
+    }
+    this.heardFor -= dt;
+    this.heardText.setAlpha(clamp(this.heardFor / 0.5, 0, 1));
+  }
+
+  toggleScrolls() {
+    this.showScrolls(!this.scrollPanel.visible);
+  }
+
+  showScrolls(open) {
+    if (!this.scrollPanel || this.scrollPanel.visible === open) return;
+    if (open && (this.ended || !this.sys.isActive())) return;
+    this.scrollPanel.setVisible(open);
+    if (!open) return;
+    this.scrollOpenFor = SCROLLS.panelSeconds;
+    sfx.scrollOpen();
+    const touch = isTouch();
+    this.run.scrolls.forEach((words, i) => {
+      const row = this.scrollRows[i];
+      row.words.setText(words || 'no scroll').setFontSize(words ? 24 : 14).setAlpha(words ? 1 : 0.35);
+      row.medal.setAlpha(words ? 1 : 0.35);
+    });
+    const any = this.run.scrolls.some(Boolean);
+    this.scrollFoot.setText(
+      !any ? "Buy scrolls at Hermes' stall" : canListen() ? 'Say the words aloud. The river won\'t wait' : touch ? 'No mic: tap a scroll to read it' : 'No mic: press 1, 2 or 3 to read one',
+    );
+  }
+
+  // Called by the shop: carry this god's scroll, with a fresh incantation. The first one asks for the mic,
+  // while the stall has the game paused.
+  takeScroll(god) {
+    this.run.scrolls[god] = takeIncantation(god);
+    setListening(true, (c) => this.heard(c), this.run.scrolls);
+  }
+
+  // The mic caught some words: show them, and use a carried scroll if they match its incantation.
+  heard(candidates) {
+    if (!this.playing || this.ended || !this.sys.isActive()) return;
+    this.micPulse = 1; // the dot flares on any speech, so you can tell it's listening
+    const best = heardScroll(this.run.scrolls, candidates);
+    if (!best) return;
+    // Only attempts show as a subtitle; other people's chatter stays off screen (all of it shows with ?debug).
+    if (best.score >= SCROLLS.showHeard || DEBUG) {
+      const tail = candidates[0].all.split(/\s+/).slice(-9).join(' ');
+      this.heardText.setText(DEBUG ? `“${tail}” ${best.score.toFixed(2)}` : `“${tail}”`).setColor('#dce6e2');
+      this.heardFor = SCROLLS.heardSeconds;
+    }
+    if (best.pass) this.readScroll(best.god, true);
+  }
+
+  // Use a carried scroll: spoken aloud, or with a key or tap when there's no mic.
+  readScroll(god, spoken = false) {
+    const words = this.run.scrolls[god];
+    if (!words || this.ended || !this.sys.isActive()) return;
+    if (!spoken && (canListen() || !this.scrollPanel.visible)) return; // with a mic, the words are the only way
+    const { color, name } = GODS[god];
+    this.run.scrolls[god] = null;
+    useHeard();
+    this.rage[god] = Math.max(0, this.rage[god] - SCROLLS.calm);
+    if (this.rage[god] < TUNING.rageWarn - 0.1) this.rageWarned[god] = false;
+    sfx.appease(god);
+    this.heardText.setColor(hexCss(lighten(color, 0.4)));
+    this.popup(words, W / 2, 230, color, 40, true);
+    this.toast(`${name} is appeased`, color, true);
+    const barY = 76 + god * 46 + 9;
+    this.ringFx(98, barY, color, 0.8, 26);
+    this.sparks[god].explode(26, 98, barY);
+    this.ringFx(this.boat.x, this.boat.y, color, 0.9, 36);
+    this.embers[god].explode(24, this.boat.x, this.boat.y);
+    if (this.scrollPanel.visible) this.showScrolls(false);
   }
 
   drawDebug() {
@@ -844,6 +1452,14 @@ export class RiverScene extends Phaser.Scene {
     g.clear().lineStyle(1, 0x00ff88, 0.9);
     g.lineBetween(a.x, a.y, b.x, b.y);
     g.strokeCircle(a.x, a.y, TUNING.hullRadius).strokeCircle(b.x, b.y, TUNING.hullRadius);
-    for (const f of this.features) g.strokeCircle(f.tip, f.wy + this.scroll - 6, TUNING.dockReach);
+    for (const f of this.features) {
+      const base = f.wy + this.scroll;
+      if (!f.dockZone) {
+        g.strokeCircle(f.tip, base + f.dockDy, TUNING.dockReach);
+        continue;
+      }
+      const [a, b] = f.dockZone, r = f.dockReach;
+      g.lineBetween(a.x, base + a.dy, b.x, base + b.dy).strokeCircle(a.x, base + a.dy, r).strokeCircle(b.x, base + b.dy, r);
+    }
   }
 }

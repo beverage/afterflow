@@ -1,5 +1,5 @@
 // Obols, prices and upgrade effects. Prices climb exponentially, so soul value grows with distance too.
-import { TUNING, UPGRADES } from './config.js';
+import { TUNING, UPGRADES, CHARON, SCROLLS } from './config.js';
 
 const U = Object.fromEntries(UPGRADES.map((u) => [u.key, u]));
 
@@ -7,11 +7,18 @@ const U = Object.fromEntries(UPGRADES.map((u) => [u.key, u]));
 export const soulValue = (distance) => Math.max(1, Math.round(TUNING.soulValue * Math.exp(distance / TUNING.soulValueGrowth)));
 
 /** Price of the next level of an upgrade, rounded to a friendly number. */
-export function price(upgrade, level) {
-  const raw = upgrade.basePrice * Math.pow(TUNING.priceGrowth, level);
+export const price = (upgrade, level) => friendly(upgrade.basePrice * Math.pow(TUNING.priceGrowth, level));
+
+/** A scroll costs a few souls' worth at the distance you've reached. */
+export const scrollPrice = (distance) => friendly(SCROLLS.priceSouls * soulValue(distance));
+
+function friendly(raw) {
   const step = raw < 100 ? 5 : raw < 1000 ? 10 : raw < 10000 ? 50 : 500;
   return Math.round(raw / step) * step;
 }
+
+/** Charon's fee after paying it `paid` times this run: priced like the next level of an upgrade. */
+export const charonFee = (paid) => price(CHARON, paid);
 
 /** What the boat and river do at the current upgrade levels. */
 export function statsFor(levels) {

@@ -2,13 +2,22 @@
 // A texture is only drawn when no real file was loaded for its key: put the PNG in
 // public/assets/, add one line to src/assets.js, and it replaces the placeholder.
 // The water, light, glows and portal swirls are drawn live by RiverScene, not here.
-import { GODS, WIDTH as W, HEIGHT as H } from './config.js';
+import { GODS, STALL, WIDTH as W, HEIGHT as H } from './config.js';
 import { rgbOf } from './color.js';
+import { fbm, sstep, mixRGB } from './noise.js';
 
 const TAU = Math.PI * 2;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (a) => a[(Math.random() * a.length) | 0];
 const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+
+// Ines's bank plants and rocks, in a few sizes each (radius in px). RiverScene scatters them along the banks.
+const PINE_R = [26, 32, 40];
+const FERN_R = [14, 19, 24];
+export const ROCK_R = [6, 8, 10, 12, 15];
+const pineSize = (r) => Math.ceil(2 * (1.35 * r + 14));
+export const pineCentre = (r) => pineSize(r) / 2 - 7; // the trunk sits up-left of centre; the shadow falls down-right
+const rockSize = (r) => Math.ceil(2 * (r * 1.05 + 6));
 
 function make(scene, key, w, h, draw) {
   if (scene.textures.exists(key)) return;
@@ -19,10 +28,10 @@ function make(scene, key, w, h, draw) {
 
 export function makeArt(scene) {
   make(scene, 'bank', W, H, drawBank);
-  [34, 40, 28].forEach((size, i) => make(scene, `pine${i + 1}`, size * 2, size * 2, (g) => drawPine(g, size)));
-  for (let i = 1; i <= 3; i++) make(scene, `lily${i}`, 44, 44, drawLily);
-  make(scene, 'rock', 26, 22, drawRock);
-  make(scene, 'reeds', 26, 24, drawReeds);
+  PINE_R.forEach((r, i) => make(scene, `pine${i + 1}`, pineSize(r), pineSize(r), (g) => drawPine(g, r, pineCentre(r))));
+  FERN_R.forEach((r, i) => make(scene, `fern${i + 1}`, Math.ceil(r * 2 + 16), Math.ceil(r * 2 + 16), (g) => drawFern(g, r)));
+  for (let i = 1; i <= 3; i++) make(scene, `lily${i}`, 32, 36, drawLily);
+  ROCK_R.forEach((r, i) => make(scene, `rock${i + 1}`, rockSize(r), rockSize(r), (g) => drawRock(g, r)));
   make(scene, 'glow', 64, 64, drawGlow);
   make(scene, 'ring', 64, 64, drawRing);
   make(scene, 'rim', 44, 44, drawRim);
@@ -31,22 +40,27 @@ export function makeArt(scene) {
     make(scene, `soul_${god.key}`, 40, 40, (g) => drawSoul(g, c, god.glyph));
     make(scene, `medal_${god.key}`, 34, 34, (g) => drawMedal(g, c, god.glyph));
     make(scene, `glyph_${god.key}`, 48, 48, (g) => drawGlyph(g, god.glyph, 24, 24, 1.8, 'rgba(0,0,0,.35)', '#ffffff', 1.6));
+    make(scene, `scroll_${god.key}`, 88, 64, (g) => drawScroll(g, c, god.glyph));
   }
   make(scene, 'arch', 150, 150, drawArch);
   make(scene, 'portal_fill', 52, 96, drawPortalFill);
   make(scene, 'swirl', 72, 72, drawSwirl);
   make(scene, 'beam', 64, 256, drawBeam);
   make(scene, 'pier', 100, 34, drawPier);
-  make(scene, 'shop', 150, 150, drawShop);
+  make(scene, 'shop', STALL.frameWidth, STALL.frameHeight, drawStall);
+  make(scene, 'medal_hermes', 34, 34, (g) => drawMedal(g, [255, 196, 120], 'caduceus'));
   make(scene, 'boat', 100, 170, drawBoat);
   make(scene, 'obol', 40, 40, (g) => drawObol(g, 20, 20, 17));
   make(scene, 'icon_speed', 96, 96, drawIconSpeed);
   make(scene, 'icon_handling', 96, 96, drawIconHandling);
   make(scene, 'icon_hold', 96, 96, drawIconHold);
   make(scene, 'vignette', W, H, drawVignette);
+  make(scene, 'fog', 256, 256, drawFog);
+  make(scene, 'haze', W, H, drawHaze);
+  make(scene, 'shade', W, H, drawShade);
 }
 
-/* ---------- god symbols (owl, spear, trident) on a 20-unit grid ---------- */
+/* ---------- god symbols (owl, spear, trident, and Hermes' caduceus) on a 20-unit grid ---------- */
 function glyphPath(g, type) {
   g.beginPath();
   if (type === 'owl') {
@@ -71,6 +85,23 @@ function glyphPath(g, type) {
     g.closePath();
     g.moveTo(-3.8, 1.5);
     g.lineTo(3.8, 1.5);
+  } else if (type === 'caduceus') {
+    g.moveTo(0, 10);
+    g.lineTo(0, -7.5);
+    g.moveTo(1.5, -9.2);
+    g.arc(0, -9.2, 1.5, 0, TAU);
+    g.moveTo(-1.2, -6.6);
+    g.quadraticCurveTo(-5, -10, -9.4, -8.6);
+    g.quadraticCurveTo(-6, -5.6, -1.2, -5);
+    g.moveTo(1.2, -6.6);
+    g.quadraticCurveTo(5, -10, 9.4, -8.6);
+    g.quadraticCurveTo(6, -5.6, 1.2, -5);
+    g.moveTo(-3.4, 8);
+    g.bezierCurveTo(4.6, 5.4, 4.6, 1.6, 0, 0.4);
+    g.bezierCurveTo(-4.6, -1, -4.2, -3.6, 0, -4.2);
+    g.moveTo(3.4, 8);
+    g.bezierCurveTo(-4.6, 5.4, -4.6, 1.6, 0, 0.4);
+    g.bezierCurveTo(4.6, -1, 4.2, -3.6, 0, -4.2);
   } else {
     g.moveTo(0, 10);
     g.lineTo(0, -10);
@@ -100,155 +131,180 @@ export function drawGlyph(g, type, x, y, s, under, over, lw) {
   g.restore();
 }
 
-/* ---------- banks ---------- */
-// Ground for both banks, seamless top to bottom. The water is drawn over it by code.
+/* ---------- banks, after Ines's river study ---------- */
+// Ground for both banks, seamless top to bottom: mossy greens with bare-earth patches and grain,
+// then grass, soft moss and tiny pale flowers. The water is drawn over the middle by code.
 function drawBank(g) {
-  const base = g.createLinearGradient(0, 0, W, 0);
-  base.addColorStop(0, '#1d2723');
-  base.addColorStop(0.28, '#27332e');
-  base.addColorStop(0.5, '#2b3732');
-  base.addColorStop(0.72, '#27332e');
-  base.addColorStop(1, '#1d2723');
-  g.fillStyle = base;
-  g.fillRect(0, 0, W, H);
+  const nBase = fbm(11, 6, 5, 1), nPatch = fbm(5, 3, 3, 2);
+  const MOSS0 = [30, 42, 37], MOSS1 = [54, 72, 58], EARTH = [72, 68, 52];
+  const img = g.createImageData(W, H), D = img.data;
+  for (let y = 0; y < H; y++) {
+    const v = y / H;
+    for (let x = 0; x < W; x++) {
+      const u = x / W, i = (y * W + x) * 4;
+      let col = mixRGB(MOSS0, MOSS1, sstep(0.3, 0.75, nBase(u, v)));
+      col = mixRGB(col, EARTH, sstep(0.55, 0.8, nPatch(u, v)) * 0.45);
+      const k = 0.9 + Math.random() * 0.12;
+      D[i] = col[0] * k;
+      D[i + 1] = col[1] * k;
+      D[i + 2] = col[2] * k;
+      D[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
   const wrap = (y, r, fn) => {
     fn(y);
-    if (y - r < 0) fn(y + H);
-    if (y + r > H) fn(y - H);
+    if (y < r) fn(y + H);
+    if (y > H - r) fn(y - H);
   };
-  for (let i = 0; i < 70; i++) {
-    const x = rnd(0, W), y = rnd(0, H), r = rnd(40, 120), dark = Math.random() < 0.55;
-    wrap(y, r, (yy) => {
-      const gr = g.createRadialGradient(x, yy, 0, x, yy, r);
-      gr.addColorStop(0, dark ? 'rgba(14,19,17,.3)' : 'rgba(72,94,78,.16)');
-      gr.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = gr;
-      g.fillRect(x - r, yy - r, r * 2, r * 2);
-    });
-  }
-  g.lineCap = 'round';
-  for (let i = 0; i < 520; i++) {
-    const x = rnd(0, W), y = rnd(0, H), s = rnd(3, 7);
-    const col = pick(['rgba(84,110,90,.5)', 'rgba(64,86,70,.55)', 'rgba(104,128,106,.35)']);
+  for (let i = 0; i < 5900; i++) {
+    const x = rnd(0, W), y = rnd(0, H), L = rnd(3, 8), a = rnd(-0.8, 0.8);
+    const col = `rgba(${(80 + rnd(0, 40)) | 0},${(105 + rnd(0, 40)) | 0},${(75 + rnd(0, 25)) | 0},${rnd(0.25, 0.6)})`, lw = rnd(0.6, 1.3);
     wrap(y, 10, (yy) => {
       g.strokeStyle = col;
-      g.lineWidth = 1;
+      g.lineWidth = lw;
       g.beginPath();
-      for (let k = -2; k <= 2; k++) {
-        g.moveTo(x + k * 1.2, yy);
-        g.lineTo(x + k * 2.4, yy - s);
-      }
+      g.moveTo(x, yy);
+      g.lineTo(x + Math.sin(a) * L, yy - Math.cos(a) * L);
       g.stroke();
     });
   }
-  for (let i = 0; i < 140; i++) {
-    const x = rnd(0, W), y = rnd(0, H), rx = rnd(1.5, 4), ry = rx * rnd(0.6, 0.9), col = pick(['#5d6863', '#6b7672', '#4f5a55']);
-    wrap(y, 6, (yy) => {
-      g.fillStyle = 'rgba(12,16,15,.4)';
-      g.beginPath();
-      g.ellipse(x + 1, yy + 1.2, rx, ry, 0, 0, TAU);
-      g.fill();
-      g.fillStyle = col;
-      g.beginPath();
-      g.ellipse(x, yy, rx, ry, 0, 0, TAU);
-      g.fill();
+  for (let i = 0; i < 300; i++) {
+    const x = rnd(-20, W + 20), y = rnd(0, H), r = rnd(10, 30);
+    const c = `${(70 + rnd(0, 20)) | 0},${(95 + rnd(0, 20)) | 0},${(70 + rnd(0, 15)) | 0}`;
+    wrap(y, 32, (yy) => {
+      const q = g.createRadialGradient(x, yy, 0, x, yy, r);
+      q.addColorStop(0, `rgba(${c},.22)`);
+      q.addColorStop(1, 'rgba(60,85,60,0)');
+      g.fillStyle = q;
+      g.fillRect(x - r, yy - r, r * 2, r * 2);
     });
   }
-  for (let i = 0; i < 16000; i++) {
-    g.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,.035)' : 'rgba(0,0,0,.06)';
-    g.fillRect(rnd(0, W), rnd(0, H), 1.2, 1.2);
-  }
-}
-
-// A pine seen from above: layered stars with a shadow falling down-right.
-function drawPine(g, size) {
-  g.translate(size, size);
-  g.fillStyle = 'rgba(6,10,9,.38)';
-  g.beginPath();
-  g.ellipse(size * 0.2, size * 0.24, size * 0.76, size * 0.6, 0.3, 0, TAU);
-  g.fill();
-  for (const [col, k] of [['#17241f', 0.94], ['#1d2e27', 0.76], ['#25392f', 0.58], ['#2e4637', 0.4], ['#3a5543', 0.22]]) {
-    const R = size * k, pts = 9, rot = rnd(0, TAU);
-    g.fillStyle = col;
-    g.beginPath();
-    for (let i = 0; i <= pts * 2; i++) {
-      const a = rot + (i * Math.PI) / pts, rr = i % 2 ? R * 0.62 : R;
-      i ? g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : g.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  for (let i = 0; i < 100; i++) {
+    const x = rnd(0, W), y = rnd(0, H), n = rnd(4, 10) | 0, col = Math.random() < 0.5 ? '215,210,235' : '235,232,220';
+    for (let k = 0; k < n; k++) {
+      const xx = x + rnd(-10, 10), yy0 = y + rnd(-10, 10), rr = rnd(0.7, 1.5), a = rnd(0.35, 0.7);
+      wrap(yy0, 12, (yy) => {
+        g.fillStyle = `rgba(${col},${a})`;
+        g.beginPath();
+        g.arc(xx, yy, rr, 0, TAU);
+        g.fill();
+      });
     }
-    g.closePath();
-    g.fill();
   }
-  const hl = g.createRadialGradient(-size * 0.3, -size * 0.35, 0, -size * 0.3, -size * 0.35, size * 0.8);
-  hl.addColorStop(0, 'rgba(160,200,170,.14)');
-  hl.addColorStop(1, 'rgba(160,200,170,0)');
-  g.fillStyle = hl;
+}
+
+// A pine seen from above: a soft shadow, a dark disc, and three layers of radiating needles.
+function drawPine(g, r, c) {
+  const sh = g.createRadialGradient(c + 12, c + 14, 2, c + 12, c + 14, r * 1.35);
+  sh.addColorStop(0, 'rgba(6,10,9,.45)');
+  sh.addColorStop(1, 'rgba(6,10,9,0)');
+  g.fillStyle = sh;
   g.beginPath();
-  g.arc(0, 0, size * 0.94, 0, TAU);
+  g.arc(c + 12, c + 14, r * 1.35, 0, TAU);
+  g.fill();
+  const base = g.createRadialGradient(c - r * 0.2, c - r * 0.2, 2, c, c, r);
+  base.addColorStop(0, 'rgba(58,82,64,.95)');
+  base.addColorStop(0.7, 'rgba(30,46,38,.95)');
+  base.addColorStop(1, 'rgba(22,34,28,0)');
+  g.fillStyle = base;
+  g.beginPath();
+  g.arc(c, c, r, 0, TAU);
+  g.fill();
+  [[1, '38,58,45', 70], [0.72, '52,76,58', 55], [0.45, '72,98,74', 38]].forEach(([s, col, n], k) => {
+    const rr = r * s, ox = -k * 2, oy = -k * 2.3;
+    for (let j = 0; j < n; j++) {
+      const a = rnd(0, TAU), l = rr * rnd(0.55, 1);
+      g.strokeStyle = `rgba(${col},${rnd(0.45, 0.8)})`;
+      g.lineWidth = rnd(0.8, 1.8);
+      g.beginPath();
+      g.moveTo(c + ox + Math.cos(a) * l * 0.15, c + oy + Math.sin(a) * l * 0.15);
+      g.lineTo(c + ox + Math.cos(a + rnd(-0.08, 0.08)) * l, c + oy + Math.sin(a + rnd(-0.08, 0.08)) * l);
+      g.stroke();
+    }
+  });
+  g.fillStyle = 'rgba(120,145,115,.35)';
+  g.beginPath();
+  g.arc(c - 5, c - 6, r * 0.12, 0, TAU);
   g.fill();
 }
 
-// Red spider lily, the flower of the dead in the River Flow painting.
-function drawLily(g) {
-  const s = 22;
-  g.translate(s, s);
-  const glow = g.createRadialGradient(0, 0, 0, 0, 0, s);
-  glow.addColorStop(0, 'rgba(230,60,50,.22)');
-  glow.addColorStop(1, 'rgba(230,60,50,0)');
-  g.fillStyle = glow;
-  g.fillRect(-s, -s, s * 2, s * 2);
-  g.lineCap = 'round';
-  const rot = rnd(0, TAU);
-  for (let i = 0; i < 6; i++) {
-    const a = rot + (i * TAU) / 6, ex = Math.cos(a + 0.25) * s * 0.9, ey = Math.sin(a + 0.25) * s * 0.9;
-    g.strokeStyle = 'rgba(240,90,80,.85)';
-    g.lineWidth = 0.7;
+// A fern from above: curved fronds with small leaflets along each one.
+function drawFern(g, r) {
+  const x = r + 8, y = r + 8, fr = rnd(5, 8) | 0, rot = rnd(0, TAU);
+  const col = `${(55 + rnd(0, 25)) | 0},${(85 + rnd(0, 25)) | 0},${(58 + rnd(0, 15)) | 0}`;
+  for (let f = 0; f < fr; f++) {
+    const a = rot + (f / fr) * TAU + rnd(-0.2, 0.2), L = r * rnd(0.75, 1), bend = rnd(-0.35, 0.35);
+    const ex = x + Math.cos(a) * L, ey = y + Math.sin(a) * L, mx = x + Math.cos(a + bend) * L * 0.55, my = y + Math.sin(a + bend) * L * 0.55;
+    g.strokeStyle = `rgba(${col},.75)`;
+    g.lineWidth = 0.9;
     g.beginPath();
-    g.moveTo(0, 0);
-    g.quadraticCurveTo(Math.cos(a) * s * 0.5, Math.sin(a) * s * 0.5, ex, ey);
-    g.stroke();
-    g.fillStyle = '#ffb0a0';
-    g.beginPath();
-    g.arc(ex, ey, 0.9, 0, TAU);
-    g.fill();
-    g.strokeStyle = '#d93a30';
-    g.lineWidth = 2.2;
-    g.beginPath();
-    g.moveTo(0, 0);
-    g.quadraticCurveTo(Math.cos(a - 0.3) * s * 0.45, Math.sin(a - 0.3) * s * 0.45, Math.cos(a) * s * 0.55, Math.sin(a) * s * 0.55);
-    g.stroke();
-  }
-  g.fillStyle = '#7a1c18';
-  g.beginPath();
-  g.arc(0, 0, 2, 0, TAU);
-  g.fill();
-}
-
-function drawRock(g) {
-  g.fillStyle = 'rgba(8,11,10,.45)';
-  g.beginPath();
-  g.ellipse(14, 13, 9, 6.5, 0, 0, TAU);
-  g.fill();
-  g.fillStyle = pick(['#5b6661', '#68736e', '#4d5853']);
-  g.beginPath();
-  g.ellipse(12, 10, 9, 6.5, 0.3, 0, TAU);
-  g.fill();
-  g.fillStyle = 'rgba(230,240,236,.14)';
-  g.beginPath();
-  g.ellipse(9.5, 8, 4, 2.3, 0.3, 0, TAU);
-  g.fill();
-}
-
-function drawReeds(g) {
-  g.strokeStyle = 'rgba(96,122,100,.85)';
-  g.lineWidth = 1.3;
-  g.lineCap = 'round';
-  g.beginPath();
-  for (let i = 0; i < 7; i++) {
-    const x = 4 + i * 3, y = 22 - ((i * 7) % 4);
     g.moveTo(x, y);
-    g.lineTo(x + rnd(-3, 3), y - 9 - (i % 3) * 3);
+    g.quadraticCurveTo(mx, my, ex, ey);
+    g.stroke();
+    for (let k = 1; k < 8; k++) {
+      const t = k / 8, px = (1 - t) * (1 - t) * x + 2 * (1 - t) * t * mx + t * t * ex, py = (1 - t) * (1 - t) * y + 2 * (1 - t) * t * my + t * t * ey;
+      const ll = (1 - t) * L * 0.28 + 1;
+      for (const sd of [-1, 1]) {
+        const aa = a + sd * 1.1;
+        g.fillStyle = `rgba(${col},.55)`;
+        g.beginPath();
+        g.ellipse(px + Math.cos(aa) * ll * 0.5, py + Math.sin(aa) * ll * 0.5, ll * 0.5, ll * 0.18, aa, 0, TAU);
+        g.fill();
+      }
+    }
   }
+}
+
+// A red spider lily, the flower of the dead: a stem, seven curled petals and long pale stamens.
+function drawLily(g) {
+  const x = 16, y = 15, s = rnd(5.5, 7.5);
+  g.strokeStyle = 'rgba(40,70,40,.6)';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(x, y);
+  g.lineTo(x + rnd(-3, 3), y + s * 1.4);
   g.stroke();
+  for (let j = 0; j < 7; j++) {
+    const a = (j / 7) * TAU + rnd(-0.2, 0.2);
+    g.strokeStyle = `rgba(${(165 + rnd(0, 40)) | 0},${(35 + rnd(0, 20)) | 0},${(38 + rnd(0, 15)) | 0},.85)`;
+    g.lineWidth = 1.3;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.quadraticCurveTo(x + Math.cos(a) * s * 0.9, y + Math.sin(a) * s * 0.9, x + Math.cos(a + 0.5) * s, y + Math.sin(a + 0.5) * s);
+    g.stroke();
+    g.strokeStyle = 'rgba(235,120,110,.55)';
+    g.lineWidth = 0.5;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + Math.cos(a - 0.15) * s * 1.5, y + Math.sin(a - 0.15) * s * 1.5);
+    g.stroke();
+  }
+  g.fillStyle = 'rgba(255,170,150,.8)';
+  g.beginPath();
+  g.arc(x, y, 1.1, 0, TAU);
+  g.fill();
+}
+
+// A rounded grey stone with a shadow and a patch of moss.
+function drawRock(g, r) {
+  const c = rockSize(r) / 2 - 2, ry = r * rnd(0.6, 0.9);
+  g.fillStyle = 'rgba(8,10,10,.4)';
+  g.beginPath();
+  g.ellipse(c + 3, c + 4, r * 1.05, ry * 1.05, 0, 0, TAU);
+  g.fill();
+  const gr = g.createRadialGradient(c - r * 0.35, c - ry * 0.4, 1, c, c, r * 1.1);
+  gr.addColorStop(0, '#6f7874');
+  gr.addColorStop(0.55, '#454d4a');
+  gr.addColorStop(1, '#232927');
+  g.fillStyle = gr;
+  g.beginPath();
+  g.ellipse(c, c, r, ry, 0, 0, TAU);
+  g.fill();
+  g.fillStyle = 'rgba(90,120,80,.45)';
+  g.beginPath();
+  g.ellipse(c + r * 0.2, c + ry * 0.3, r * 0.45, ry * 0.3, 0, 0, TAU);
+  g.fill();
 }
 
 /* ---------- light and effects (white, tinted in game) ---------- */
@@ -314,6 +370,41 @@ function drawMedal(g, c, glyph) {
   g.lineWidth = 1.8;
   g.stroke();
   drawGlyph(g, glyph, 17, 17.5, 14 / 15, rgba(c, 0.45), 'rgba(255,255,255,.95)', 1.2);
+}
+
+// A scroll from Hermes' stall: parchment between two rolled ends, sealed in the god's color.
+function drawScroll(g, c, glyph) {
+  const paper = g.createLinearGradient(0, 10, 0, 54);
+  paper.addColorStop(0, '#efe3c2');
+  paper.addColorStop(1, '#c9b27f');
+  g.fillStyle = paper;
+  g.fillRect(16, 12, 56, 40);
+  g.strokeStyle = 'rgba(90,64,30,.35)';
+  g.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    g.beginPath();
+    g.moveTo(24, 20 + i * 8);
+    g.lineTo(i === 3 ? 44 : 60, 20 + i * 8);
+    g.stroke();
+  }
+  for (const x of [12, 76]) {
+    const roll = g.createLinearGradient(x - 6, 0, x + 6, 0);
+    roll.addColorStop(0, '#9c8352');
+    roll.addColorStop(0.5, '#f4e9cc');
+    roll.addColorStop(1, '#8a7145');
+    g.fillStyle = roll;
+    g.beginPath();
+    g.roundRect(x - 6, 6, 12, 52, 6);
+    g.fill();
+  }
+  g.fillStyle = rgba(c, 1);
+  g.beginPath();
+  g.arc(58, 44, 12, 0, TAU);
+  g.fill();
+  g.strokeStyle = 'rgba(0,0,0,.35)';
+  g.lineWidth = 1.5;
+  g.stroke();
+  drawGlyph(g, glyph, 58, 44.5, 0.75, 'rgba(0,0,0,.25)', 'rgba(255,255,255,.95)', 1.1);
 }
 
 /* ---------- shrines ---------- */
@@ -456,89 +547,138 @@ function drawPier(g) {
   }
 }
 
-// Hermes' stall, base centre at (75, 138): a wooden booth with a striped awning and a coin sign.
-function drawShop(g) {
-  g.translate(75, 138);
-  const sh = g.createRadialGradient(0, 2, 4, 0, 2, 70);
-  sh.addColorStop(0, 'rgba(8,12,11,.55)');
-  sh.addColorStop(1, 'rgba(8,12,11,0)');
-  g.fillStyle = sh;
-  g.beginPath();
-  g.ellipse(0, 3, 70, 13, 0, 0, TAU);
-  g.fill();
-  g.fillStyle = '#3b2e24';
-  g.fillRect(-54, -8, 108, 8);
-  const wall = g.createLinearGradient(-44, 0, 44, 0);
-  wall.addColorStop(0, '#4a372a');
-  wall.addColorStop(0.5, '#634a37');
-  wall.addColorStop(1, '#3d2d22');
-  g.fillStyle = wall;
-  g.fillRect(-44, -80, 88, 72);
-  g.strokeStyle = 'rgba(20,14,10,.5)';
-  g.lineWidth = 1;
-  g.beginPath();
-  for (let x = -36; x < 44; x += 8) {
-    g.moveTo(x, -80);
-    g.lineTo(x, -8);
-  }
-  g.stroke();
-  g.fillStyle = '#140f14';
-  g.fillRect(-32, -68, 64, 30);
-  const warm = g.createRadialGradient(0, -53, 2, 0, -53, 42);
-  warm.addColorStop(0, 'rgba(255,196,120,.6)');
-  warm.addColorStop(1, 'rgba(255,196,120,0)');
-  g.fillStyle = warm;
-  g.fillRect(-32, -68, 64, 30);
-  for (const [x, c] of [[-20, '#8fd6c0'], [-8, '#e0a45a'], [4, '#b9a0ff']]) {
-    g.fillStyle = c;
+// Hermes' stall, a stand-in until Ines draws hers: a striped awning over a wooden counter of wares on a
+// stone slab, a jetty out to the water and a pool of warm light where you dock. Seen at her portals' angle
+// (facing right, toward the water) in the same 327x299 frame, its base point at STALL.anchor.
+function drawStall(g) {
+  const [ox, oy] = STALL.anchor;
+  // u runs along the counter (up-right on screen), n out toward the water (down-right), h straight up.
+  const P = (u, n, h = 0) => [ox + 0.92 * (u + n), oy + 0.39 * (n - u) - h];
+  const quad = (pts, fill) => {
     g.beginPath();
-    g.ellipse(x, -43, 4, 5.5, 0, 0, TAU);
+    pts.forEach(([u, n, h], i) => g[i ? 'lineTo' : 'moveTo'](...P(u, n, h)));
+    g.closePath();
+    g.fillStyle = fill;
     g.fill();
-  }
-  g.fillStyle = '#e8dcc0';
-  g.fillRect(12, -47, 14, 5);
-  g.fillStyle = '#7a5c43';
-  g.fillRect(-48, -38, 96, 8);
-  g.fillStyle = 'rgba(255,230,190,.2)';
-  g.fillRect(-48, -38, 96, 1.5);
-  g.fillStyle = '#5a4331';
-  g.fillRect(-48, -30, 96, 22);
-  g.fillStyle = '#2e2219';
-  g.fillRect(-52, -104, 6, 96);
-  g.fillRect(46, -104, 6, 96);
-  // striped awning
+  };
+  // A box shows its left end (-u), its front (+n, facing the water) and its top.
+  const box = (u0, u1, n0, n1, h0, h1, top, front, side) => {
+    quad([[u0, n0, h0], [u0, n1, h0], [u0, n1, h1], [u0, n0, h1]], side);
+    quad([[u0, n1, h0], [u1, n1, h0], [u1, n1, h1], [u0, n1, h1]], front);
+    quad([[u0, n0, h1], [u1, n0, h1], [u1, n1, h1], [u0, n1, h1]], top);
+  };
+  const line = (a, b, style, w) => {
+    g.strokeStyle = style;
+    g.lineWidth = w;
+    g.beginPath();
+    g.moveTo(...P(...a));
+    g.lineTo(...P(...b));
+    g.stroke();
+  };
+
+  // The pool of warm light on the water, and faint rays, like the light at Ines's portals.
+  const ang = Math.atan2(0.39, 0.92), [cx, cy] = P(12, 112);
   g.save();
+  g.translate(cx, cy);
+  g.rotate(ang);
+  g.scale(1, 0.42);
+  const pool = g.createRadialGradient(0, 0, 4, 0, 0, 108);
+  pool.addColorStop(0, 'rgba(255,200,130,.30)');
+  pool.addColorStop(0.6, 'rgba(255,190,120,.12)');
+  pool.addColorStop(1, 'rgba(255,190,120,0)');
+  g.fillStyle = pool;
   g.beginPath();
-  g.moveTo(-60, -80);
-  g.lineTo(60, -80);
-  g.lineTo(48, -104);
-  g.lineTo(-48, -104);
-  g.closePath();
-  g.fillStyle = '#5e2a3c';
+  g.arc(0, 0, 108, 0, TAU);
   g.fill();
-  g.clip();
-  g.fillStyle = '#7a3a50';
-  for (let x = -60; x < 60; x += 20) g.fillRect(x, -106, 10, 28);
   g.restore();
-  for (let i = 0; i < 8; i++) {
-    g.fillStyle = i % 2 ? '#7a3a50' : '#5e2a3c';
+  g.lineCap = 'round';
+  for (const u of [-6, 16, 38]) line([u, 70, 0], [u + 6, 196, 0], 'rgba(255,214,150,.10)', 5);
+
+  // Stone slab, in the portals' stone.
+  box(-62, 62, -34, 16, 0, 8, '#7b8476', '#5e6764', '#3a4340');
+  // Back posts, then the counter in front of them.
+  const wood = ['#8a6848', '#5f432e', '#3f2c20'];
+  box(-47, -42, -24, -19, 8, 104, ...wood);
+  box(42, 47, -24, -19, 8, 104, ...wood);
+  box(-46, 46, -22, 6, 8, 40, '#977354', '#6b4b33', '#4a3324');
+  for (let u = -38; u <= 38; u += 8) line([u, 6, 10], [u, 6, 39], 'rgba(30,20,14,.45)', 1);
+  line([-46, 6, 40], [46, 6, 40], 'rgba(255,230,190,.35)', 1.2);
+  // A banner on the counter with the caduceus, skewed onto the counter's face.
+  quad([[-15, 6.2, 18], [15, 6.2, 18], [15, 6.2, 39], [-15, 6.2, 39]], '#8e4a2c');
+  g.save();
+  const [bx, by] = P(0, 6.2, 28.5);
+  g.transform(0.92, -0.39, 0, 1, bx, by);
+  drawGlyph(g, 'caduceus', 0, 0, 0.72, 'rgba(0,0,0,.3)', '#f3d38a', 1.1);
+  g.restore();
+  // Wares on the counter: amphorae in the gods' colors, scrolls, a pile of obols.
+  GODS.forEach((god, i) => {
+    const [x, y] = P(-34 + i * 11, -9, 40), c = rgbOf(god.color);
+    g.fillStyle = rgba(c.map((v) => v * 0.62), 1);
     g.beginPath();
-    g.arc(-52.5 + i * 15, -80, 7.5, 0, Math.PI);
+    g.ellipse(x, y - 6, 4.2, 6, 0, 0, TAU);
+    g.fill();
+    g.fillRect(x - 1.6, y - 14, 3.2, 4);
+    g.fillStyle = 'rgba(255,255,255,.25)';
+    g.beginPath();
+    g.ellipse(x - 1.5, y - 8, 1.2, 2.6, 0, 0, TAU);
+    g.fill();
+  });
+  for (let i = 0; i < 3; i++) {
+    const [x, y] = P(8 + i * 3, -12 + i * 5, 40 + (i === 1 ? 3 : 0));
+    g.fillStyle = '#e8dcbc';
+    g.beginPath();
+    g.ellipse(x, y - 2.5, 8, 2.6, -0.4, 0, TAU);
+    g.fill();
+    g.fillStyle = '#b89a62';
+    g.beginPath();
+    g.ellipse(x + 7, y - 5.2, 1.6, 2.4, 0, 0, TAU);
     g.fill();
   }
-  // lantern and coin sign
-  g.fillStyle = '#ffd28a';
+  for (let i = 0; i < 6; i++) {
+    const [x, y] = P(30 + (i % 3) * 3, -10 + (i > 2 ? 4 : 0), 40 + (i === 5 ? 2 : 0));
+    g.fillStyle = i % 2 ? '#d9a441' : '#f0c865';
+    g.beginPath();
+    g.ellipse(x, y - 1.5, 3.4, 1.6, 0, 0, TAU);
+    g.fill();
+  }
+  // Front posts, and the awning over everything: cream and ochre stripes sloping down toward the water.
+  box(-47, -42, 1, 6, 8, 90, ...wood);
+  box(42, 47, 1, 6, 8, 90, ...wood);
+  const back = -32, front = 14, hb = 108, hf = 88;
+  for (let i = 0; i < 8; i++) {
+    const u0 = -56 + i * 14, u1 = u0 + 14, col = i % 2 ? '#e6d6b0' : '#b8743a';
+    quad([[u0, back, hb], [u1, back, hb], [u1, front, hf], [u0, front, hf]], col);
+    // the scalloped valance hanging along the front edge
+    quad([[u0, front, hf], [u1, front, hf], [u1, front, hf - 7], [u0, front, hf - 7]], i % 2 ? '#cdbd96' : '#9a5f2e');
+    const [sx, sy] = P(u0 + 7, front, hf - 7);
+    g.fillStyle = i % 2 ? '#cdbd96' : '#9a5f2e';
+    g.beginPath();
+    g.ellipse(sx, sy, 6.2, 3.4, -ang, 0, Math.PI);
+    g.fill();
+  }
+  quad([[-56, back, hb], [-56, front, hf], [-56, front, hf - 7], [-56, back, hb - 7]], '#6e4523');
+  line([-56, back, hb], [56, back, hb], 'rgba(255,240,210,.35)', 1);
+
+  // A lantern hanging from the front corner, warm light spilling round it.
+  const [lx, ly] = P(50, 16, 70);
+  const lg = g.createRadialGradient(lx, ly, 1, lx, ly, 30);
+  lg.addColorStop(0, 'rgba(255,214,150,.55)');
+  lg.addColorStop(1, 'rgba(255,190,120,0)');
+  g.fillStyle = lg;
   g.beginPath();
-  g.arc(-49, -84, 3.5, 0, TAU);
+  g.arc(lx, ly, 30, 0, TAU);
   g.fill();
-  g.strokeStyle = '#2e2219';
-  g.lineWidth = 1.5;
-  g.beginPath();
-  g.moveTo(52, -96);
-  g.lineTo(60, -96);
-  g.lineTo(60, -86);
-  g.stroke();
-  drawObol(g, 60, -74, 11);
+  line([50, 16, 81], [50, 16, 75], '#2a211a', 1);
+  g.fillStyle = '#2a211a';
+  g.fillRect(lx - 3.5, ly - 6, 7, 11);
+  g.fillStyle = '#ffd98f';
+  g.fillRect(lx - 2, ly - 4, 4, 7);
+
+  // The jetty out over the water, planks across it, two posts at its end.
+  box(4, 30, 16, 84, 2, 6, '#8a6a4c', '#5a4330', '#4a3627');
+  for (let n = 22; n < 84; n += 7) line([4, n, 6], [30, n, 6], 'rgba(30,20,14,.4)', 1);
+  box(2, 6, 80, 85, -6, 12, ...wood);
+  box(28, 32, 80, 85, -6, 12, ...wood);
 }
 
 /* ---------- boat ---------- */
@@ -701,6 +841,36 @@ function drawIconHold(g) {
     g.arc(0, -16 + i * 14, 5.5, 0, TAU);
     g.fill();
   });
+}
+
+// Atmosphere, after Ines's river study. A fog bank: soft all the way out (tinted grey-blue in game).
+function drawFog(g, w) {
+  const r = w / 2, gr = g.createRadialGradient(r, r, 0, r, r, r);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.6, 'rgba(255,255,255,.5)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, w, w);
+}
+
+// Haze fading in at the top and bottom of the screen, for a sense of distance (tinted in game).
+function drawHaze(g) {
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, 'rgba(255,255,255,.28)');
+  gr.addColorStop(0.35, 'rgba(255,255,255,0)');
+  gr.addColorStop(0.8, 'rgba(255,255,255,0)');
+  gr.addColorStop(1, 'rgba(255,255,255,.18)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, W, H);
+}
+
+// Darkened corners and edges.
+function drawShade(g) {
+  const gr = g.createRadialGradient(W / 2, H / 2, H * 0.36, W / 2, H / 2, H * 1.01);
+  gr.addColorStop(0, 'rgba(8,10,12,0)');
+  gr.addColorStop(1, 'rgba(8,10,12,.55)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, W, H);
 }
 
 // Screen-edge glow for danger, tinted red in game.

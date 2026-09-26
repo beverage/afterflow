@@ -1,5 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
-import { geminiRoute, ttsRoute } from './server/http.js';
+import { geminiRoute, sttRoute, ttsRoute } from './server/http.js';
 
 // Mounts the same /api routes used in production on the dev and preview servers,
 // so `npm run dev` is the only command you need. Env vars are read server-side only:
@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
   const mountApi = (server) => {
     server.middlewares.use('/api/gemini', (req, res) => geminiRoute(req, res, env));
     server.middlewares.use('/api/tts', (req, res) => ttsRoute(req, res, env));
+    server.middlewares.use('/api/stt', (req, res) => sttRoute(req, res, env));
   }; // must return nothing: Vite treats a returned function as a post-middleware hook
 
   return {
