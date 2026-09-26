@@ -143,8 +143,11 @@ function swap(a, b) {
 }
 const gap = (c) => (VOWEL.test(c) ? 0.45 : 1);
 
+const weight = (key) => [...key].reduce((w, c) => w + gap(c), 0);
+
 // Align a sound key against the best-matching stretch of what was heard: talk before or after it costs nothing.
 function align(want, got) {
+  if (!want || !got) return 0;
   let prev = new Array(got.length + 1).fill(0);
   for (let i = 1; i <= want.length; i++) {
     const cur = [prev[0] + gap(want[i - 1])];
@@ -153,33 +156,35 @@ function align(want, got) {
     }
     prev = cur;
   }
-  const weight = [...want].reduce((w, c) => w + gap(c), 0);
-  return Math.max(0, 1 - Math.min(...prev) / weight);
+  return Math.max(0, 1 - Math.min(...prev) / weight(want));
 }
 
 /**
- * How closely (0-1) the last words heard sound like an incantation. Both of its words must be there on their
- * own too, so a phrase that only echoes one of them ("tell us a" for "Thalassa") doesn't count.
+ * Did this (one alternative of what the mic heard) say the incantation? Two ways to succeed:
+ * both words came through, even garbled; or one word came through clearly as a short phrase of its own.
+ * Other people and the room tend to talk in longer stretches, which can only use a scroll with both words in them.
+ * score (0-1) is how close the nearest part came, to decide whether what was heard is worth showing.
  */
-export function matchScore(incantation, heard) {
-  const got = sound(String(heard).split(/\s+/).slice(-10).join(''));
-  if (!got) return 0;
+export function judge(incantation, heard) {
+  const got = sound(heard.all.split(/\s+/).slice(-10).join(''));
   const whole = align(sound(incantation), got);
-  const each = incantation.split(/\s+/).map((w) => align(sound(w), got));
-  return Math.min(whole, ...each.map((e) => e + (1 - SCROLLS.wordMatch) - (1 - SCROLLS.match)));
+  const words = incantation.split(/\s+/).map(sound);
+  const each = words.map((w) => align(w, got));
+  const both = whole >= SCROLLS.match && each.every((e) => e >= SCROLLS.wordMatch);
+  const phrase = heard.last.split(/\s+/).filter(Boolean);
+  const alone = heard.final && phrase.length <= SCROLLS.oneWordPhrase;
+  const one = alone && words.some((w) => align(w, sound(heard.last)) >= (weight(w) >= 3.5 ? SCROLLS.oneWord : SCROLLS.oneShortWord));
+  return { pass: both || one, score: Math.max(whole, ...each) };
 }
 
-/** Which carried scroll (god index) did the player just say, or -1. carried: incantation or null, per god. */
+/** Which carried scroll the player just said: { god, pass, score } for the closest one, or null if none is carried. */
 export function heardScroll(carried, candidates) {
-  let best = -1, bestScore = SCROLLS.match;
+  let best = null;
   carried.forEach((line, god) => {
     if (!line) return;
     for (const heard of candidates) {
-      const s = matchScore(line, heard);
-      if (s >= bestScore) {
-        best = god;
-        bestScore = s;
-      }
+      const j = { god, ...judge(line, heard) };
+      if (!best || j.pass > best.pass || (j.pass === best.pass && j.score > best.score)) best = j;
     }
   });
   return best;
