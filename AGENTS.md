@@ -60,6 +60,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 
 ## Commands
 
+- `make up` / `make down` / `make re`: start, stop and restart the dev server in the background (output in `dev.log`, `make logs` to follow it); `make update` pulls `main`, reinstalls dependencies and restarts the server if it was running
 - `npm run dev`: dev server with the API routes at http://localhost:5173 (also on the LAN for phone testing)
 - `npm run build`: production build, must pass before every commit
 - `npm run check:ai`: one real call each to Gemini and Gradium
