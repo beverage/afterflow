@@ -97,11 +97,21 @@ export class RiverScene extends Phaser.Scene {
   buildWorld() {
     this.bank = this.add.tileSprite(0, 0, W, H, 'bank').setOrigin(0).setDepth(0);
     this.waterG = this.add.graphics().setDepth(1);
+    // Wavelets on the surface: two layers drifting at different speeds, clipped to the river.
+    this.waterMask = this.make.graphics({}, false);
+    const mask = this.waterMask.createGeometryMask();
+    this.surface = [
+      this.add.tileSprite(0, 0, W, H, 'ripples').setOrigin(0).setDepth(1.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.45).setMask(mask),
+      this.add.tileSprite(0, 0, W, H, 'ripples').setOrigin(0).setDepth(1.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.28).setTileScale(1.7, 1.35).setMask(mask),
+    ];
     this.lightG = this.add.graphics().setDepth(2).setBlendMode(Phaser.BlendModes.ADD);
-    this.streaks = Array.from({ length: 120 }, () => this.newStreak(false));
-    this.ribbons = Array.from({ length: 10 }, () => this.newRibbon(false));
-    this.sparkles = Array.from({ length: 46 }, () => ({ sy: rnd(-20, H + 20), o: clamp(gauss() * 0.85, -0.9, 0.9), ph: rnd(0, TAU), sp: rnd(1.4, 1.9) }));
-    this.foam = Array.from({ length: 70 }, () => ({ sy: rnd(-20, H + 20), side: Math.random() < 0.5 ? -1 : 1, off: rnd(3, 16), ph: rnd(0, TAU), sp: rnd(1.05, 1.35), r: rnd(0.8, 1.8) }));
+    // The lifestream: wide soft bands and fine streaks of light, each a rope so it bends smoothly with no seams.
+    this.ribbons = Array.from({ length: 8 }, () => this.newRibbon(false));
+    for (const r of this.ribbons) r.rope = this.bandRope(pickOne(['band_s', 'band_m', 'band_m', 'band_l']), 17, r.c);
+    this.streaks = Array.from({ length: 90 }, () => this.newStreak(false));
+    for (const r of this.streaks) r.rope = this.bandRope('band_xs', 8, r.c);
+    this.glints = Array.from({ length: 40 }, () => ({ sy: rnd(-20, H + 20), o: clamp(gauss() * 0.85, -0.9, 0.9), ph: rnd(0, TAU), sp: rnd(1.4, 1.9) }));
+    this.foam = Array.from({ length: 150 }, () => this.newFoam(rnd(-20, H + 20)));
     this.fog = Array.from({ length: 8 }, (_, i) => {
       const f = this.add.image(rnd(0, W), rnd(-100, H + 100), 'glow').setTint(0xc8d6d2).setScale(rnd(4.6, 8.6)).setDepth(i < 5 ? 9 : 26);
       f.setAlpha(rnd(0.05, 0.09) * (i < 5 ? 1 : 0.7));
@@ -112,24 +122,55 @@ export class RiverScene extends Phaser.Scene {
   }
 
   newStreak(fromTop) {
-    return { sy: fromTop ? -rnd(0, 260) : rnd(-60, H + 160), o: clamp(gauss() * 0.9, -0.93, 0.93), ph: rnd(0, TAU), len: rnd(90, 230), lw: rnd(1, 2.6), a: rnd(0.07, 0.24), c: pickOne(STREAK_HUES), sp: rnd(0.85, 1.2) };
+    return { sy: fromTop ? -rnd(0, 260) : rnd(-60, H + 160), o: clamp(gauss() * 0.9, -0.93, 0.93), ph: rnd(0, TAU), len: rnd(90, 230), lw: rnd(1, 2.2), a: rnd(0.06, 0.2), c: pickOne(STREAK_HUES), sp: rnd(0.85, 1.2) };
   }
 
   newRibbon(fromTop) {
-    return { sy: fromTop ? -rnd(0, 400) : rnd(-100, H + 300), o: clamp(gauss() * 0.7, -0.75, 0.75), ph: rnd(0, TAU), len: rnd(280, 500), lw: rnd(10, 22), a: rnd(0.05, 0.09), c: pickOne(RIBBON_HUES), sp: rnd(1.2, 1.5) };
+    return { sy: fromTop ? -rnd(0, 400) : rnd(-100, H + 300), o: clamp(gauss() * 0.7, -0.75, 0.75), ph: rnd(0, TAU), len: rnd(300, 520), a: rnd(0.07, 0.12), c: pickOne(RIBBON_HUES), sp: rnd(1.2, 1.5) };
+  }
+
+  // Foam churning along the shore, a few px to ~20 px out from the stones.
+  newFoam(sy) {
+    return { sy, side: Math.random() < 0.5 ? -1 : 1, off: rnd(1, 20), ph: rnd(0, TAU), sp: rnd(1.02, 1.3), r: rnd(0.8, 2.4), len: rnd(0, 8), a: rnd(0.12, 0.36) };
+  }
+
+  bandRope(key, n, color) {
+    const rope = this.add.rope(0, 0, key, null, Array.from({ length: n }, () => new Phaser.Math.Vector2()), false);
+    rope.setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
+    rope.setColors(color);
+    rope.setAlphas(Array.from({ length: n }, (_, j) => Math.pow(Math.sin((Math.PI * j) / (n - 1)), 0.8))); // fade in and out at the ends
+    return rope;
+  }
+
+  // Lay a rope along the current, from the band's head (s.sy) back along its length.
+  layRope(rope, s, wave, freq, drift, limit) {
+    const pts = rope.points, n = pts.length;
+    for (let j = 0; j < n; j++) {
+      const yy = s.sy - (s.len * j) / (n - 1), q = riverAt(yy - this.scroll);
+      const o = clamp(s.o + wave * Math.sin(yy * freq + s.ph + this.t * drift), -limit, limit);
+      pts[j].x = q.cx + o * q.hw;
+      pts[j].y = yy;
+    }
+    rope.updateVertices();
   }
 
   updateSurface(dt) {
     const v = this.speed;
     for (const s of this.streaks) {
       s.sy += v * TUNING.currentFactor * s.sp * dt;
-      if (s.sy - s.len > H + 10) Object.assign(s, this.newStreak(true));
+      if (s.sy - s.len > H + 10) {
+        Object.assign(s, this.newStreak(true));
+        s.rope.setColors(s.c);
+      }
     }
     for (const s of this.ribbons) {
       s.sy += v * s.sp * dt;
-      if (s.sy - s.len > H + 10) Object.assign(s, this.newRibbon(true));
+      if (s.sy - s.len > H + 10) {
+        Object.assign(s, this.newRibbon(true));
+        s.rope.setColors(s.c);
+      }
     }
-    for (const s of this.sparkles) {
+    for (const s of this.glints) {
       s.sy += v * s.sp * dt;
       if (s.sy > H + 10) {
         s.sy = -10;
@@ -138,10 +179,7 @@ export class RiverScene extends Phaser.Scene {
     }
     for (const f of this.foam) {
       f.sy += v * f.sp * dt;
-      if (f.sy > H + 20) {
-        f.sy = -20;
-        f.off = rnd(3, 16);
-      }
+      if (f.sy > H + 20) Object.assign(f, this.newFoam(-20));
     }
     for (const f of this.fog) {
       const r = f.displayWidth / 2;
@@ -170,8 +208,10 @@ export class RiverScene extends Phaser.Scene {
       g.lineStyle(16, 0x0a0d0c, 0.55);
       g.strokePoints(edge(side, 6));
     }
+    const water = this.band(1);
     g.fillStyle(0x130f26, 1);
-    g.fillPoints(this.band(1), true);
+    g.fillPoints(water, true);
+    this.waterMask.clear().fillStyle(0xffffff, 1).fillPoints(water, true);
     for (const [k, color, alpha] of [[0.82, 0x2e2462, 0.2], [0.58, 0x3e3080, 0.14], [0.32, 0x5442a0, 0.1]]) {
       g.fillStyle(color, alpha);
       g.fillPoints(this.band(k), true);
@@ -182,9 +222,14 @@ export class RiverScene extends Phaser.Scene {
     }
     for (const f of this.foam) {
       const q = riverAt(f.sy - this.scroll);
-      g.fillStyle(0xd2c8ff, 0.18 + 0.14 * Math.sin(this.t * 3 + f.ph));
-      g.fillCircle(q.cx + f.side * (q.hw - f.off), f.sy, f.r);
+      g.fillStyle(0xdcd4ff, f.a * (0.7 + 0.3 * Math.sin(this.t * 3 + f.ph)));
+      g.fillEllipse(q.cx + f.side * (q.hw - f.off), f.sy, f.r * 2, f.r * 2 + f.len);
     }
+    const [near, far] = this.surface;
+    near.tilePositionY = -this.scroll * 1.2;
+    near.tilePositionX = 14 * Math.sin(this.t * 0.23);
+    far.tilePositionY = -this.scroll * 0.62;
+    far.tilePositionX = this.t * 4 + 10 * Math.sin(this.t * 0.17 + 1);
   }
 
   // The river's outline, inset to k of its half width.
@@ -198,39 +243,24 @@ export class RiverScene extends Phaser.Scene {
   drawLight() {
     const g = this.lightG;
     g.clear();
-    const path = (s, n, wave, freq, drift, limit) => {
-      const pts = [];
-      for (let j = 0; j <= n; j++) {
-        const yy = s.sy - (s.len * j) / n;
-        const q = riverAt(yy - this.scroll);
-        const o = clamp(s.o + wave * Math.sin(yy * freq + s.ph + this.t * drift), -limit, limit);
-        pts.push({ x: q.cx + o * q.hw, y: yy });
-      }
-      return pts;
-    };
     for (const s of this.ribbons) {
-      const pts = path(s, 16, 0.12, 0.008, 0.5, 0.9), a = s.a * (0.8 + 0.2 * Math.sin(this.t * 1.1 + s.ph));
-      g.lineStyle(s.lw * 2.2, s.c, a * 0.5);
-      g.strokePoints(pts);
-      g.lineStyle(s.lw, s.c, a);
-      g.strokePoints(pts);
-      g.lineStyle(1.4, lighten(s.c, 0.45), Math.min(1, a * 2.2));
-      g.strokePoints(pts);
+      this.layRope(s.rope, s, 0.12, 0.008, 0.5, 0.9);
+      s.rope.setAlpha(s.a * (0.8 + 0.2 * Math.sin(this.t * 1.1 + s.ph)));
     }
     for (const s of this.streaks) {
-      const pts = path(s, 7, 0.07, 0.011, 0.6, 0.96), a = s.a * (0.75 + 0.25 * Math.sin(this.t * 2 + s.ph));
-      g.lineStyle(s.lw * 5.5, s.c, a * 0.3);
-      g.strokePoints(pts);
+      this.layRope(s.rope, s, 0.07, 0.011, 0.6, 0.96);
+      const a = s.a * (0.75 + 0.25 * Math.sin(this.t * 2 + s.ph));
+      s.rope.setAlpha(a * 0.45);
       g.lineStyle(s.lw, s.c, a);
-      g.strokePoints(pts);
+      g.strokePoints(s.rope.points);
     }
-    for (const s of this.sparkles) {
-      const a = Math.pow(Math.max(0, Math.sin(this.t * 2.3 + s.ph)), 4) * 0.85;
+    // Glints: light catching the surface for a moment.
+    for (const s of this.glints) {
+      const a = Math.pow(Math.max(0, Math.sin(this.t * 2.3 + s.ph)), 4) * 0.7;
       if (a < 0.02) continue;
-      const q = riverAt(s.sy - this.scroll), x = q.cx + s.o * q.hw;
-      g.lineStyle(1, 0xebe4ff, a);
-      g.lineBetween(x - 3, s.sy, x + 3, s.sy);
-      g.lineBetween(x, s.sy - 3, x, s.sy + 3);
+      const q = riverAt(s.sy - this.scroll);
+      g.fillStyle(0xf2ecff, a);
+      g.fillEllipse(q.cx + s.o * q.hw, s.sy, 8, 1.8);
     }
   }
 
@@ -448,6 +478,11 @@ export class RiverScene extends Phaser.Scene {
       s.sy += this.speed * s.sp * dt;
       s.rim.rotation += dt * 1.6;
       this.placeSoul(s);
+      s.ringT = (s.ringT ?? rnd(0, 1.2)) - dt;
+      if (s.ringT <= 0 && s.sy > 0) {
+        s.ringT = rnd(1.1, 1.7);
+        this.waterRing(s.x, s.y);
+      }
       if (s.sy > H + 40) {
         this.removeSoul(i);
         this.skipped(s.god);
@@ -715,6 +750,12 @@ export class RiverScene extends Phaser.Scene {
       this.add.particles(0, 0, 'glow', { ...soft, lifespan: { min: 700, max: 1200 }, speed: { min: 20, max: 70 }, angle: { min: 235, max: 305 }, gravityY: -30, scale: { start: 0.12, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: [god.color, 0xffe2a8] }).setDepth(31),
     );
     this.wakeG = this.add.graphics().setDepth(19).setBlendMode(Phaser.BlendModes.ADD);
+  }
+
+  // A ring spreading on the water under a floating soul, drifting with the current.
+  waterRing(x, y) {
+    const img = this.add.image(x, y, 'ring').setTint(0xcfc6ff).setBlendMode('ADD').setAlpha(0.2).setScale(12 / 29, 9 / 29).setDepth(9.5);
+    this.tweens.add({ targets: img, scaleX: 44 / 29, scaleY: 32 / 29, alpha: 0, y: y + this.speed * 1.4, duration: 1400, ease: 'Sine.easeOut', onComplete: () => img.destroy() });
   }
 
   ringFx(x, y, color, dur = 0.5, radius = 17) {

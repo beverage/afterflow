@@ -46,3 +46,4 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 15:32 · Souls burn out with a flash (flare, shockwave, embers, fizzle sound) instead of going poof; they flicker before they go · team's call · team
 - 15:32 · Rocky shore: stones and gravel line both banks, big boulders set back; boat keeps 36 px from the edge · team asked for a rockier shore · team
 - 15:32 · The ambient hum was a synth drone; replaced by quiet flowing water with the odd droplet (AMBIENCE_VOLUME in sfx.js, 0 turns it off) · the hum sounded like a fault · Claude
+- 15:41 · River reads as water: seamless soft light bands (ropes, no seams), drifting surface wavelets, glints, shore foam, rings under souls; fewer, softer streaks · team: bands showed horizontal lines and it didn't look like water · team

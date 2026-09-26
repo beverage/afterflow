@@ -33,6 +33,8 @@ export function makeArt(scene) {
   });
   for (let i = 1; i <= 3; i++) make(scene, `gravel${i}`, 44, 28, drawGravel);
   make(scene, 'glow', 64, 64, drawGlow);
+  for (const [key, w] of [['band_xs', 16], ['band_s', 40], ['band_m', 64], ['band_l', 96]]) make(scene, key, w, 8, drawBand);
+  make(scene, 'ripples', 256, 256, drawRipples);
   make(scene, 'ring', 64, 64, drawRing);
   make(scene, 'rim', 44, 44, drawRim);
   for (const god of GODS) {
@@ -346,6 +348,48 @@ function drawGravel(g, w, h) {
 }
 
 /* ---------- light and effects (white, tinted in game) ---------- */
+// A soft band for the river's light: bright down the middle, nothing at the sides. Stretched along a rope.
+function drawBand(g, w, h) {
+  const gr = g.createLinearGradient(0, 0, w, 0);
+  gr.addColorStop(0, 'rgba(255,255,255,0)');
+  gr.addColorStop(0.2, 'rgba(255,255,255,.12)');
+  gr.addColorStop(0.38, 'rgba(255,255,255,.55)');
+  gr.addColorStop(0.5, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.62, 'rgba(255,255,255,.55)');
+  gr.addColorStop(0.8, 'rgba(255,255,255,.12)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, w, h);
+}
+
+// Wavelets on the water, seamless in both directions: short curved crests across the flow.
+function drawRipples(g, w, h) {
+  g.lineCap = 'round';
+  for (let i = 0; i < 70; i++) {
+    const x = rnd(0, w), y = rnd(0, h), len = rnd(12, 44), rot = rnd(-0.6, 0.6), bend = rnd(3, 9) * (Math.random() < 0.5 ? 1 : -1);
+    const a = rnd(0.1, 0.34), lw = rnd(0.8, 1.7);
+    for (const dx of [-w, 0, w]) {
+      for (const dy of [-h, 0, h]) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < -len || xx > w + len || yy < -len || yy > h + len) continue;
+        g.save();
+        g.translate(xx, yy);
+        g.rotate(rot);
+        g.beginPath();
+        g.moveTo(-len / 2, 0);
+        g.quadraticCurveTo(0, bend, len / 2, 0);
+        g.strokeStyle = `rgba(225,215,255,${a * 0.3})`; // soft glow around each crest
+        g.lineWidth = lw * 3.5;
+        g.stroke();
+        g.strokeStyle = `rgba(235,228,255,${a * 0.7})`;
+        g.lineWidth = lw;
+        g.stroke();
+        g.restore();
+      }
+    }
+  }
+}
+
 function drawGlow(g, w) {
   const r = w / 2, gr = g.createRadialGradient(r, r, 0, r, r, r);
   gr.addColorStop(0, 'rgba(255,255,255,1)');
