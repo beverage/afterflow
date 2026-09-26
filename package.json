@@ -13,7 +13,9 @@
     "decide": "node scripts/decide.js",
     "voices": "node scripts/voice.js list",
     "voice:design": "node scripts/voice.js design",
-    "voice:keep": "node scripts/voice.js keep"
+    "voice:keep": "node scripts/voice.js keep",
+    "npc:audio": "node scripts/npc-audio.js",
+    "test:npc": "node scripts/test-npc-audio.js"
   },
   "dependencies": {
     "phaser": "3.90.0"
