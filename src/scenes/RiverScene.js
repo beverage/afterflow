@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { WIDTH as W, HEIGHT as H, GODS, TUNING, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { soulValue, statsFor, formatObols, formatMeters } from '../economy.js';
-import { moveVector, onAction, clearKeys } from '../controls.js';
+import { moveVector, onAction, onAway, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
 import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
 import { drawMeander, spaced } from '../ui.js';
@@ -59,9 +59,7 @@ export class RiverScene extends Phaser.Scene {
     for (const k of this.playing ? [0.1, 0.3] : [0.15, 0.35, 0.55]) this.spawnSoul(H * k);
 
     onAction(this, (action) => this.handleAction(action));
-    const onBlur = () => this.pauseGame();
-    this.game.events.on('blur', onBlur);
-    this.events.once('shutdown', () => this.game.events.off('blur', onBlur));
+    onAway(this, () => this.pauseGame());
 
     if (this.playing) this.startHints();
     else this.scene.launch('Title');
@@ -789,10 +787,20 @@ export class RiverScene extends Phaser.Scene {
     label('HOLD', HUD_RIGHT + 12, 152);
     label('NEXT', HUD_RIGHT + 12, 196);
     this.nextIcons = [0, 1, 2].map((i) => this.add.image(HUD_RIGHT + 26 + i * 34, 229, `medal_${GODS[0].key}`).setScale(0.8).setDepth(d + 1));
+    if (isTouch()) this.buildPauseButton(d);
     this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setTint(0xff2a1a).setAlpha(0).setDepth(45);
     this.obolShown = 0;
     this.obolPulse = 0;
     this.streakPulse = 0;
+  }
+
+  // No Esc key on a phone: a pause button beside the top of the right panel, out of the thumbs' way.
+  buildPauseButton(depth) {
+    const x = HUD_RIGHT - 36, y = 42, g = this.add.graphics().setDepth(depth);
+    g.fillStyle(0x080b0a, 0.64).fillCircle(x, y, 22);
+    g.lineStyle(1, 0xdce6e2, 0.12).strokeCircle(x, y, 22);
+    g.fillStyle(0xdce6e2, 0.8).fillRect(x - 7, y - 8, 5, 16).fillRect(x + 2, y - 8, 5, 16);
+    this.add.zone(x, y, 88, 88).setInteractive().on('pointerdown', () => this.pauseGame());
   }
 
   updateHud(dt) {
@@ -861,8 +869,9 @@ export class RiverScene extends Phaser.Scene {
   }
 
   startHints() {
-    this.toast('Steer with WASD, ZQSD or the arrow keys');
-    this.time.delayedCall(3300, () => this.hint('touch', 'Touch a soul to take it aboard'));
+    const touch = isTouch(); // on a phone, "touch a soul" would read as "tap it"
+    this.toast(touch ? 'Slide a thumb anywhere to steer' : 'Steer with WASD, ZQSD or the arrow keys');
+    this.time.delayedCall(3300, () => this.hint('touch', touch ? 'Steer into a soul to take it aboard' : 'Touch a soul to take it aboard'));
   }
 
   /* ---------- flow: pause, shop, death ---------- */

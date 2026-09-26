@@ -18,7 +18,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 
 - Phaser **3.90** (no physics engine: pickups and docking are simple distance checks). Pinned on purpose: agents know Phaser 3 best. Do not upgrade to Phaser 4 today.
 - Vite for dev and build. Plain JavaScript ES modules. No TypeScript, no UI framework, no new build tools.
-- Landscape 1280x720 logical canvas, scaled with `Phaser.Scale.FIT`. Laptop first: WASD, ZQSD (French AZERTY) and arrow keys. Read input only through the controls module (a move vector plus actions) so touch can be added later for mobile.
+- Landscape 1280x720 logical canvas, scaled with `Phaser.Scale.FIT`. Laptop first: WASD, ZQSD (French AZERTY) and arrow keys; phones held sideways steer with a floating touch stick. Read input only through the controls module (a move vector plus actions), which turns both into the same move vector. Anything new the player does needs a tap path too, and its prompt should check `isTouch()` ("tap" instead of a key name).
 - Hosting: Vercel, connected to GitHub. `main` deploys to production and every PR gets its own preview link: playtest the preview before merging.
 - All keys stay on the server. Browser code calls `askAI()` (`src/ai.js`, Gemini) and `speak()` (`src/voice.js`, Gradium), which hit our own `/api/gemini` and `/api/tts` routes. Never call Google or Gradium from the browser, never put a key in client code, never prefix env vars with `VITE_` (that would ship the key to every player).
 
@@ -32,7 +32,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 | `src/config.js` | Sizes, colors, the gods, tuning knobs and shop upgrades. Put magic numbers here |
 | `src/assets.js` | Asset manifest: key -> file in `public/assets/`. A real file replaces that key's placeholder |
 | `src/art.js` | Placeholder art drawn by code at boot, under the same keys as the manifest |
-| `src/controls.js` | All input: `moveVector()` plus actions (pause, mute, confirm, buy1-3), by physical key |
+| `src/controls.js` | All input: `moveVector()` (keys, or the touch stick) plus actions (pause, mute, confirm, buy1-3) by physical key; `isTouch()`, `onAway()` |
 | `src/sfx.js` | Sound effects and the ambient drone, synthesized with Web Audio (no files) |
 | `src/river.js`, `src/economy.js` | River shape; soul value, prices, upgrade stats, number formats |
 | `src/ai.js` | `askAI({ prompt, system, schema, fallback })`, `getAIStatus()` |
@@ -67,3 +67,4 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 - `npm run voices`, `npm run voice:design -- "description"`, `npm run voice:keep -- <id> "Name"`: Gradium voices
 - `npm run decide -- "Cut the leaderboard · no time"`: appends a timestamped line to DECISIONS.md
 - Add `?debug` to the URL to see the hull and dock zones, and whether AI and voice are live. `window.game` is exposed in the console.
+- Add `?touch` to the URL to try the phone controls on a laptop: tap prompts, and a mouse drag steers.

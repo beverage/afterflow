@@ -51,10 +51,13 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Deliver: automatic when the boat touches a shrine's dock.
 - Shop: touching a shop's dock pauses the game and opens it. **1 / 2 / 3** or a click buys, **Space** or **Esc** casts off.
 - **Esc** or **P** pauses, **M** mutes, **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly).
-- A "click to play" screen gives the game keyboard focus and unlocks audio. The game pauses when the window loses focus, so keys can't get stuck.
+- A "click to play" screen gives the game keyboard focus and unlocks audio. The game pauses when the window loses focus or the tab is hidden, so keys can't get stuck.
 - Never require more than 2 held keys plus 1 tap: laptop keyboards drop keys.
 - v2 prayers: **1 / 2 / 3** (or a click on a rage bar) prays to that god; hold **Space** if there's no mic. Mic permission is asked on the title screen, never mid-run.
-- v3, maybe mobile: all input goes through one controls module (a move vector plus actions), so drag-to-move can plug in later, and the 16:9 canvas fits a phone held sideways.
+- Phones, held sideways: a floating stick. Put a thumb down anywhere (the bars beside the game too) and slide: the boat heads that way at full speed, as if holding the key, and glides to a stop when you lift. A faint ring shows under the thumb and trails it, so sliding back reverses at once.
+- On a phone, taps do everything else: start, buy, cast off (a button), resume, restart. A pause button sits top right, and the pause screen has a sound toggle. Prompts say "tap" instead of naming keys.
+- A phone held upright shows "turn your phone sideways" and pauses the run. Android goes fullscreen on the first tap; iPhones can't, short of Add to Home Screen.
+- Add `?touch` to the URL to try the phone controls on a laptop, dragging with the mouse.
 
 ## Look and sound
 
@@ -95,14 +98,14 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Hack rule: use at least 2 of Gemini, Gradium, Devin, Voodoo (use during development counts).
 - v1, must have for the demo: river runner, 3 gods, souls with a lifespan, shrines and deliveries, rage bars and death, riverside shops with exponential prices (Speed, Handling, Hold), streaks, clutch with its own sound, juice (pops, obol bursts, screen shake), game over and instant restart.
 - v2, after v1 is solid: AI gods (reactions, fresh prayers, death verdict, soul stories), prayer scrolls read aloud (speech-to-text), obstacles and damage, saving and best score, bullet-hell arena when a god's rage fills, weapons.
-- v3, maybe: mobile (touch controls, phone held sideways).
+- Phones, alongside v1: touch controls for a phone held sideways (see Controls). Phone versions of v2 input (prayers) come with v2.
 - Stretch: voice cloning (the ferryman repeats your prayer in your own voice).
 - Considered, not chosen: golden hero souls, underworld zones, missions, leaderboard.
 - Cut: Unity and Voodoo.
 
 ## v1 status
 
-Built and playable: title over a self-steering river, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars and death, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound.
+Built and playable: title over a self-steering river, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars and death, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
 
 Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
 

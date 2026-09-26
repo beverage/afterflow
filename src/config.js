@@ -110,3 +110,10 @@ export const UPGRADES = [
   },
   { key: 'hold', name: 'Hold', icon: 'icon_hold', basePrice: 80, maxLevel: 5, perLevel: 1, desc: 'Carry one more soul' },
 ];
+
+// Touch steering on phones: a floating stick under the thumb, in screen px (see controls.js).
+export const STICK = {
+  deadZone: 10, // a slide shorter than this doesn't move the boat, so taps don't steer
+  radius: 34, // the ring trails the thumb beyond this, so sliding back reverses at once
+  axisSnap: 0.38, // slides within ~22° of straight count as straight, like a single arrow key
+};

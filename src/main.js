@@ -13,7 +13,9 @@ const game = new Phaser.Game({
   width: WIDTH,
   height: HEIGHT,
   backgroundColor: COLORS.bg,
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  // Fullscreen takes the whole page, so the touch ring and "turn your phone sideways" still show.
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, fullscreenTarget: document.documentElement },
+  input: { activePointers: 3 }, // steer with one thumb, tap pause with the other
   scene: [BootScene, RiverScene, TitleScene, ShopScene, PauseScene, GameOverScene], // later scenes draw on top
 });
 
