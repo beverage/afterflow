@@ -6,6 +6,7 @@ import { moveVector, onAction, clearKeys } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
 import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
 import { drawMeander, spaced } from '../ui.js';
+import { Water } from '../water.js';
 
 const TAU = Math.PI * 2;
 const clamp = Phaser.Math.Clamp;
@@ -14,9 +15,6 @@ const gauss = () => (Math.random() + Math.random() + Math.random()) / 1.5 - 1;
 const pickOne = (a) => a[(Math.random() * a.length) | 0];
 const DEBUG = new URLSearchParams(location.search).has('debug'); // ?debug draws the hull and dock zones
 
-// Light on the water: fine streaks and wide ribbons in the river's violet palette.
-const STREAK_HUES = [0x9670ff, 0x7686ff, 0xb880ff, 0x866ef0, 0x9670ff, 0xe8a0d6];
-const RIBBON_HUES = [0x9670ff, 0x7896ff, 0xc882ff, 0xec96d2];
 const HUD_RIGHT = W - 148;
 
 // The game: an endless top-down river. Scoop up souls, deliver them to their god's shrine,
@@ -77,9 +75,9 @@ export class RiverScene extends Phaser.Scene {
     this.scroll += this.speed * dt * (this.ended ? 0.3 : 1);
     this.bank.tilePositionY = -this.scroll;
     this.spawnAhead();
-    this.updateSurface(dt);
-    this.drawRiver();
-    this.drawLight();
+    this.updateFog(dt);
+    this.drawShore();
+    this.water.update(dt, this.scroll, this.speed * TUNING.currentFactor * (this.ended ? 0.3 : 1));
     for (const p of this.props) p.y = p.wy + this.scroll;
     this.updateFeatures(dt);
     this.updateSouls(dt);
@@ -94,53 +92,18 @@ export class RiverScene extends Phaser.Scene {
 
   buildWorld() {
     this.bank = this.add.tileSprite(0, 0, W, H, 'bank').setOrigin(0).setDepth(0);
-    this.waterG = this.add.graphics().setDepth(1);
-    this.lightG = this.add.graphics().setDepth(2).setBlendMode(Phaser.BlendModes.ADD);
-    this.streaks = Array.from({ length: 120 }, () => this.newStreak(false));
-    this.ribbons = Array.from({ length: 10 }, () => this.newRibbon(false));
-    this.sparkles = Array.from({ length: 46 }, () => ({ sy: rnd(-20, H + 20), o: clamp(gauss() * 0.85, -0.9, 0.9), ph: rnd(0, TAU), sp: rnd(1.4, 1.9) }));
-    this.foam = Array.from({ length: 70 }, () => ({ sy: rnd(-20, H + 20), side: Math.random() < 0.5 ? -1 : 1, off: rnd(3, 16), ph: rnd(0, TAU), sp: rnd(1.05, 1.35), r: rnd(0.8, 1.8) }));
+    this.shoreG = this.add.graphics().setDepth(0.5);
+    this.water = new Water(this, riverAt, 1); // Ines's water: body, flowing surface, current lines, lifestream, foam
     this.fog = Array.from({ length: 8 }, (_, i) => {
       const f = this.add.image(rnd(0, W), rnd(-100, H + 100), 'glow').setTint(0xc8d6d2).setScale(rnd(4.6, 8.6)).setDepth(i < 5 ? 9 : 26);
       f.setAlpha(rnd(0.05, 0.09) * (i < 5 ? 1 : 0.7));
       f.vx = rnd(4, 11) * (Math.random() < 0.5 ? -1 : 1);
       return f;
     });
-    this.rows = [];
   }
 
-  newStreak(fromTop) {
-    return { sy: fromTop ? -rnd(0, 260) : rnd(-60, H + 160), o: clamp(gauss() * 0.9, -0.93, 0.93), ph: rnd(0, TAU), len: rnd(90, 230), lw: rnd(1, 2.6), a: rnd(0.07, 0.24), c: pickOne(STREAK_HUES), sp: rnd(0.85, 1.2) };
-  }
-
-  newRibbon(fromTop) {
-    return { sy: fromTop ? -rnd(0, 400) : rnd(-100, H + 300), o: clamp(gauss() * 0.7, -0.75, 0.75), ph: rnd(0, TAU), len: rnd(280, 500), lw: rnd(10, 22), a: rnd(0.05, 0.09), c: pickOne(RIBBON_HUES), sp: rnd(1.2, 1.5) };
-  }
-
-  updateSurface(dt) {
+  updateFog(dt) {
     const v = this.speed;
-    for (const s of this.streaks) {
-      s.sy += v * TUNING.currentFactor * s.sp * dt;
-      if (s.sy - s.len > H + 10) Object.assign(s, this.newStreak(true));
-    }
-    for (const s of this.ribbons) {
-      s.sy += v * s.sp * dt;
-      if (s.sy - s.len > H + 10) Object.assign(s, this.newRibbon(true));
-    }
-    for (const s of this.sparkles) {
-      s.sy += v * s.sp * dt;
-      if (s.sy > H + 10) {
-        s.sy = -10;
-        s.o = clamp(gauss() * 0.85, -0.9, 0.9);
-      }
-    }
-    for (const f of this.foam) {
-      f.sy += v * f.sp * dt;
-      if (f.sy > H + 20) {
-        f.sy = -20;
-        f.off = rnd(3, 16);
-      }
-    }
     for (const f of this.fog) {
       const r = f.displayWidth / 2;
       f.x += f.vx * dt;
@@ -154,85 +117,18 @@ export class RiverScene extends Phaser.Scene {
     }
   }
 
-  drawRiver() {
-    const rows = this.rows;
-    rows.length = 0;
-    for (let sy = -16; sy <= H + 16; sy += 8) {
-      const q = riverAt(sy - this.scroll);
-      rows.push({ sy, cx: q.cx, hw: q.hw });
-    }
-    const edge = (side, px) => rows.map((r) => ({ x: r.cx + side * (r.hw + px), y: r.sy }));
-    const g = this.waterG;
+  // A soft shadow on the banks along the water's edge.
+  drawShore() {
+    const g = this.shoreG;
     g.clear();
     for (const side of [-1, 1]) {
-      g.lineStyle(16, 0x0a0d0c, 0.55);
-      g.strokePoints(edge(side, 6));
-    }
-    g.fillStyle(0x130f26, 1);
-    g.fillPoints(this.band(1), true);
-    for (const [k, color, alpha] of [[0.82, 0x2e2462, 0.2], [0.58, 0x3e3080, 0.14], [0.32, 0x5442a0, 0.1]]) {
-      g.fillStyle(color, alpha);
-      g.fillPoints(this.band(k), true);
-    }
-    for (const side of [-1, 1]) {
-      g.lineStyle(10, 0x04030c, 0.5);
-      g.strokePoints(edge(side, -5));
-    }
-    for (const side of [-1, 1]) {
-      g.lineStyle(2, 0xa0aca8, 0.32);
-      g.strokePoints(edge(side, 0));
-    }
-    for (const f of this.foam) {
-      const q = riverAt(f.sy - this.scroll);
-      g.fillStyle(0xd2c8ff, 0.18 + 0.14 * Math.sin(this.t * 3 + f.ph));
-      g.fillCircle(q.cx + f.side * (q.hw - f.off), f.sy, f.r);
-    }
-  }
-
-  // The river's outline, inset to k of its half width.
-  band(k) {
-    const pts = [];
-    for (const r of this.rows) pts.push({ x: r.cx - r.hw * k, y: r.sy });
-    for (let i = this.rows.length - 1; i >= 0; i--) pts.push({ x: this.rows[i].cx + this.rows[i].hw * k, y: this.rows[i].sy });
-    return pts;
-  }
-
-  drawLight() {
-    const g = this.lightG;
-    g.clear();
-    const path = (s, n, wave, freq, drift, limit) => {
       const pts = [];
-      for (let j = 0; j <= n; j++) {
-        const yy = s.sy - (s.len * j) / n;
-        const q = riverAt(yy - this.scroll);
-        const o = clamp(s.o + wave * Math.sin(yy * freq + s.ph + this.t * drift), -limit, limit);
-        pts.push({ x: q.cx + o * q.hw, y: yy });
+      for (let sy = -16; sy <= H + 16; sy += 8) {
+        const q = riverAt(sy - this.scroll);
+        pts.push({ x: q.cx + side * (q.hw + 6), y: sy });
       }
-      return pts;
-    };
-    for (const s of this.ribbons) {
-      const pts = path(s, 16, 0.12, 0.008, 0.5, 0.9), a = s.a * (0.8 + 0.2 * Math.sin(this.t * 1.1 + s.ph));
-      g.lineStyle(s.lw * 2.2, s.c, a * 0.5);
+      g.lineStyle(16, 0x0a0d0c, 0.55);
       g.strokePoints(pts);
-      g.lineStyle(s.lw, s.c, a);
-      g.strokePoints(pts);
-      g.lineStyle(1.4, lighten(s.c, 0.45), Math.min(1, a * 2.2));
-      g.strokePoints(pts);
-    }
-    for (const s of this.streaks) {
-      const pts = path(s, 7, 0.07, 0.011, 0.6, 0.96), a = s.a * (0.75 + 0.25 * Math.sin(this.t * 2 + s.ph));
-      g.lineStyle(s.lw * 5.5, s.c, a * 0.3);
-      g.strokePoints(pts);
-      g.lineStyle(s.lw, s.c, a);
-      g.strokePoints(pts);
-    }
-    for (const s of this.sparkles) {
-      const a = Math.pow(Math.max(0, Math.sin(this.t * 2.3 + s.ph)), 4) * 0.85;
-      if (a < 0.02) continue;
-      const q = riverAt(s.sy - this.scroll), x = q.cx + s.o * q.hw;
-      g.lineStyle(1, 0xebe4ff, a);
-      g.lineBetween(x - 3, s.sy, x + 3, s.sy);
-      g.lineBetween(x, s.sy - 3, x, s.sy + 3);
     }
   }
 

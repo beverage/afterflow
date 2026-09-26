@@ -62,7 +62,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines drawn as stone-arch portals with a swirl in their god's color. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
 - Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
-- Drawn by code, not art: the water, light streaks, glows, portal swirls, soul trails and sparks.
+- Drawn by code, not art: the water (ported from Ines's river study `afterflow-riviere.html`: shallow-to-deep body, flowing surface, current lines faster mid-stream, serpentine lifestream ribbons, glints, foam along the banks), glows, portal swirls, soul trails and sparks.
 - Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
 
 | Key | Size (px) | Notes |

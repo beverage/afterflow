@@ -43,3 +43,6 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 14:58 · Fonts: Cormorant Garamond and Source Sans 3 from Google Fonts · the River Flow prototype's typefaces · Claude
 - 14:58 · Keys read by physical position (event.code), so WASD works as ZQSD on AZERTY with one binding · simpler than binding both letter sets · Claude
 - 14:58 · The streak resets when a soul poofs, not on skipped souls · skips already cost rage; breaking the streak too felt like double punishment · Claude
+- 16:14 · Shelve PR #2 (turbulent river, rocky shore, burn-out flash, water ambience) · the team is taking Ines's water instead; revisit the rest later · team
+- 16:14 · Water ported from Ines's river study (afterflow-riviere.html): body, flowing surface, current lines, lifestream ribbons, glints, bank foam; banks and atmosphere unchanged for now · the team liked her water; banks and atmosphere to be considered separately · team
+- 16:14 · Ines's water is drawn with Canvas 2D into one texture per frame (src/water.js), not rebuilt in WebGL · keeps her look exactly and costs ~2 ms a frame · Claude
