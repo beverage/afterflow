@@ -30,6 +30,7 @@ export class TitleScene extends Phaser.Scene {
       'Touch a soul to take it aboard',
       "Dock at its god's shrine before it burns out",
       'Missed souls anger their god. A full rage bar puts out one of your lanterns',
+      "Buy scrolls at Hermes' stall, then say their words aloud to calm a god",
     ].forEach((line, i) => this.add.text(W / 2, 400 + i * 30, line, { fontFamily: FONT, fontSize: '18px', color: COLORS.dim }).setOrigin(0.5));
     const play = this.add.text(W / 2, 572, touch ? 'Tap to play' : 'Click or press Space to play', { fontFamily: FONT, fontSize: '22px', fontStyle: '600', color: '#ffffff' }).setOrigin(0.5);
     this.tweens.add({ targets: play, alpha: 0.4, duration: 800, yoyo: true, repeat: -1 });

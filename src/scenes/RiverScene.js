@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { tutorialPending } from './TutorialScene.js';
 import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
@@ -9,6 +9,8 @@ import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
 import { drawMeander, spaced } from '../ui.js';
 import { Water } from '../water.js';
 import { ROCK_R } from '../art.js';
+import { setListening, useHeard, canListen, listenStatus } from '../listen.js';
+import { prepareIncantations, takeIncantation, heardScroll } from '../scrolls.js';
 
 const TAU = Math.PI * 2;
 const clamp = Phaser.Math.Clamp;
@@ -18,6 +20,7 @@ const pickOne = (a) => a[(Math.random() * a.length) | 0];
 const DEBUG = new URLSearchParams(location.search).has('debug'); // ?debug draws the hull and dock zones
 
 const HUD_RIGHT = W - 148;
+const SCROLLS_Y = 322; // the scrolls panel, under the left panel (rage bars, lanterns, distance)
 
 // The game: an endless top-down river. Scoop up souls, deliver them to their god's shrine,
 // spend obols at Hermes' stall, and never let a god's rage fill up.
@@ -34,7 +37,7 @@ export class RiverScene extends Phaser.Scene {
     this.scroll = 0; // px travelled this run: world y + scroll = screen y
     this.levels = { speed: 0, handling: 0, hold: 0 };
     this.stats = statsFor(this.levels);
-    this.run = { obols: 0, earned: 0, delivered: 0, clutches: 0, streak: 0, bestStreak: 0, feesPaid: 0 };
+    this.run = { obols: 0, earned: 0, delivered: 0, clutches: 0, streak: 0, bestStreak: 0, feesPaid: 0, scrolls: GODS.map(() => null) };
     this.rage = GODS.map(() => 0);
     this.rageFlash = GODS.map(() => 0);
     this.rageWarned = GODS.map(() => false);
@@ -66,6 +69,8 @@ export class RiverScene extends Phaser.Scene {
     if (!this.playing) this.scene.launch('Title');
     else if (tutorialPending()) this.events.once('postupdate', () => this.showTutorial()); // after one frame, so the river is drawn under it
     else this.startHints();
+    if (this.playing) prepareIncantations(); // Gemini writes this run's first incantations in the background
+    this.events.once('shutdown', () => setListening(false));
   }
 
   get speed() {
@@ -91,7 +96,10 @@ export class RiverScene extends Phaser.Scene {
     if (!this.ended) this.updateBoat(dt);
     this.updateHold(dt);
     this.drawWake(dt);
-    if (this.playing) this.updateHud(dt);
+    if (this.playing) {
+      this.updateHud(dt);
+      this.updateScrolls(dt);
+    }
     if (DEBUG) this.drawDebug();
   }
 
@@ -768,6 +776,7 @@ export class RiverScene extends Phaser.Scene {
     label('NEXT', HUD_RIGHT + 12, 196);
     this.nextIcons = [0, 1, 2].map((i) => this.add.image(HUD_RIGHT + 26 + i * 34, 229, `medal_${GODS[0].key}`).setScale(0.8).setDepth(d + 1));
     if (isTouch()) this.buildPauseButton(d);
+    this.buildScrolls(d);
     this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setTint(0xff2a1a).setAlpha(0).setDepth(45);
     this.obolShown = 0;
     this.obolPulse = 0;
@@ -871,11 +880,14 @@ export class RiverScene extends Phaser.Scene {
     if (!this.playing || this.ended) return;
     if (action === 'pause') this.pauseGame();
     else if (action === 'mute') this.toast(toggleMute() ? 'Sound off' : 'Sound on');
+    else if (action === 'confirm') this.toggleScrolls();
+    else if (/^buy[123]$/.test(action)) this.readScroll(Number(action.slice(3)) - 1);
     else if (action === 'help') this.showTutorial();
   }
 
   pauseGame() {
     if (!this.playing || this.ended || !this.sys.isActive()) return;
+    setListening(false);
     clearKeys();
     this.scene.launch('Pause');
     this.scene.pause();
@@ -963,6 +975,8 @@ export class RiverScene extends Phaser.Scene {
   sink(cause) {
     this.ended = true;
     this.sunkBy = cause;
+    setListening(false);
+    this.showScrolls(false);
     this.tweens.add({ targets: this.boatImg, scale: 0.6, alpha: 0, angle: '+=40', duration: 900, delay: 200, ease: 'Quad.easeIn' });
     this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
     const result = {
@@ -1019,6 +1033,146 @@ export class RiverScene extends Phaser.Scene {
       const puff = this.add.image(l.x + rnd(-3, 3), l.y - 6, 'glow').setTint(0x9a96a8).setScale(rnd(0.12, 0.2)).setAlpha(0.5).setDepth(52);
       this.tweens.add({ targets: puff, x: puff.x + rnd(-10, 10), y: puff.y - rnd(22, 36), scale: puff.scale * 2.4, alpha: 0, duration: rnd(700, 1000), delay: k * 90, ease: 'Quad.easeOut', onComplete: () => puff.destroy() });
     }
+  }
+
+  /* ---------- scrolls: say a carried scroll's incantation aloud to calm its god ---------- */
+
+  // A small panel under the rage bars shows which scrolls you carry. Space (or a tap on it) unrolls them
+  // for a few seconds so you can re-read the words, over the bank, while the river keeps going.
+  buildScrolls(d) {
+    const x = 14, y = SCROLLS_Y, g = this.add.graphics().setDepth(d);
+    g.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, y, 134, 84, 10);
+    g.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, y, 134, 84, 10);
+    this.add.text(26, y + 12, spaced('SCROLLS'), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55).setDepth(d + 1);
+    this.micDot = this.add.circle(134, y + 19, 4, 0x4ade80).setDepth(d + 1);
+    this.scrollIcons = GODS.map((god, i) => this.add.image(36 + i * 45, y + 45, `scroll_${god.key}`).setScale(0.42).setDepth(d + 1));
+    this.scrollKey = this.add
+      .text(81, y + 70, isTouch() ? 'tap to read' : 'Space to read', { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' })
+      .setOrigin(0.5)
+      .setAlpha(0.5)
+      .setDepth(d + 1);
+    this.add.zone(x + 67, y + 42, 134, 84).setInteractive().on('pointerdown', () => this.toggleScrolls());
+
+    // The unrolled panel: every scroll's words, and how long until it rolls up again.
+    const p = (this.scrollPanel = this.add.container(0, 0).setDepth(d + 3).setVisible(false));
+    const bg = this.add.graphics();
+    bg.fillStyle(0x080b0a, 0.9).fillRoundedRect(x, y, 330, 214, 10);
+    bg.lineStyle(1, 0xf1e6c8, 0.25).strokeRoundedRect(x, y, 330, 214, 10);
+    p.add(bg);
+    p.add(this.add.text(26, y + 12, spaced('SCROLLS'), { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55));
+    this.scrollRows = GODS.map((god, i) => {
+      const ry = y + 56 + i * 50;
+      const medal = this.add.image(40, ry, `medal_${god.key}`);
+      const words = this.add.text(64, ry, '', { fontFamily: DISPLAY_FONT, fontSize: '21px', fontStyle: 'italic 600', color: hexCss(lighten(god.color, 0.35)), wordWrap: { width: 270 }, lineSpacing: -4 }).setOrigin(0, 0.5);
+      p.add([medal, words]);
+      return { medal, words };
+    });
+    this.scrollFoot = this.add.text(26, y + 196, '', { fontFamily: FONT, fontSize: '12px', fontStyle: '600', color: '#dce6e2' }).setOrigin(0, 0.5).setAlpha(0.6);
+    this.scrollTimer = this.add.graphics();
+    p.add([this.scrollFoot, this.scrollTimer]);
+    // Taps on the panel: read a scroll when there's no mic, otherwise roll it up.
+    this.add
+      .zone(x + 165, y + 107, 330, 214)
+      .setInteractive()
+      .on('pointerdown', (ptr) => {
+        if (!this.scrollPanel.visible) return;
+        const row = Math.floor((ptr.worldY - (y + 31)) / 50);
+        if (!canListen() && row >= 0 && row < 3 && this.run.scrolls[row]) this.readScroll(row);
+        else this.showScrolls(false);
+      });
+    this.scrollOpenFor = 0;
+
+    // What the mic caught, like a subtitle under the river.
+    this.heardText = this.add
+      .text(W / 2, H - 30, '', { fontFamily: FONT, fontSize: '17px', fontStyle: '600', color: '#dce6e2', backgroundColor: 'rgba(8,11,10,0.55)', padding: { x: 12, y: 5 } })
+      .setOrigin(0.5)
+      .setDepth(d + 2)
+      .setAlpha(0);
+    this.heardFor = 0;
+  }
+
+  updateScrolls(dt) {
+    const carried = this.run.scrolls, any = carried.some(Boolean);
+    setListening(!this.ended && any && this.sys.isActive(), (c) => this.heard(c));
+    const mic = listenStatus();
+    this.micDot.setFillStyle(mic === 'listening' ? 0x4ade80 : canListen() ? 0x97aaa2 : 0xf87171).setAlpha(any ? (mic === 'listening' ? 0.6 + 0.4 * Math.sin(this.t * 4) : 0.7) : 0.25);
+    const open = this.scrollPanel.visible;
+    this.scrollIcons.forEach((icon, i) => icon.setVisible(!open).setAlpha(carried[i] ? 1 : 0.22).setScale(carried[i] ? 0.42 + 0.02 * Math.sin(this.t * 3 + i) : 0.42));
+    this.scrollKey.setVisible(!open);
+    // First scroll aboard: once the mic has answered, say how to use it.
+    if (any && !this.hints.scroll && (mic === 'listening' || !canListen())) {
+      this.hint('scroll', canListen() ? "Say a scroll's words aloud to calm its god" : 'No mic: press Space, then 1, 2 or 3, to read a scroll', GODS[carried.findIndex(Boolean)].color);
+    }
+    if (this.scrollPanel.visible) {
+      this.scrollOpenFor -= dt;
+      if (this.scrollOpenFor <= 0) this.showScrolls(false);
+      const left = clamp(this.scrollOpenFor / SCROLLS.panelSeconds, 0, 1);
+      this.scrollTimer.clear().fillStyle(0xf1e6c8, 0.5).fillRect(24, SCROLLS_Y + 207, 310 * left, 2);
+    }
+    this.heardFor -= dt;
+    this.heardText.setAlpha(clamp(this.heardFor / 0.5, 0, 1));
+  }
+
+  toggleScrolls() {
+    this.showScrolls(!this.scrollPanel.visible);
+  }
+
+  showScrolls(open) {
+    if (!this.scrollPanel || this.scrollPanel.visible === open) return;
+    if (open && (this.ended || !this.sys.isActive())) return;
+    this.scrollPanel.setVisible(open);
+    if (!open) return;
+    this.scrollOpenFor = SCROLLS.panelSeconds;
+    sfx.scrollOpen();
+    const touch = isTouch();
+    this.run.scrolls.forEach((words, i) => {
+      const row = this.scrollRows[i];
+      row.words.setText(words || 'no scroll').setFontSize(words ? 24 : 14).setAlpha(words ? 1 : 0.35);
+      row.medal.setAlpha(words ? 1 : 0.35);
+    });
+    const any = this.run.scrolls.some(Boolean);
+    this.scrollFoot.setText(
+      !any ? "Buy scrolls at Hermes' stall" : canListen() ? 'Say the words aloud. The river won\'t wait' : touch ? 'No mic: tap a scroll to read it' : 'No mic: press 1, 2 or 3 to read one',
+    );
+  }
+
+  // Called by the shop: carry this god's scroll, with a fresh incantation. The first one asks for the mic,
+  // while the stall has the game paused.
+  takeScroll(god) {
+    this.run.scrolls[god] = takeIncantation(god);
+    setListening(true, (c) => this.heard(c));
+  }
+
+  // The mic caught some words: show them, and use a carried scroll if they match its incantation.
+  heard(candidates) {
+    if (!this.playing || this.ended || !this.sys.isActive()) return;
+    const tail = candidates[0].split(/\s+/).slice(-9).join(' ');
+    this.heardText.setText(`“${tail}”`).setColor('#dce6e2');
+    this.heardFor = SCROLLS.heardSeconds;
+    const god = heardScroll(this.run.scrolls, candidates);
+    if (god >= 0) this.readScroll(god, true);
+  }
+
+  // Use a carried scroll: spoken aloud, or with a key or tap when there's no mic.
+  readScroll(god, spoken = false) {
+    const words = this.run.scrolls[god];
+    if (!words || this.ended || !this.sys.isActive()) return;
+    if (!spoken && (canListen() || !this.scrollPanel.visible)) return; // with a mic, the words are the only way
+    const { color, name } = GODS[god];
+    this.run.scrolls[god] = null;
+    useHeard();
+    this.rage[god] = Math.max(0, this.rage[god] - SCROLLS.calm);
+    if (this.rage[god] < TUNING.rageWarn - 0.1) this.rageWarned[god] = false;
+    sfx.appease(god);
+    this.heardText.setColor(hexCss(lighten(color, 0.4)));
+    this.popup(words, W / 2, 230, color, 40, true);
+    this.toast(`${name} is appeased`, color, true);
+    const barY = 76 + god * 46 + 9;
+    this.ringFx(98, barY, color, 0.8, 26);
+    this.sparks[god].explode(26, 98, barY);
+    this.ringFx(this.boat.x, this.boat.y, color, 0.9, 36);
+    this.embers[god].explode(24, this.boat.x, this.boat.y);
+    if (this.scrollPanel.visible) this.showScrolls(false);
   }
 
   drawDebug() {

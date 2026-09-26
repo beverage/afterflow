@@ -148,6 +148,17 @@ export const sfx = {
   tap() {
     tone(1200, { dur: 0.05, vol: 0.08 });
   },
+  // A scroll read aloud: a slow chord in the god's key swelling up, with a breath of air on top.
+  appease(god = 0) {
+    const f = (GOD_NOTE[god] || 880) / 2;
+    [1, 1.25, 1.5, 2].forEach((m, i) => tone(f * m, { type: 'triangle', dur: 1.4, vol: 0.13, attack: 0.18, at: i * 0.07 }));
+    tone(f / 2, { dur: 1.2, vol: 0.2, attack: 0.1 });
+    noise({ dur: 1.1, vol: 0.07, freq: 5000, type: 'highpass', at: 0.1 });
+  },
+  // Space: the scrolls unroll.
+  scrollOpen() {
+    noise({ dur: 0.16, vol: 0.12, freq: 2400, q: 0.6, sweep: 1.6 });
+  },
 };
 
 /** The river under everything: soft water noise that slowly swells, and now and then a droplet. Safe to call twice. */
