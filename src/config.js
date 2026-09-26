@@ -88,6 +88,12 @@ export const TUNING = {
   priceGrowth: 1.8,
 };
 
+// How-to-play tour on the first run (TutorialScene): each step moves on by itself after this long.
+export const TUTORIAL = {
+  stepSeconds: 4.5,
+  lastStepSeconds: 1.8, // "Your turn"
+};
+
 // Hermes' stall. Each level costs basePrice * priceGrowth^level.
 export const UPGRADES = [
   {
