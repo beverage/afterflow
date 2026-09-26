@@ -39,7 +39,7 @@ export class TitleScene extends Phaser.Scene {
     const { best, souls } = getSave(); // remembered on this device
     if (best) {
       this.add
-        .text(W / 2, 628, `Your best ${formatMeters(best.distance)}  ·  ${souls.toLocaleString('en-US')} soul${souls === 1 ? '' : 's'} ferried`, { fontFamily: FONT, fontSize: '16px', fontStyle: '600', color: '#f1e6c8' })
+        .text(W / 2, 628, `Your best ${formatMeters(best.distance)}` + (souls ? `  ·  ${souls.toLocaleString('en-US')} soul${souls === 1 ? '' : 's'} ferried` : ''), { fontFamily: FONT, fontSize: '16px', fontStyle: '600', color: '#f1e6c8' })
         .setOrigin(0.5)
         .setAlpha(0.8);
     }
