@@ -60,12 +60,11 @@ export const TUNING = {
 
   // Souls
   holdStart: 3,
-  lifespan: 16, // seconds a soul lasts in the hold before it burns out
+  lifespan: 16, // seconds a soul lasts in the hold at the starting speed: it lasts the same stretch of river at any speed
   clutchBelow: 0.2, // delivering a soul with less life than this is a CLUTCH
   soulRadius: 17,
-  soulGapStart: 150, // px of river between soul spawns at the start
+  soulGapStart: 150, // px of river between soul spawns on level 1 (LEVELS brings them closer)
   soulGapMin: 58,
-  soulGapRamp: 0.0022, // the gap shrinks by this many px per px travelled
   soulBias: 0.5, // chance a new soul matches one of the next two shrines
 
   // Banks: shrines and shops
@@ -90,6 +89,20 @@ export const TUNING = {
 
   // Your best distance (saved on this device) is marked on the river
   markFrom: 1000, // px: a best shorter than this (50 m) isn't marked
+};
+
+// Levels, Tetris style: every few souls delivered is a level, every few levels a new river of the underworld.
+// A level brings the souls closer together; a new river runs faster and spreads them back out, so only
+// one thing gets harder at a time. Past the last river it keeps quickening, like Tetris's kill screen.
+export const LEVELS = {
+  soulsPerLevel: 6,
+  levelsPerRiver: 3,
+  rivers: ['Acheron', 'Styx', 'Lethe', 'Cocytus', 'Phlegethon'],
+  riverSpeed: 1.25, // each new river runs this much faster
+  levelGap: 0.88, // each level, the gap between souls shrinks by this much...
+  riverGap: 0.93, // ...and each river starts this much tighter than the last one did
+  lullSeconds: 1.5, // no new souls while a new river quickens
+  easeSeconds: 1.5, // its new speed comes in over this long
 };
 
 // Lanterns are lives. A god's smite puts one out (a wrecked hull will too, once there are obstacles);
@@ -119,7 +132,7 @@ export const UPGRADES = [
     name: 'Speed',
     icon: 'icon_speed',
     basePrice: 60,
-    maxLevel: 8,
+    maxLevel: 4, // on top of the rivers' own pace
     perLevel: 0.12,
     desc: 'The river runs 12% faster: more souls and obols, more risk',
   },
@@ -166,7 +179,9 @@ export const PORTAL = {
   fps: 8,
   anchor: [80, 195.2], // the gate's base point inside a frame
   swirl: [-1, -45], // centre of the swirl, where delivered souls fly
-  dock: [95, 28], // the brightest part of the light pooling on the water: sail in here to deliver
+  dock: [95, 28], // the brightest part of the light pooling on the water, where the autopilot steers
+  dockZone: [[30, 28], [190, 48]], // the pool's long axis, from the steps out into the river: touch it anywhere to deliver
+  dockReach: 46, // how close the hull must come to that axis (the pool is about this wide on either side)
   medal: [-16, -160], // her medallion, which ours covers so the symbol matches the souls
   scale: 1,
 };
@@ -177,7 +192,9 @@ export const STALL = {
   frameWidth: 327,
   frameHeight: 299,
   anchor: [80, 195], // the counter's base point inside the frame
-  dock: [95, 28], // the end of the jetty, in the warm light on the water: sail in here to shop
+  dock: [95, 28], // the end of the jetty, in the warm light on the water, where the autopilot steers
+  dockZone: [[32, 6], [180, 66]], // the pool's long axis, from the jetty's foot out into the river: touch it anywhere to shop
+  dockReach: 46, // how close the hull must come to that axis
   lamp: [50, -86], // the lantern hanging from the awning
   medal: [8, -152], // the caduceus medallion above the awning
 };

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, PORTAL, STALL, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, LEVELS, SCROLLS, PORTAL, STALL, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { tutorialPending } from './TutorialScene.js';
 import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
@@ -22,6 +22,8 @@ const DEBUG = new URLSearchParams(location.search).has('debug'); // ?debug draws
 
 const HUD_RIGHT = W - 148;
 const SCROLLS_Y = 322; // the scrolls panel, under the left panel (rage bars, lanterns, distance)
+const LEVEL_Y = 262; // the level panel, under the right panel (obols, streak, hold, next)
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
 // The game: an endless top-down river. Scoop up souls, deliver them to their god's shrine,
 // spend obols at Hermes' stall, and never let a god's rage fill up.
@@ -43,6 +45,11 @@ export class RiverScene extends Phaser.Scene {
     this.rageFlash = GODS.map(() => 0);
     this.rageWarned = GODS.map(() => false);
     this.lanterns = LANTERNS.start;
+    this.level = 1; // Tetris style: every LEVELS.soulsPerLevel souls delivered, the next level
+    this.levelSouls = 0; // souls delivered toward the next level
+    this.riverPace = 1; // the current river's speed, eased in when a new one starts
+    this.paceEase = { from: 1, to: 1, k: 1 };
+    this.lullUntil = 0; // while a new river quickens, until this.t, no new souls
     this.graceUntil = 0; // after a smite, until this.t, missed souls anger no one
     this.mark = null; // your best distance on the river, if you have one
     this.ended = false;
@@ -81,12 +88,22 @@ export class RiverScene extends Phaser.Scene {
   }
 
   get speed() {
-    return this.stats.scrollSpeed;
+    return this.stats.scrollSpeed * this.riverPace;
+  }
+
+  // Which river of the underworld you're on: 0 for the Acheron. Every LEVELS.levelsPerRiver levels.
+  get river() {
+    return Math.floor((this.level - 1) / LEVELS.levelsPerRiver);
+  }
+
+  riverName(river = this.river) {
+    return LEVELS.rivers[Math.min(river, LEVELS.rivers.length - 1)];
   }
 
   update(_time, delta) {
     const dt = Math.min(delta, 50) / 1000;
     this.t += dt;
+    this.easePace(dt);
     this.scroll += this.speed * dt * (this.ended ? 0.3 : 1);
     this.bank.tilePositionY = -this.scroll;
     this.spawnAhead();
@@ -202,10 +219,15 @@ export class RiverScene extends Phaser.Scene {
       }
     }
     if (this.scroll >= this.nextSoulAt) {
-      this.spawnSoul();
-      const gap = Math.max(TUNING.soulGapMin, TUNING.soulGapStart - this.scroll * TUNING.soulGapRamp);
-      this.nextSoulAt = this.scroll + gap * rnd(0.7, 1.3);
+      if (this.t >= this.lullUntil) this.spawnSoul();
+      this.nextSoulAt = this.scroll + this.soulGap() * rnd(0.7, 1.3);
     }
+  }
+
+  // Px of river between souls: closer each level, spread back out a little on each new river.
+  soulGap() {
+    const step = (this.level - 1) % LEVELS.levelsPerRiver;
+    return Math.max(TUNING.soulGapMin, TUNING.soulGapStart * Math.pow(LEVELS.levelGap, step) * Math.pow(LEVELS.riverGap, this.river));
   }
 
   spawnFeature(wy) {
@@ -249,6 +271,8 @@ export class RiverScene extends Phaser.Scene {
     const at = ([dx, dy]) => ({ x: ax + dir * dx * s, dy: dy * s });
     const swirl = at(PORTAL.swirl), dock = at(PORTAL.dock), medal = at(PORTAL.medal);
     const f = { kind: 'shrine', portal: true, wy, side, god, x: swirl.x, tip: dock.x, dockDy: dock.dy, swirlDy: swirl.dy, popDy: medal.dy - 55, pulse: 0, parts: [] };
+    f.dockZone = PORTAL.dockZone.map(at);
+    f.dockReach = PORTAL.dockReach * s;
     f.glow = this.attach(f, this.add.image(f.x, 0, 'glow').setTint(color).setBlendMode('ADD').setScale(3).setAlpha(0).setDepth(6.4), swirl.dy);
     const gate = this.add.sprite(ax, 0, sheet).setOrigin(PORTAL.anchor[0] / PORTAL.frameWidth, PORTAL.anchor[1] / PORTAL.frameHeight).setScale(dir * s, s).setDepth(6.5);
     gate.play({ key: sheet, startFrame: (Math.random() * PORTAL.frames) | 0 });
@@ -281,6 +305,8 @@ export class RiverScene extends Phaser.Scene {
     const at = ([dx, dy]) => ({ x: ax + dir * dx, dy });
     const dock = at(STALL.dock), lamp = at(STALL.lamp), medal = at(STALL.medal);
     const f = { kind: 'shop', wy, side, x: ax, tip: dock.x, dockDy: dock.dy, used: false, parts: [] };
+    f.dockZone = STALL.dockZone.map(at);
+    f.dockReach = STALL.dockReach;
     f.glow = this.attach(f, this.add.image(lamp.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.2).setAlpha(0.35).setDepth(6.4), lamp.dy);
     f.dockGlow = this.attach(f, this.add.image(dock.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.6).setAlpha(0.3).setDepth(5), dock.dy);
     this.attach(f, this.add.image(ax, 0, 'shop').setOrigin(STALL.anchor[0] / STALL.frameWidth, STALL.anchor[1] / STALL.frameHeight).setScale(dir, 1).setDepth(6.5), 0);
@@ -370,7 +396,7 @@ export class RiverScene extends Phaser.Scene {
       } else if (!f.used && base > 60) {
         this.hint('shop', "Dock at Hermes' stall to spend your obols");
       }
-      if (this.ended || this.hullDist(f.tip, base + f.dockDy) > TUNING.dockReach) continue;
+      if (this.ended || this.dockDist(f, base) > (f.dockReach ?? TUNING.dockReach)) continue;
       if (f.kind === 'shrine') this.deliver(f);
       else if (!f.used && this.playing) this.openShop(f);
     }
@@ -488,7 +514,7 @@ export class RiverScene extends Phaser.Scene {
   updateHold(dt) {
     const cap = this.stats.capacity, small = cap > 4, g = this.ringsG;
     for (let i = this.hold.length - 1; i >= 0; i--) {
-      if (!this.ended) this.hold[i].life -= dt / TUNING.lifespan;
+      if (!this.ended) this.hold[i].life -= (dt * this.speed) / (TUNING.lifespan * TUNING.scrollSpeed); // the same stretch of river at any speed
       if (this.hold[i].life <= 0) this.burnOut(i);
     }
     g.clear();
@@ -539,6 +565,7 @@ export class RiverScene extends Phaser.Scene {
     });
     if (!this.playing) return;
     this.run.delivered += souls.length;
+    this.advanceLevel(souls.length);
     this.run.clutches += clutch;
     this.run.obols += gain;
     this.run.earned += gain;
@@ -585,6 +612,15 @@ export class RiverScene extends Phaser.Scene {
     const b = this.boat, c = Math.cos(b.tilt), s = Math.sin(b.tilt), dx = px - b.x, dy = py - b.y;
     const lx = dx * c + dy * s, ly = -dx * s + dy * c;
     return Math.hypot(lx, ly - clamp(ly, TUNING.hullFront, TUNING.hullBack));
+  }
+
+  // How far the hull is from a feature's dock: its tip, or anywhere along its dock zone (the pool of light at a portal or stall).
+  dockDist(f, base) {
+    if (!f.dockZone) return this.hullDist(f.tip, base + f.dockDy);
+    const [a, b] = f.dockZone, n = Math.ceil(Math.hypot(b.x - a.x, b.dy - a.dy) / 12);
+    let d = Infinity;
+    for (let i = 0; i <= n; i++) d = Math.min(d, this.hullDist(a.x + ((b.x - a.x) * i) / n, base + a.dy + ((b.dy - a.dy) * i) / n));
+    return d;
   }
 
   updateBoat(dt) {
@@ -809,12 +845,24 @@ export class RiverScene extends Phaser.Scene {
     label('HOLD', HUD_RIGHT + 12, 152);
     label('NEXT', HUD_RIGHT + 12, 196);
     this.nextIcons = [0, 1, 2].map((i) => this.add.image(HUD_RIGHT + 26 + i * 34, 229, `medal_${GODS[0].key}`).setScale(0.8).setDepth(d + 1));
+    this.buildLevelPanel(d);
     if (isTouch()) this.buildPauseButton(d);
     this.buildScrolls(d);
     this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setTint(0xff2a1a).setAlpha(0).setDepth(45);
     this.obolShown = 0;
     this.obolPulse = 0;
     this.streakPulse = 0;
+  }
+
+  // Under the right panel: the river you're on, your level, and a bar of souls to the next one.
+  buildLevelPanel(d) {
+    const x = HUD_RIGHT, y = LEVEL_Y, g = this.add.graphics().setDepth(d);
+    g.fillStyle(0x080b0a, 0.64).fillRoundedRect(x, y, 134, 70, 10);
+    g.lineStyle(1, 0xdce6e2, 0.12).strokeRoundedRect(x, y, 134, 70, 10);
+    this.riverLabel = this.add.text(x + 12, y + 12, '', { fontFamily: FONT, fontSize: '11px', fontStyle: '600', color: '#dce6e2' }).setAlpha(0.55).setDepth(d + 1);
+    this.levelText = this.add.text(x + 12, y + 38, '', { fontFamily: DISPLAY_FONT, fontSize: '25px', fontStyle: 'italic 600', color: '#ffffff' }).setOrigin(0, 0.5).setDepth(d + 1);
+    this.levelShown = 0;
+    this.levelPulse = 0;
   }
 
   // No Esc key on a phone: a pause button beside the top of the right panel, out of the thumbs' way.
@@ -862,6 +910,17 @@ export class RiverScene extends Phaser.Scene {
     this.streakText.setText('×' + clamp(this.run.streak, 1, TUNING.streakCap)).setScale(1 + 0.3 * this.streakPulse).setAlpha(this.run.streak ? 1 : 0.45);
     this.streakPulse = Math.max(0, this.streakPulse - dt * 2.5);
     this.distText.setText(formatMeters(this.scroll));
+    if (this.levelShown !== this.level) {
+      this.levelShown = this.level;
+      this.riverLabel.setText(spaced(this.riverName().toUpperCase()));
+      this.levelText.setText(`Level ${this.level}`);
+    }
+    this.levelText.setScale(1 + 0.3 * this.levelPulse);
+    this.levelPulse = Math.max(0, this.levelPulse - dt * 2.5);
+    const segW = (110 - (LEVELS.soulsPerLevel - 1) * 3) / LEVELS.soulsPerLevel; // souls to the next level, one segment each
+    for (let i = 0; i < LEVELS.soulsPerLevel; i++) {
+      g.fillStyle(0xf1e6c8, i < this.levelSouls ? 0.9 : 0.14).fillRoundedRect(HUD_RIGHT + 12 + i * (segW + 3), LEVEL_Y + 56, segW, 4, 2);
+    }
     const next = this.upcomingGods(3);
     this.nextIcons.forEach((icon, i) => {
       icon.setVisible(i < next.length);
@@ -1002,6 +1061,51 @@ export class RiverScene extends Phaser.Scene {
     });
   }
 
+  /* ---------- levels and rivers, Tetris style ---------- */
+
+  // Every few souls delivered is a level; every few levels, a new river that runs faster.
+  advanceLevel(n) {
+    this.levelSouls += n;
+    while (this.levelSouls >= LEVELS.soulsPerLevel) {
+      this.levelSouls -= LEVELS.soulsPerLevel;
+      this.level += 1;
+      this.levelPulse = 1;
+      if ((this.level - 1) % LEVELS.levelsPerRiver === 0) this.newRiver();
+      else this.levelUp();
+    }
+  }
+
+  // A new river's speed comes in smoothly, on the game's clock like everything else that moves.
+  easePace(dt) {
+    const e = this.paceEase;
+    if (e.k >= 1) return;
+    e.k = Math.min(1, e.k + dt / LEVELS.easeSeconds);
+    this.riverPace = e.from + (e.to - e.from) * (0.5 - 0.5 * Math.cos(Math.PI * e.k));
+  }
+
+  levelUp() {
+    sfx.levelUp();
+    this.popup(`Level ${this.level}`, this.boat.x, this.boat.y - 96, 0xf1e6c8, 34, true);
+    this.hint('level', `Every ${LEVELS.soulsPerLevel} souls, a level. Every ${LEVELS.levelsPerRiver} levels, a faster river`, 0xf1e6c8);
+  }
+
+  // A new river: a banner, a short lull with no new souls, and the river quickens.
+  newRiver() {
+    const river = this.river;
+    sfx.newRiver();
+    this.lullUntil = this.t + LEVELS.lullSeconds;
+    this.paceEase = { from: this.riverPace, to: Math.pow(LEVELS.riverSpeed, river), k: 0 };
+    this.cameras.main.flash(420, 120, 96, 200);
+    this.cameras.main.shake(260, 0.004);
+    const numeral = this.add.text(W / 2, 150, ROMAN[river] ?? String(river + 1), { fontFamily: DISPLAY_FONT, fontSize: '40px', fontStyle: 'italic 600', color: '#f1e6c8' }).setOrigin(0.5);
+    const name = this.add.text(W / 2, 208, this.riverName(river), { fontFamily: DISPLAY_FONT, fontSize: '84px', fontStyle: 'italic 600', color: '#ffffff' }).setOrigin(0.5);
+    name.setShadow(0, 0, '#9d7bff', 26, true, true);
+    const sub = this.add.text(W / 2, 266, spaced('THE RIVER QUICKENS'), { fontFamily: FONT, fontSize: '14px', fontStyle: '600', color: '#dce6e2' }).setOrigin(0.5);
+    const banner = this.add.container(0, 0, [numeral, name, sub]).setDepth(60).setAlpha(0);
+    this.tweens.add({ targets: banner, alpha: 1, duration: 260, ease: 'Quad.easeOut' });
+    this.tweens.add({ targets: banner, alpha: 0, y: -16, duration: 700, delay: 2300, ease: 'Quad.easeIn', onComplete: () => banner.destroy() });
+  }
+
   /* ---------- lanterns: the boat's lives ---------- */
 
   // A god's rage is full: lightning strikes the boat and puts out a lantern.
@@ -1069,6 +1173,8 @@ export class RiverScene extends Phaser.Scene {
       earned: this.run.earned,
       bestStreak: this.run.bestStreak,
       clutches: this.run.clutches,
+      level: this.level,
+      river: this.riverName(),
       obols: this.run.obols,
       fee: charonFee(this.run.feesPaid),
     };
@@ -1272,6 +1378,14 @@ export class RiverScene extends Phaser.Scene {
     g.clear().lineStyle(1, 0x00ff88, 0.9);
     g.lineBetween(a.x, a.y, b.x, b.y);
     g.strokeCircle(a.x, a.y, TUNING.hullRadius).strokeCircle(b.x, b.y, TUNING.hullRadius);
-    for (const f of this.features) g.strokeCircle(f.tip, f.wy + this.scroll + f.dockDy, TUNING.dockReach);
+    for (const f of this.features) {
+      const base = f.wy + this.scroll;
+      if (!f.dockZone) {
+        g.strokeCircle(f.tip, base + f.dockDy, TUNING.dockReach);
+        continue;
+      }
+      const [a, b] = f.dockZone, r = f.dockReach;
+      g.lineBetween(a.x, base + a.dy, b.x, base + b.dy).strokeCircle(a.x, base + a.dy, r).strokeCircle(b.x, base + b.dy, r);
+    }
   }
 }
