@@ -19,3 +19,12 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 
 - 10:54 · Tools: Google AI Studio (Gemini), Gradium (TTS, voice design), Voodoo · chosen with the team · team
 - 11:12 · Public GitHub repo (beverage/par-hack-game) · the hack needs a public repo · Alex
+- 12:52 · Phaser web game, no Unity or Voodoo · team of 3-4 with a 2D artist, a link anyone can open, no engine install · team
+- 12:52 · Game: ferry souls down a river to their gods' shrines, downstream runner, 3/4 top-down 2D · Gleb's design, the simplest shape for one thumb · team
+- 12:52 · v1 is one continuous run: no saving, accounts or best score · scope; continuity comes in v2 · team
+- 12:52 · One rage bar per god, only skipped souls fill it, any full bar ends the run · a single fail meter is easy to read · team
+- 12:52 · Souls shrink and poof when their lifespan ends · forces regular deliveries · team
+- 12:52 · Shops are riverside docks that pause the game, prices climb exponentially, Speed = faster river = more money and risk · the economy is a core stickiness hook · team
+- 12:52 · Must-have hooks: streaks, clutch with its own sound, exponential shop · we expect to be judged on stickiness · team
+- 12:52 · v2: AI gods (reactions, prayers, verdict, soul stories), prayers read aloud at full speed, obstacles, bullet hell · the river must be fun first · team
+- 12:52 · Voice cloning is a stretch goal, only after spoken prayers work · biggest wow, biggest risk · team

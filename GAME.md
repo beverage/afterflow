@@ -4,57 +4,104 @@ Single source of truth for humans and agents. Keep it short and current: when a 
 
 ## One-liner
 
-_Name: one sentence built on a verb. Example: "Dodge falling orbs with one thumb while an AI announcer roasts your run."_
+_Name: TBD (working title **Soul Ferry**)._ Ferry the dead down the river: scoop up drifting souls and deliver each to its god's shrine before it fades, or the gods' rage sinks you.
 
-## Core loop (what the player does every few seconds)
+## Core loop (v1: what the player does every few seconds)
 
-1.
-2.
-3.
+1. **Scoop.** The river scrolls down the screen. Drag to steer the boat left and right, touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it goes *poof*.
+2. **Deliver.** Shrines drift by on the banks (a strip at the top shows the next 3). Steer into a shrine's dock to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to poof is a **CLUTCH**, with its own sound and a bonus.
+3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially.
 
-## The AI hook (why this is an AI game, not a game with AI bolted on)
+## Rules (v1)
 
-- What Gemini generates or decides:
-- When it is called (never per frame):
-- What the player sees if the AI is slow or offline (fallback):
+- One continuous run. Nothing is saved: no accounts, no best score. Game over, tap, fresh run.
+- 3 gods, one rage bar each in the HUD. Athena's souls are yellow; the other two gods and colors are Ines's call. Souls carry their god's symbol too, not just a color.
+- Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100% = death.
+- Souls shrink over their lifespan and poof at zero, which forces regular deliveries.
+- Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Items:
+  - **Speed**: the river scrolls faster, so more souls and shrines per minute (more money, more risk).
+  - **Handling**: quicker side-to-side steering.
+  - **Hold**: +1 soul capacity (starts at 3).
+- Economy: upgrade prices grow exponentially per level. Soul value also grows the further downstream you get, then streak and clutch multiply it, so income keeps pace and the numbers keep climbing. Big numbers shown as 1.2K, 3.4M.
+- Difficulty ramps through density: more souls per second, shrines further apart.
+
+## Tuning targets
+
+- A first-timer dies after 60-90 s; a good run lasts 3-5 min.
+- At every shop you can afford about one upgrade, sometimes two.
+- All numbers live in `src/config.js`.
+
+## Open questions (defaults in use until someone decides)
+
+- Does a soul that poofs in your hold anger its god? Default: yes, it counts as skipped.
+- Does a delivery calm its god's rage? Default: yes, a little per soul.
+- Does a soul's lifespan start when you catch it? Default: yes.
+
+## The AI hook (v2, after the river works)
+
+- What Gemini generates: the gods' voiced reactions (run start, rage at 50% and 80%, big streaks), fresh prayers written for the god and the moment, a death verdict from the god who sank you, a one-line life story for each soul.
+- Prayers: prayer scrolls (bought at shops) let you tap a god's rage bar and read the prayer aloud while still steering at full speed. Speech-to-text scores the words and lowers that god's rage.
+- When it is called: run start, shop docks, game over, in the background. Never per frame. Lines are prepared ahead so they play instantly.
+- If the AI is slow or offline: canned lines per god; prayers fall back to hold-to-pray.
 
 ## Controls
 
-- Touch:
-- Desktop:
+- Touch: drag anywhere, the boat follows your finger left and right (a little drift; Handling tightens it). Tap to buy in shops.
+- Desktop: arrow keys or A/D, or mouse drag.
+- v2: mic permission is asked on the title screen, never mid-run.
 
 ## Look and sound
 
-- Mood / palette:
-- Assets (key -> file): `player` -> `assets/player.png`, `hazard` -> `assets/hazard.png`
-- Art owner:
+- View: 3/4 top-down 2D (2.5D), portrait 720x1280. Mood and palette: underworld river, Ines's call.
+- Art owner: Ines. Until her art lands, the code draws placeholder shapes under the same keys.
+- Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
 
-## Voices (Gradium)
+| Key | File | Size (px) | Notes |
+|---|---|---|---|
+| `river` | `river.png` | 720x1280 | Loops seamlessly top to bottom; banks ~100 px each side |
+| `boat` | `boat.png` | ~110x160 | Ferry and ferryman, heading up the screen |
+| `soul_<god>` | `soul_athena.png`, ... | ~64x64 | One per god: god's color and symbol |
+| `shrine_<god>` | `shrine_athena.png`, ... | ~180x220 | Sits on a bank; code mirrors it for the other side |
+| `shop` | `shop.png` | ~180x220 | Riverside shop with a dock |
+| `god_<god>` | `god_athena.png`, ... | ~96x96 | Face or icon for the rage bar |
+| `obol` | `obol.png` | ~48x48 | Coin |
+| `icon_speed`, `icon_handling`, `icon_hold` | `icon_speed.png`, ... | ~96x96 | Shop items |
+| `prop_*` | any | varies | Optional bank props to break repetition |
+
+- Sounds (v1): pickup, deliver, streak step (one sound, pitch rises per level), streak break, **clutch (unique)**, poof, shop open, buy, can't afford, rage warning, smite and game over, music loop. Owner: TBD.
+
+## Voices (Gradium, v2)
 
 | Character | Key in `src/voices.js` | Voice | Design prompt / notes |
 |---|---|---|---|
 | Narrator | `narrator` | Emma (catalog) | Placeholder until we design our own |
-| | | | |
+| Zeus | `zeus` | to design | Booming, impatient king of the gods |
+| Athena | `athena` | to design | Cool, precise, disappointed |
+| Third god | TBD | to design | |
 
 ## Scope
 
-- Must have for the demo:
-- Nice to have:
-- Cut (not today):
+- Hack rule: use at least 2 of Gemini, Gradium, Devin, Voodoo (use during development counts).
+- v1, must have for the demo: river runner, 3 gods, souls with a lifespan, shrines and deliveries, rage bars and death, riverside shops with exponential prices (Speed, Handling, Hold), streaks, clutch with its own sound, juice (pops, obol bursts, screen shake), game over and instant restart.
+- v2, after v1 is solid: AI gods (reactions, fresh prayers, death verdict, soul stories), prayer scrolls read aloud (speech-to-text), obstacles and damage, saving and best score, bullet-hell arena when a god's rage fills, weapons.
+- Stretch: voice cloning (the ferryman repeats your prayer in your own voice).
+- Considered, not chosen: golden hero souls, underworld zones, missions, leaderboard.
+- Cut: Unity and Voodoo.
 
 ## Team
 
 | Who | Owns |
 |---|---|
 | Alex | Repo, integration, AI wiring, deploy, the demo build |
-| | Game design, pitch |
-| | Art, audio, UI |
+| Gleb | Game design, pitch |
+| Ines | Art, UI |
+| | |
 
 ## Clock (Paris time)
 
-- 11:00 skeleton deployed at a public URL
-- 12:30 ugly but playable core loop (lunch)
-- 15:00 AI hook working end to end
+- 12:52 design locked (this doc)
+- 14:30 v1 river loop playable on the public URL, placeholder art
+- 15:30 v1 complete with Ines's art, v2 starts
 - 17:30 feature freeze: only fixes and polish after this
 - 18:30 record a backup demo video of a good run
 - 19:00 competition opt-in deadline

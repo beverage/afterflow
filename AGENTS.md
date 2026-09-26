@@ -11,7 +11,8 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 
 - **Google AI Studio**: Gemini keys and prompt prototyping. Prompts that work in AI Studio move into `askAI()` calls.
 - **Gradium**: text-to-speech and voice design (new voices from a text description).
-- **Voodoo**: to be filled in when the requirements arrive.
+- **Voodoo**: not used, we are a web game (see DECISIONS.md).
+- **Devin**: autonomous coding agent for bounded tasks, works through PRs.
 
 ## Stack
 
