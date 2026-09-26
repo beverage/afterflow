@@ -22,11 +22,23 @@ export class PauseScene extends Phaser.Scene {
       else this.muteText.setText(off ? 'Sound off · M to unmute' : 'Sound on · M to mute');
     };
     if (sound) this.add.zone(W / 2, H / 2 + 120, 240, 90).setInteractive().on('pointerdown', mute);
+    // The how-to-play tour again: H, or a tap or click on the button.
+    const helpY = H / 2 + (touch ? 210 : 120);
+    this.add.text(W / 2, helpY, touch ? 'How to play' : 'How to play (H)', { fontFamily: FONT, fontSize: '20px', fontStyle: '600', color: COLORS.text, backgroundColor: 'rgba(8,11,10,0.62)', padding: { x: 24, y: 12 } }).setOrigin(0.5);
+    this.add.zone(W / 2, helpY, 260, 90).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.help());
     onAction(this, (action) => {
       if (action === 'pause' || action === 'confirm') this.resume();
       else if (action === 'mute') mute();
+      else if (action === 'help') this.help();
     });
     this.input.on('pointerdown', (_pointer, over) => over.length || this.resume());
+  }
+
+  // The tour opens over the river, which stays paused until the tour closes.
+  help() {
+    clearKeys();
+    this.scene.stop();
+    this.scene.launch('Tutorial');
   }
 
   resume() {

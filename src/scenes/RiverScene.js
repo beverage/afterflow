@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
+import { tutorialPending } from './TutorialScene.js';
 import { soulValue, statsFor, formatObols, formatMeters } from '../economy.js';
 import { moveVector, onAction, onAway, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
@@ -62,8 +63,9 @@ export class RiverScene extends Phaser.Scene {
     onAction(this, (action) => this.handleAction(action));
     onAway(this, () => this.pauseGame());
 
-    if (this.playing) this.startHints();
-    else this.scene.launch('Title');
+    if (!this.playing) this.scene.launch('Title');
+    else if (tutorialPending()) this.events.once('postupdate', () => this.showTutorial()); // after one frame, so the river is drawn under it
+    else this.startHints();
   }
 
   get speed() {
@@ -845,12 +847,21 @@ export class RiverScene extends Phaser.Scene {
     if (!this.playing || this.ended) return;
     if (action === 'pause') this.pauseGame();
     else if (action === 'mute') this.toast(toggleMute() ? 'Sound off' : 'Sound on');
+    else if (action === 'help') this.showTutorial();
   }
 
   pauseGame() {
     if (!this.playing || this.ended || !this.sys.isActive()) return;
     clearKeys();
     this.scene.launch('Pause');
+    this.scene.pause();
+  }
+
+  // The how-to-play tour: on the first run of a session, or on H. It resumes the river when it closes.
+  showTutorial() {
+    if (!this.playing || this.ended || !this.sys.isActive()) return;
+    clearKeys();
+    this.scene.launch('Tutorial');
     this.scene.pause();
   }
 

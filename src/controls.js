@@ -15,6 +15,7 @@ const ACTION_BY_CODE = {
   Escape: 'pause',
   KeyP: 'pause',
   KeyM: 'mute',
+  KeyH: 'help',
   Space: 'confirm',
   Enter: 'confirm',
   NumpadEnter: 'confirm',
@@ -154,7 +155,7 @@ export function moveVector() {
 /** True on a touch screen (or once the player touches one): show "tap" prompts instead of keys. */
 export const isTouch = () => touch;
 
-/** Calls fn(action) for pause, mute, confirm, buy1-3 while the scene is running. Cleaned up on shutdown. */
+/** Calls fn(action) for pause, mute, confirm, help, buy1-3 while the scene is running. Cleaned up on shutdown. */
 export function onAction(scene, fn) {
   const h = { scene, fn };
   handlers.add(h);
