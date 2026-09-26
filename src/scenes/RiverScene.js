@@ -7,6 +7,7 @@ import { sfx, toggleMute } from '../sfx.js';
 import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
 import { drawMeander, spaced } from '../ui.js';
 import { Water } from '../water.js';
+import { ROCK_R } from '../art.js';
 
 const TAU = Math.PI * 2;
 const clamp = Phaser.Math.Clamp;
@@ -75,8 +76,12 @@ export class RiverScene extends Phaser.Scene {
     this.spawnAhead();
     this.updateFog(dt);
     this.drawShore();
-    this.water.update(dt, this.scroll, this.speed * TUNING.currentFactor * (this.ended ? 0.3 : 1));
-    for (const p of this.props) p.y = p.wy + this.scroll;
+    const eddyRocks = [];
+    for (const p of this.props) {
+      p.y = p.wy + this.scroll;
+      if (p.nearWater && p.y > -40 && p.y < H + 60) eddyRocks.push({ x: p.x, y: p.y, r: p.rr, side: p.side });
+    }
+    this.water.update(dt, this.scroll, this.speed * TUNING.currentFactor * (this.ended ? 0.3 : 1), eddyRocks);
     this.updateFeatures(dt);
     this.updateSouls(dt);
     if (!this.ended) this.updateBoat(dt);
@@ -115,18 +120,22 @@ export class RiverScene extends Phaser.Scene {
     }
   }
 
-  // A soft shadow on the banks along the water's edge.
+  // The shore, after Ines's banks: a muddy strip at the waterline and ground that darkens toward the water.
   drawShore() {
     const g = this.shoreG;
     g.clear();
+    const edges = [];
+    for (let sy = -16; sy <= H + 16; sy += 8) {
+      const q = riverAt(sy - this.scroll);
+      edges.push({ sy, l: q.l, r: q.r });
+    }
     for (const side of [-1, 1]) {
-      const pts = [];
-      for (let sy = -16; sy <= H + 16; sy += 8) {
-        const q = riverAt(sy - this.scroll);
-        pts.push({ x: q.cx + side * (q.hw + 6), y: sy });
+      // [from px, to px] out from the water, color, alpha
+      for (const [a, b, color, alpha] of [[0, 7, 0x24231e, 0.7], [7, 16, 0x24231e, 0.35], [16, 28, 0x0c100e, 0.12], [28, 40, 0x0c100e, 0.06]]) {
+        const pts = edges.map((e) => ({ x: (side < 0 ? e.l : e.r) + side * a, y: e.sy }));
+        for (let i = edges.length - 1; i >= 0; i--) pts.push({ x: (side < 0 ? edges[i].l : edges[i].r) + side * b, y: edges[i].sy });
+        g.fillStyle(color, alpha).fillPoints(pts, true);
       }
-      g.lineStyle(16, 0x0a0d0c, 0.55);
-      g.strokePoints(pts);
     }
   }
 
@@ -213,27 +222,54 @@ export class RiverScene extends Phaser.Scene {
     return f;
   }
 
+  // True if (x, wy) would sit on a shrine or stall, or on its pier.
+  blocked(x, wy, pad = 0) {
+    return this.features.some(
+      (f) =>
+        (Math.abs(x - f.x) < 80 + pad && wy > f.wy - 150 - pad && wy < f.wy + 20 + pad) ||
+        (x > Math.min(f.x, f.tip) - pad && x < Math.max(f.x, f.tip) + pad && Math.abs(wy - (f.wy - 6)) < 18 + pad),
+    );
+  }
+
+  // Ines's banks: pines, ferns, rocks (half of them on the waterline) and spider lilies, at her densities.
   spawnPropRow(wy) {
-    const q = riverAt(wy);
-    for (const side of ['left', 'right']) {
-      if (Math.random() < 0.3) continue;
-      const near = this.features.some((f) => f.side === side && Math.abs(f.wy - wy) < 130);
-      const edge = side === 'left' ? q.l : q.r, dir = side === 'left' ? -1 : 1, roll = Math.random();
-      if (roll < 0.4) {
-        const a = side === 'left' ? 12 : edge + 46, b = side === 'left' ? edge - 46 : W - 12;
-        if (near || b - a < 20) continue;
-        this.addProp(this.add.image(rnd(a, b), 0, `pine${1 + ((Math.random() * 3) | 0)}`).setScale(rnd(0.8, 1.15)).setDepth(8), wy + rnd(-10, 10));
-      } else if (roll < 0.58) {
-        const a = side === 'left' ? 12 : edge + 20, b = side === 'left' ? edge - 20 : W - 12;
-        this.addProp(this.add.image(rnd(a, b), 0, 'rock').setScale(rnd(0.5, 1.1)).setRotation(rnd(0, TAU)).setDepth(3), wy);
-      } else if (roll < 0.84) {
-        if (near) continue;
-        const n = 2 + ((Math.random() * 3) | 0);
-        for (let i = 0; i < n; i++) {
-          this.addProp(this.add.image(edge + dir * rnd(14, 44), 0, `lily${1 + ((Math.random() * 3) | 0)}`).setScale(rnd(0.5, 0.8)).setDepth(3), wy + rnd(-16, 16));
+    const q = riverAt(wy), count = (m) => Math.floor(m + Math.random()), pickTex = (base, n) => `${base}${1 + ((Math.random() * n) | 0)}`;
+    for (const [edge, dir] of [[q.l, -1], [q.r, 1]]) {
+      for (let i = count(0.5); i > 0; i--) {
+        const x = edge + dir * rnd(80, 340), y = wy + rnd(-12, 12);
+        if (x < -30 || x > W + 30 || this.blocked(x, y, 30)) continue;
+        const pine = this.add.image(x, 0, pickTex('pine', 3)).setDepth(8);
+        pine.setOrigin((pine.width / 2 - 7) / pine.width);
+        this.addProp(pine, y);
+      }
+      for (let i = count(1.4); i > 0; i--) {
+        const x = edge + dir * rnd(16, 300), y = wy + rnd(-14, 14);
+        if (x < -20 || x > W + 20 || this.blocked(x, y, 10)) continue;
+        this.addProp(this.add.image(x, 0, pickTex('fern', 3)).setDepth(3.2), y);
+      }
+      for (let i = count(0.42); i > 0; i--) {
+        const k = (Math.random() * ROCK_R.length) | 0, x = edge + dir * rnd(-8, 10), y = wy + rnd(-12, 12);
+        if (this.blocked(x, y, 8)) continue;
+        const rock = this.add.image(x, 0, `rock${k + 1}`).setRotation(rnd(0, 3)).setDepth(3.4);
+        rock.setOrigin((rock.width / 2 - 2) / rock.width);
+        rock.nearWater = true;
+        rock.rr = ROCK_R[k];
+        rock.side = -dir; // eddies curl off toward mid-stream
+        this.addProp(rock, y);
+      }
+      for (let i = count(0.52); i > 0; i--) {
+        const k = (Math.random() * 4) | 0, x = edge + dir * rnd(14, 220), y = wy + rnd(-12, 12);
+        if (x < -20 || x > W + 20 || this.blocked(x, y, 8)) continue;
+        const rock = this.add.image(x, 0, `rock${k + 1}`).setRotation(rnd(0, 3)).setDepth(3.1);
+        rock.setOrigin((rock.width / 2 - 2) / rock.width);
+        this.addProp(rock, y);
+      }
+      if (Math.random() < 0.28) {
+        for (let i = 2 + ((Math.random() * 4) | 0); i > 0; i--) {
+          const x = edge + dir * rnd(4, 34), y = wy + rnd(-16, 16);
+          if (this.blocked(x, y, 6)) continue;
+          this.addProp(this.add.image(x, 0, pickTex('lily', 3)).setOrigin(0.5, 15 / 36).setDepth(3.3), y);
         }
-      } else if (!near) {
-        this.addProp(this.add.image(edge + dir * rnd(1, 6), 0, 'reeds').setFlipX(side === 'right').setDepth(3), wy);
       }
     }
   }
