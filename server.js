@@ -1,10 +1,10 @@
 // Production server for any Node host (Fly.io via the Dockerfile, Render, Railway, a VM...).
-// Serves the built game from dist/ and the Gemini proxy at /api/gemini. No dependencies.
+// Serves the built game from dist/ and the proxies at /api/gemini, /api/tts and /api/stt. No dependencies.
 // Usage: npm run build && npm start
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
-import { geminiRoute, ttsRoute } from './server/http.js';
+import { geminiRoute, sttRoute, ttsRoute } from './server/http.js';
 
 try {
   process.loadEnvFile?.('.env'); // local convenience; on hosts, set real env vars/secrets
@@ -68,6 +68,7 @@ createServer((req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   if (pathname === '/api/gemini') return geminiRoute(req, res, process.env);
   if (pathname === '/api/tts') return ttsRoute(req, res, process.env);
+  if (pathname === '/api/stt') return sttRoute(req, res, process.env);
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.statusCode = 405;
     return res.end('Method not allowed');

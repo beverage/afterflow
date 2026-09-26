@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "start": "node server.js",
     "check:ai": "node scripts/check-ai.js",
+    "check:stt": "node scripts/check-stt.js",
     "decide": "node scripts/decide.js",
     "voices": "node scripts/voice.js list",
     "voice:design": "node scripts/voice.js design",

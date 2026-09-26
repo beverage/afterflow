@@ -163,6 +163,24 @@ export const SCROLLS = {
   heardSeconds: 2.5, // the words the mic caught stay on screen this long
 };
 
+// Hearing incantations with Gradium speech-to-text (src/listen.js): a voice detector cuts the mic into short clips
+// at pauses, and each clip goes to /api/stt. Levels are the RMS of a mic frame (0-1).
+export const LISTEN = {
+  rate: 24000, // clips go out as 16-bit mono WAV at Gradium's native rate
+  frame: 2048, // samples per mic frame (~43 ms at 48 kHz)
+  startRatio: 3, // speech starts when a frame is this many times louder than the room's noise floor
+  stayRatio: 2, // ...and still counts as speech above this
+  minLevel: 0.008, // speech never starts below this level, even in a silent room
+  floorMin: 0.002, // the noise floor never drops below this
+  endQuiet: 0.6, // s of quiet that end a phrase
+  maxClip: 4, // s: a clip is cut here even if the talking goes on
+  preRoll: 0.25, // s of audio from just before the speech started, so its first sound isn't clipped
+  minSpeech: 0.3, // s: shorter sounds (a cough, a knock) are dropped
+  joinSeconds: 6, // phrases heard this close together are matched together, so a pause between the two words is fine
+  maxFails: 3, // this many failed clips in a row: the browser's own recognizer takes over for the session
+  timeoutMs: 12000, // give up on a clip's transcript after this long
+};
+
 // The gods' recorded lines (src/npc-voices/), one at a time. Each line is on screen too, beside its god's rage bar.
 export const VOICE = {
   gap: 2.5, // s of quiet after any line before a shout, hurry or streak line can play
