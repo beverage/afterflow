@@ -271,6 +271,8 @@ export class RiverScene extends Phaser.Scene {
     const at = ([dx, dy]) => ({ x: ax + dir * dx * s, dy: dy * s });
     const swirl = at(PORTAL.swirl), dock = at(PORTAL.dock), medal = at(PORTAL.medal);
     const f = { kind: 'shrine', portal: true, wy, side, god, x: swirl.x, tip: dock.x, dockDy: dock.dy, swirlDy: swirl.dy, popDy: medal.dy - 55, pulse: 0, parts: [] };
+    f.dockZone = PORTAL.dockZone.map(at);
+    f.dockReach = PORTAL.dockReach * s;
     f.glow = this.attach(f, this.add.image(f.x, 0, 'glow').setTint(color).setBlendMode('ADD').setScale(3).setAlpha(0).setDepth(6.4), swirl.dy);
     const gate = this.add.sprite(ax, 0, sheet).setOrigin(PORTAL.anchor[0] / PORTAL.frameWidth, PORTAL.anchor[1] / PORTAL.frameHeight).setScale(dir * s, s).setDepth(6.5);
     gate.play({ key: sheet, startFrame: (Math.random() * PORTAL.frames) | 0 });
@@ -303,6 +305,8 @@ export class RiverScene extends Phaser.Scene {
     const at = ([dx, dy]) => ({ x: ax + dir * dx, dy });
     const dock = at(STALL.dock), lamp = at(STALL.lamp), medal = at(STALL.medal);
     const f = { kind: 'shop', wy, side, x: ax, tip: dock.x, dockDy: dock.dy, used: false, parts: [] };
+    f.dockZone = STALL.dockZone.map(at);
+    f.dockReach = STALL.dockReach;
     f.glow = this.attach(f, this.add.image(lamp.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.2).setAlpha(0.35).setDepth(6.4), lamp.dy);
     f.dockGlow = this.attach(f, this.add.image(dock.x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.6).setAlpha(0.3).setDepth(5), dock.dy);
     this.attach(f, this.add.image(ax, 0, 'shop').setOrigin(STALL.anchor[0] / STALL.frameWidth, STALL.anchor[1] / STALL.frameHeight).setScale(dir, 1).setDepth(6.5), 0);
@@ -392,7 +396,7 @@ export class RiverScene extends Phaser.Scene {
       } else if (!f.used && base > 60) {
         this.hint('shop', "Dock at Hermes' stall to spend your obols");
       }
-      if (this.ended || this.hullDist(f.tip, base + f.dockDy) > TUNING.dockReach) continue;
+      if (this.ended || this.dockDist(f, base) > (f.dockReach ?? TUNING.dockReach)) continue;
       if (f.kind === 'shrine') this.deliver(f);
       else if (!f.used && this.playing) this.openShop(f);
     }
@@ -608,6 +612,15 @@ export class RiverScene extends Phaser.Scene {
     const b = this.boat, c = Math.cos(b.tilt), s = Math.sin(b.tilt), dx = px - b.x, dy = py - b.y;
     const lx = dx * c + dy * s, ly = -dx * s + dy * c;
     return Math.hypot(lx, ly - clamp(ly, TUNING.hullFront, TUNING.hullBack));
+  }
+
+  // How far the hull is from a feature's dock: its tip, or anywhere along its dock zone (the pool of light at a portal or stall).
+  dockDist(f, base) {
+    if (!f.dockZone) return this.hullDist(f.tip, base + f.dockDy);
+    const [a, b] = f.dockZone, n = Math.ceil(Math.hypot(b.x - a.x, b.dy - a.dy) / 12);
+    let d = Infinity;
+    for (let i = 0; i <= n; i++) d = Math.min(d, this.hullDist(a.x + ((b.x - a.x) * i) / n, base + a.dy + ((b.dy - a.dy) * i) / n));
+    return d;
   }
 
   updateBoat(dt) {
@@ -1365,6 +1378,14 @@ export class RiverScene extends Phaser.Scene {
     g.clear().lineStyle(1, 0x00ff88, 0.9);
     g.lineBetween(a.x, a.y, b.x, b.y);
     g.strokeCircle(a.x, a.y, TUNING.hullRadius).strokeCircle(b.x, b.y, TUNING.hullRadius);
-    for (const f of this.features) g.strokeCircle(f.tip, f.wy + this.scroll + f.dockDy, TUNING.dockReach);
+    for (const f of this.features) {
+      const base = f.wy + this.scroll;
+      if (!f.dockZone) {
+        g.strokeCircle(f.tip, base + f.dockDy, TUNING.dockReach);
+        continue;
+      }
+      const [a, b] = f.dockZone, r = f.dockReach;
+      g.lineBetween(a.x, base + a.dy, b.x, base + b.dy).strokeCircle(a.x, base + a.dy, r).strokeCircle(b.x, base + b.dy, r);
+    }
   }
 }

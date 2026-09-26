@@ -179,7 +179,9 @@ export const PORTAL = {
   fps: 8,
   anchor: [80, 195.2], // the gate's base point inside a frame
   swirl: [-1, -45], // centre of the swirl, where delivered souls fly
-  dock: [95, 28], // the brightest part of the light pooling on the water: sail in here to deliver
+  dock: [95, 28], // the brightest part of the light pooling on the water, where the autopilot steers
+  dockZone: [[30, 28], [190, 48]], // the pool's long axis, from the steps out into the river: touch it anywhere to deliver
+  dockReach: 46, // how close the hull must come to that axis (the pool is about this wide on either side)
   medal: [-16, -160], // her medallion, which ours covers so the symbol matches the souls
   scale: 1,
 };
@@ -190,7 +192,9 @@ export const STALL = {
   frameWidth: 327,
   frameHeight: 299,
   anchor: [80, 195], // the counter's base point inside the frame
-  dock: [95, 28], // the end of the jetty, in the warm light on the water: sail in here to shop
+  dock: [95, 28], // the end of the jetty, in the warm light on the water, where the autopilot steers
+  dockZone: [[32, 6], [180, 66]], // the pool's long axis, from the jetty's foot out into the river: touch it anywhere to shop
+  dockReach: 46, // how close the hull must come to that axis
   lamp: [50, -86], // the lantern hanging from the awning
   medal: [8, -152], // the caduceus medallion above the awning
 };
