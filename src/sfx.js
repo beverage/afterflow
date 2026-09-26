@@ -146,6 +146,13 @@ export const sfx = {
     noise({ dur: 1.6, vol: 0.5, freq: 900, type: 'lowpass', sweep: 0.15 });
     tone(80, { dur: 1.2, vol: 0.45, slide: 0.4 });
   },
+  // Pushed onto the rocks: splintering wood, a crunch and a low thud.
+  wreck() {
+    noise({ dur: 0.12, vol: 0.35, freq: 2600, type: 'highpass' });
+    noise({ dur: 0.5, vol: 0.45, freq: 500, type: 'lowpass', sweep: 0.4 });
+    tone(72, { dur: 0.45, vol: 0.45, slide: 0.55 });
+    tone(140, { type: 'triangle', dur: 0.2, vol: 0.18, at: 0.05, slide: 0.6 });
+  },
   // A lantern is lit: a match strike, then a warm rising swell.
   lanternLit() {
     noise({ dur: 0.07, vol: 0.18, freq: 3200, q: 1.2 });

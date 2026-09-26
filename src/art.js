@@ -2,9 +2,10 @@
 // A texture is only drawn when no real file was loaded for its key: put the PNG in
 // public/assets/, add one line to src/assets.js, and it replaces the placeholder.
 // The water, light, glows and portal swirls are drawn live by RiverScene, not here.
-import { GODS, STALL, WIDTH as W, HEIGHT as H } from './config.js';
+import { GODS, STALL, OBSTACLES, WIDTH as W, HEIGHT as H } from './config.js';
 import { rgbOf } from './color.js';
 import { fbm, sstep, mixRGB } from './noise.js';
+import { CRAGS, SNAGS, makeRand, lobeU, biteU, spineAt } from './obstacles.js';
 
 const TAU = Math.PI * 2;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -58,6 +59,9 @@ export function makeArt(scene) {
   make(scene, 'fog', 256, 256, drawFog);
   make(scene, 'haze', W, H, drawHaze);
   make(scene, 'shade', W, H, drawShade);
+  // obstacles in the river: drawn from the same shapes as their collision (src/obstacles.js)
+  CRAGS.forEach((sh, i) => make(scene, `crag${i}`, sh.size, sh.size, (g) => drawCrag(g, sh, 3001 + i * 17)));
+  if (OBSTACLES.trees) SNAGS.forEach((s, i) => make(scene, `snag${i}`, s.box.w, s.box.h, (g) => drawSnag(g, s, 5001 + i)));
 }
 
 /* ---------- god symbols (owl, spear, trident, and Hermes' caduceus) on a 20-unit grid ---------- */
@@ -880,4 +884,243 @@ function drawVignette(g) {
   gr.addColorStop(1, 'rgba(255,255,255,.95)');
   g.fillStyle = gr;
   g.fillRect(0, 0, W, H);
+}
+
+/* ---------- obstacles in the river, after Ines's obstacle study, darker and craggier ---------- */
+
+// A rock after Ines's makeRock (a lit height field with ridged noise): cold slate, angular chunks
+// that meet in creases, chipped edges, faces freshly broken where a bite was taken, deep black cracks.
+function drawCrag(g, sh, seed) {
+  const R = makeRand(seed), r0 = sh.r0, S = sh.size, cx = S / 2, cy = S / 2;
+  const n1 = fbm(5, 5, 4, R.int(1e6)), n2 = fbm(14, 14, 3, R.int(1e6)), n3 = fbm(24, 24, 2, R.int(1e6)), tone = fbm(3, 3, 3, R.int(1e6)), chip = fbm(9, 9, 3, R.int(1e6));
+  const ridge = (v) => 1 - Math.abs(2 * v - 1);
+  // height, "u" (< 1 inside) and nearness to a bite, at a pixel: the tallest chunk wins
+  const field = (x, y) => {
+    const px = x - cx, py = y - cy, nick = (chip(x / S, y / S) - 0.5) * 0.32, ub = biteU(sh, px, py) - nick;
+    let h = -1, u = Infinity;
+    for (const L of sh.lobes) {
+      const lu = lobeU(L, px, py) + nick;
+      u = Math.min(u, lu);
+      if (lu < 1) h = Math.max(h, Math.sqrt(1 - lu * lu) * L.r * 0.62 * L.h + (1 - lu) * L.r * 0.16);
+    }
+    u = Math.max(u, 2 - ub);
+    if (h < 0 || u >= 1) return [-1, u, 1];
+    const broken = Math.min(1, (ub - 1) / 0.3);
+    return [h * (0.55 + 0.45 * broken) + ridge(n1(x / S, y / S)) * r0 * 0.42 + ridge(n3(x / S, y / S)) * r0 * 0.14 + n2(x / S, y / S) * r0 * 0.1, u, broken];
+  };
+  const Hf = (x, y) => field(x, y)[0];
+  // a soft shadow in the rock's own shape, falling down-right
+  g.fillStyle = 'rgba(4,3,12,.14)';
+  for (let k = 0; k < 5; k++) {
+    const sc = 1 + k * 0.07;
+    g.beginPath();
+    sh.outline.forEach(([ox, oy], j) => (j ? g.lineTo(cx + r0 * 0.28 + ox * sc, cy + r0 * 0.38 + oy * sc) : g.moveTo(cx + r0 * 0.28 + ox * sc, cy + r0 * 0.38 + oy * sc)));
+    g.closePath();
+    g.fill();
+  }
+  const im = g.getImageData(0, 0, S, S), D = im.data, Lx = -0.52, Ly = -0.62, Lz = 0.59;
+  for (let y = 1; y < S - 1; y++) {
+    for (let x = 1; x < S - 1; x++) {
+      const [h, u, broken] = field(x, y);
+      if (h < 0) continue;
+      let nx = -(Hf(x + 1, y) - Hf(x - 1, y)), ny = -(Hf(x, y + 1) - Hf(x, y - 1)), nz = 1.6;
+      const l = Math.hypot(nx, ny, nz);
+      nx /= l;
+      ny /= l;
+      nz /= l;
+      const dif = Math.max(0, nx * Lx + ny * Ly + nz * Lz), spec = Math.pow(Math.max(0, nz * 0.9 + dif * 0.1), 14) * 0.05;
+      const tn = tone(x / S, y / S), crev = ridge(n1(x / S, y / S));
+      let k = (0.16 + 0.82 * dif + spec) * (0.8 + 0.28 * tn);
+      k *= 0.5 + 0.5 * Math.min(1, crev * 1.7); // deep dark cracks
+      k *= 0.65 + 0.35 * broken;
+      const wet = Math.max(0, (y - cy) / sh.ext) * Math.max(0, u - 0.35) * 1.3; // the wet foot, darker
+      const [cr, cg, cb] = tn > 0.64 ? [88, 86, 84] : [96, 100, 108];
+      const wk = 1 - Math.min(0.7, wet), i = (y * S + x) * 4;
+      let rr = cr * k * wk, gg = cg * k * wk, bb = cb * k * wk * (1 + wet * 0.12);
+      if (ny > 0.3 && n2(x / S + 0.3, y / S) > 0.7) {
+        rr = rr * 0.7 + 12; // a little dark moss on the shaded faces
+        gg = gg * 0.7 + 16;
+        bb = bb * 0.7 + 13;
+      }
+      D[i] = rr;
+      D[i + 1] = gg;
+      D[i + 2] = bb;
+      D[i + 3] = Math.min(255, (1 - u) * r0 * 120);
+    }
+  }
+  const tmp = document.createElement('canvas');
+  tmp.width = tmp.height = S;
+  tmp.getContext('2d').putImageData(im, 0, 0);
+  g.drawImage(tmp, 0, 0);
+  for (let i = 0; i < 4; i++) {
+    const [ox, oy, onx, ony] = sh.outline[R.int(sh.outline.length)], pr = R.range(1.6, 3.2), px = cx + ox + onx * 2, py = cy + oy + ony * 2;
+    const pg = g.createRadialGradient(px - pr * 0.4, py - pr * 0.4, 0.5, px, py, pr);
+    pg.addColorStop(0, '#4a5053');
+    pg.addColorStop(1, '#15181a');
+    g.fillStyle = pg;
+    g.beginPath();
+    g.ellipse(px, py, pr, pr * 0.78, R.range(0, 3), 0, TAU);
+    g.fill();
+  }
+}
+
+// A fallen dead tree after Ines's makeTree: grey, leafless, snapped. The root sits at (box.ox, box.oy).
+function drawSnag(g, s, seed) {
+  const R = makeRand(seed), tn = s.tone;
+  // the two edges of a tapering run of wood, a little jagged
+  const edges = (pts, off) => {
+    const top = [], bot = [];
+    pts.forEach((p, k) => {
+      const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const nx = -(b[1] - a[1]) / l, ny = (b[0] - a[0]) / l, j1 = s.notch[(k + off) % s.notch.length], j2 = s.notch[(k + off + 7) % s.notch.length];
+      top.push([p[0] - nx * (p[2] + j1), p[1] - ny * (p[2] + j1)]);
+      bot.push([p[0] + nx * (p[2] - j2), p[1] + ny * (p[2] - j2)]);
+    });
+    return { top, bot };
+  };
+  const woodPath = (pts, off, tip, dx = 0, dy = 0) => {
+    const { top, bot } = edges(pts, off), e = pts[pts.length - 1], p = pts[pts.length - 2], a = Math.atan2(e[1] - p[1], e[0] - p[0]);
+    g.beginPath();
+    top.forEach(([x, y], k) => (k ? g.lineTo(x + dx, y + dy) : g.moveTo(x + dx, y + dy)));
+    if (tip) for (const [u, v] of [[tip[0], tip[1] - 3], [tip[2] * 0.4, tip[1] + 1], [tip[2], 4]]) g.lineTo(e[0] + u * Math.cos(a) - v * Math.sin(a) + dx, e[1] + u * Math.sin(a) + v * Math.cos(a) + dy);
+    for (let k = bot.length - 1; k >= 0; k--) g.lineTo(bot[k][0] + dx, bot[k][1] + dy);
+    g.closePath();
+  };
+  // wood: a mid-grey body, a dark rim upstream and underside downstream, a dull bleached band on top
+  const wood = (pts, off, tip) => {
+    woodPath(pts, off, tip);
+    g.fillStyle = tn.mid;
+    g.fill();
+    g.save();
+    woodPath(pts, off, tip);
+    g.clip();
+    for (let k = 0; k < pts.length - 1; k++) {
+      const [ax, ay, ah] = pts[k], [bx, by, bh] = pts[k + 1], l = Math.hypot(bx - ax, by - ay) || 1, nx = -(by - ay) / l, ny = (bx - ax) / l, h = (ah + bh) / 2;
+      for (const [o, w, col, al] of [[0.8, 0.9, tn.dark, 1], [-0.92, 0.35, tn.dark, 1], [-0.35, 0.42, tn.light, 0.55]]) {
+        g.globalAlpha = al;
+        g.strokeStyle = col;
+        g.lineWidth = h * w;
+        g.beginPath();
+        g.moveTo(ax + nx * ah * o, ay + ny * ah * o);
+        g.lineTo(bx + nx * bh * o, by + ny * bh * o);
+        g.stroke();
+      }
+    }
+    g.globalAlpha = 1;
+    g.restore();
+    woodPath(pts, off, tip);
+    g.strokeStyle = 'rgba(8,8,10,.7)';
+    g.lineWidth = 1;
+    g.stroke();
+  };
+  g.translate(s.box.ox, s.box.oy);
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.fillStyle = 'rgba(5,4,12,.42)'; // shadow on the water, falling down-right
+  woodPath(s.spine, 0, s.tip, 3, 8);
+  g.fill();
+  s.limbs.forEach((l, k) => {
+    woodPath(l, 11 + k * 5, s.limbTips[k], 3, 8);
+    g.fill();
+  });
+  // roots, or the whole root plate of an uprooted tree
+  for (const rt of s.roots) {
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.quadraticCurveTo(Math.cos(rt.a) * rt.l1 * 0.55, Math.sin(rt.a) * rt.l2 * 0.6, Math.cos(rt.a) * rt.l1, Math.sin(rt.a) * rt.l2);
+    g.strokeStyle = '#2a2b2e';
+    g.lineWidth = rt.w + 1;
+    g.stroke();
+    g.strokeStyle = tn.edge;
+    g.lineWidth = rt.w * 0.45;
+    g.stroke();
+  }
+  g.fillStyle = '#1e1d20';
+  g.beginPath();
+  if (s.kind === 'uprooted') {
+    // seen from above, the root plate stands up across the trunk: a narrow, tall wall of earth
+    for (let k = 0; k < 18; k++) {
+      const a = (k / 18) * TAU, rr = s.plate * R.range(0.82, 1.05);
+      k ? g.lineTo(Math.cos(a) * rr * 0.45, Math.sin(a) * rr * 1.1) : g.moveTo(Math.cos(a) * rr * 0.45, Math.sin(a) * rr * 1.1);
+    }
+  } else g.ellipse(0, 0, 24, 30, 0, 0, TAU);
+  g.fill();
+  for (let k = s.kind === 'uprooted' ? 12 : 3; k > 0; k--) {
+    g.fillStyle = `rgba(${(110 + R.range(0, 30)) | 0},${(106 + R.range(0, 26)) | 0},${(98 + R.range(0, 20)) | 0},.2)`; // clods of dry earth
+    g.beginPath();
+    g.ellipse(R.range(-0.3, 0.25) * s.plate, R.range(-0.9, 0.9) * s.plate, R.range(3, 7), R.range(2, 5), R.range(0, 3), 0, TAU);
+    g.fill();
+  }
+  // broken stubs and bare branches, under the trunk
+  for (const st of s.stubs) {
+    g.beginPath();
+    g.moveTo(st.x0, st.y0);
+    g.lineTo(st.ex, st.ey);
+    g.strokeStyle = tn.dark;
+    g.lineWidth = st.w + 1.6;
+    g.stroke();
+    g.strokeStyle = tn.edge;
+    g.lineWidth = st.w * 0.55;
+    g.stroke();
+    g.fillStyle = tn.light; // the pale broken end
+    g.beginPath();
+    g.arc(st.ex, st.ey, st.w * 0.45, 0, TAU);
+    g.fill();
+  }
+  for (const b of s.branches) {
+    for (const [col, w] of [['#242629', b.w + 1.6], [tn.edge, b.w * 0.6]]) {
+      g.beginPath();
+      g.moveTo(b.x0, b.y0);
+      g.quadraticCurveTo(b.cx, b.cy, b.x1, b.y1);
+      g.strokeStyle = col;
+      g.lineWidth = w;
+      g.stroke();
+    }
+    for (const [ax, ay, bx, by] of b.twigs) {
+      g.beginPath();
+      g.moveTo(ax, ay);
+      g.lineTo(bx, by);
+      g.strokeStyle = '#282a2d';
+      g.lineWidth = 1.8;
+      g.stroke();
+      g.strokeStyle = tn.light;
+      g.lineWidth = 0.7;
+      g.stroke();
+    }
+  }
+  // the limbs, then the trunk over them, snapped off at the tip
+  s.limbs.forEach((l, k) => wood(l, 11 + k * 5, s.limbTips[k]));
+  wood(s.spine, 0, s.tip);
+  // long cracks and bleached streaks in the bark, knots where the branches leave
+  g.save();
+  woodPath(s.spine, 0, s.tip);
+  g.clip();
+  for (const [f, o, len] of s.bark) {
+    const [x, y, h, a] = spineAt(s, f), px = x - Math.sin(a) * o * h * 0.7, py = y + Math.cos(a) * o * h * 0.7;
+    g.strokeStyle = 'rgba(6,6,8,.6)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(px, py);
+    g.lineTo(px + Math.cos(a) * len, py + Math.sin(a) * len);
+    g.stroke();
+    g.strokeStyle = 'rgba(210,214,218,.13)';
+    g.beginPath();
+    g.moveTo(px + 2, py - 2);
+    g.lineTo(px + Math.cos(a) * len * 0.7, py - 2 + Math.sin(a) * len * 0.7);
+    g.stroke();
+  }
+  for (const b of s.branches) {
+    g.fillStyle = '#1b1c1f';
+    g.beginPath();
+    g.ellipse(b.x0 + (b.x1 - b.x0) * 0.08, b.y0 + (b.y1 - b.y0) * 0.08, 3.5, 2.2, Math.atan2(b.y1 - b.y0, b.x1 - b.x0), 0, TAU);
+    g.fill();
+  }
+  g.restore();
+  for (let k = 0; k < 14; k++) {
+    const [x, y, h, a] = spineAt(s, R.range(0.05, 0.75)), o = R.range(-0.6, 0.6) * h;
+    g.fillStyle = `rgba(${(140 + R.range(0, 25)) | 0},${(150 + R.range(0, 20)) | 0},${(140 + R.range(0, 15)) | 0},.3)`; // grey lichen
+    g.beginPath();
+    g.ellipse(x - Math.sin(a) * o, y + Math.cos(a) * o, R.range(1.5, 4), R.range(1, 2.4), a, 0, TAU);
+    g.fill();
+  }
 }
