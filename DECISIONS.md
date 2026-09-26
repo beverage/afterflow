@@ -34,3 +34,6 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 13:03 · Free 2D boat movement, shoot-'em-up style · control over timing, and the v2 bullet hell needs it · team
 - 13:03 · Stay on Phaser 3 + Vite + plain JS; host on Vercel via GitHub with a preview link per PR · already wired, previews keep main playable · team
 - 13:03 · Bind ZQSD next to WASD and the arrows · French AZERTY laptops at a Paris event · Claude
+- 14:22 · Name: Soul Drift, for now · simple, catchy, has "soul" in it · team
+- 14:22 · Art direction: the River Flow prototype's look on a top-down endless river, WASD runner mechanics unchanged · the team's strongest visual · team
+- 14:22 · Gods: Athena gold (owl), Ares crimson (spear), Poseidon seafoam (trident) · blue souls vanish into the violet river; the team asked Claude to pick · Claude

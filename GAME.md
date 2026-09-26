@@ -4,7 +4,7 @@ Single source of truth for humans and agents. Keep it short and current: when a 
 
 ## One-liner
 
-_Name: TBD (working title **Soul Ferry**)._ Ferry the dead down the river: scoop up drifting souls and deliver each to its god's shrine before it fades, or the gods' rage sinks you.
+_Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifting souls and deliver each to its god's shrine before it fades, or the gods' rage sinks you.
 
 ## Core loop (v1: what the player does every few seconds)
 
@@ -15,7 +15,7 @@ _Name: TBD (working title **Soul Ferry**)._ Ferry the dead down the river: scoop
 ## Rules (v1)
 
 - One continuous run. Nothing is saved: no accounts, no best score. Game over, press a key, fresh run.
-- 3 gods, one rage bar each in the HUD. Athena's souls are yellow; the other two gods and colors are Ines's call. Souls carry their god's symbol too, not just a color.
+- 3 gods, one rage bar each in the HUD: **Athena** (gold, owl), **Ares** (crimson, spear), **Poseidon** (seafoam, trident). Souls carry their god's symbol too, not just a color.
 - Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100% = death.
 - Souls shrink over their lifespan and poof at zero, which forces regular deliveries.
 - Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Items:
@@ -58,6 +58,7 @@ _Name: TBD (working title **Soul Ferry**)._ Ferry the dead down the river: scoop
 ## Look and sound
 
 - View: 3/4 top-down 2D (2.5D) on a landscape 1280x720 canvas.
+- Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines drawn as stone-arch portals with a swirl in their god's color. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
 - Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Until her art lands, the code draws placeholder shapes under the same keys.
 - Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
@@ -81,9 +82,9 @@ _Name: TBD (working title **Soul Ferry**)._ Ferry the dead down the river: scoop
 | Character | Key in `src/voices.js` | Voice | Design prompt / notes |
 |---|---|---|---|
 | Narrator | `narrator` | Emma (catalog) | Placeholder until we design our own |
-| Zeus | `zeus` | to design | Booming, impatient king of the gods |
 | Athena | `athena` | to design | Cool, precise, disappointed |
-| Third god | TBD | to design | |
+| Ares | `ares` | to design | Booming, hot-tempered god of war |
+| Poseidon | `poseidon` | to design | Deep and rolling, moody as the sea |
 
 ## Scope
 
