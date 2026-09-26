@@ -87,7 +87,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 |---|---|---|---|
 | Narrator | `narrator` | Emma (catalog) | Placeholder until we design our own |
 | Athena | `athena` | to design | Cool, precise, disappointed |
-| Ares | `ares` | to design | Booming, hot-tempered god of war |
+| Ares | `ares` | "Ares", designed (`bYo8Un6hIP7WoPZ2`) | Viking warlord: extremely low, gravelly, slow, enraged. Lines and full prompt in `src/npc-voices/ares.js` |
 | Poseidon | `poseidon` | to design | Deep and rolling, moody as the sea |
 
 ## Scope

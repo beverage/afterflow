@@ -43,3 +43,5 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 14:58 · Fonts: Cormorant Garamond and Source Sans 3 from Google Fonts · the River Flow prototype's typefaces · Claude
 - 14:58 · Keys read by physical position (event.code), so WASD works as ZQSD on AZERTY with one binding · simpler than binding both letter sets · Claude
 - 14:58 · The streak resets when a soul poofs, not on skipped souls · skips already cost rage; breaking the streak too felt like double punishment · Claude
+- 16:14 · Ares voice: Gradium Voice Design, an enraged low Viking warlord (bYo8Un6hIP7WoPZ2); NPC voice lines live in src/npc-voices/ · Fede picked it from 9 candidates; one isolated folder keeps NPC voices out of the game code · Fede · ReivenIV
+- 16:48 · God voice lines are pre-recorded WAVs in public/npc-voices/<god>/ (committed), picked by getHeroAudio with a shuffle bag and a 3 s cooldown per god · instant playback, no credits or network at demo time, no repeats or spam · Fede · ReivenIV
