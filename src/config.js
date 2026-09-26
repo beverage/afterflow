@@ -115,6 +115,29 @@ export const LANTERNS = {
   streakForLantern: 8, // every 8th delivery in a row lights one
 };
 
+// Rocks and dead trees in the river (src/obstacles.js), after Ines's obstacle study.
+export const OBSTACLES = {
+  startAfter: 3300, // px into a run before the first rock: 30 s at the starting pace
+  rampOver: 26000, // px over which rocks thicken to full density
+  perPx: [0.0018, 0.005], // rock groups per px of river, at the first rock and at full density: sparse
+  pairChance: 0.25, // sometimes two rocks, with clear water between them
+  trees: false, // dead trees fallen from the banks: built, switched off for the demo (rocks only)
+  treeFrom: 5000, // px into a run before the first dead tree
+  treeEvery: [1500, 850], // px of river between dead trees, at first and at full density
+  treeReach: 0.58, // a tree reaches at most this share of the way across
+  baitChance: 0.6, // a tree pointing downstream leaves a pocket against the bank; this often a soul waits in it
+  pathHalfWidth: 75, // the safe path, 150 px wide, where no obstacle ever goes: there is always a way through
+  pathSlope: 0.5, // ...and it drifts at most this many px sideways per px of river, so the boat can follow it
+  pathStep: 16,
+  gapMin: 90, // every obstacle keeps this much clear water from every other one: no chains, no gap that looks like it fits
+  poolHalf: 120, // calm water above and below every dock, bank to bank
+  collide: 0.85, // obstacles collide at this share of their drawn size
+  crushSlack: 24, // pushed this far past the bottom edge or a bank by an obstacle: wrecked
+  wreckSeconds: 0.7, // the hull breaks up for this long, then the boat comes back at the centre of the river
+  ahead: 900, // px above the screen where obstacles are placed (bank features go 1800 px ahead, so their calm water is known)
+  treeLead: 600, // trees are placed this much further ahead than rocks, so the rocks fit around them
+};
+
 // How-to-play tour on the first run (TutorialScene): each step moves on by itself after this long.
 export const TUTORIAL = {
   stepSeconds: 4.5,

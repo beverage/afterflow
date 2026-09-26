@@ -7,7 +7,7 @@ import { hexCss, lighten } from '../color.js';
 import { spaced } from '../ui.js';
 import { godSay, stopGodVoice } from '../npc-voices/index.js';
 
-// The last lantern is out: the god whose rage filled up smote the boat. Charon offers to take you back
+// The last lantern is out: the god whose rage filled up smote the boat (or the rocks wrecked it). Charon offers to take you back
 // for a fee (1, or a click or tap on his offer); Space or a tap anywhere else starts a fresh run.
 // Hades, Charon's master, gives his verdict on the run (Fede's recorded lines) until you move on.
 export class GameOverScene extends Phaser.Scene {
@@ -21,7 +21,7 @@ export class GameOverScene extends Phaser.Scene {
     this.add.rectangle(0, 0, W, H, 0x05040c, 0.72).setOrigin(0);
     this.add.text(W / 2, 150, spaced('THE GODS HAVE SPOKEN'), { fontFamily: FONT, fontSize: '14px', fontStyle: '600', color: COLORS.dim }).setOrigin(0.5);
     this.add
-      .text(W / 2, 218, `${god.name} smote you.`, { fontFamily: DISPLAY_FONT, fontSize: '78px', fontStyle: 'italic 600', color: hexCss(god.color) })
+      .text(W / 2, 218, data.wreck ? 'Wrecked on the rocks.' : `${god.name} smote you.`, { fontFamily: DISPLAY_FONT, fontSize: '78px', fontStyle: 'italic 600', color: hexCss(god.color) })
       .setOrigin(0.5)
       .setShadow(0, 0, hexCss(god.color), 24, true, true);
     this.addBestLine(data);

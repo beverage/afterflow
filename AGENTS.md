@@ -38,6 +38,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 | `src/sfx.js` | Sound effects synthesized with Web Audio, the looping ambient track (`public/assets/ambient.mp3`), and `voiceOut()`, where the gods' recorded lines play (one master volume, so M mutes all three) |
 | `src/save.js` | What this device remembers between runs (localStorage): best run, last run, lifetime totals. `?fresh` forgets it |
 | `src/river.js`, `src/economy.js` | River shape; soul value, prices, upgrade stats, Charon's fee, number formats |
+| `src/obstacles.js` | Rocks (and dead trees, switched off) in the river: shapes, placement around a safe path so there's never a wall, collision circles. Tuning in `OBSTACLES` |
 | `src/water.js`, `src/noise.js` | Ines's water, drawn with Canvas 2D into one texture per frame; the seeded noise it and the banks use |
 | `src/color.js`, `src/ui.js` | Small helpers: colors, spaced small caps |
 | `src/ai.js` | `askAI({ prompt, system, schema, fallback })`, `getAIStatus()` |

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, LEVELS, SCROLLS, VOICE, PORTAL, STALL, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, LEVELS, SCROLLS, VOICE, PORTAL, STALL, OBSTACLES, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { tutorialPending } from './TutorialScene.js';
 import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
@@ -9,6 +9,7 @@ import { sfx, toggleMute } from '../sfx.js';
 import { rgbOf, hexCss, mixColor, lighten } from '../color.js';
 import { spaced } from '../ui.js';
 import { Water } from '../water.js';
+import { ObstacleField, CRAGS, SNAGS, snagToWorld } from '../obstacles.js';
 import { ROCK_R } from '../art.js';
 import { setListening, useHeard, canListen, listenStatus } from '../listen.js';
 import { prepareIncantations, takeIncantation, heardScroll } from '../scrolls.js';
@@ -19,6 +20,12 @@ const clamp = Phaser.Math.Clamp;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const gauss = () => (Math.random() + Math.random() + Math.random()) / 1.5 - 1;
 const pickOne = (a) => a[(Math.random() * a.length) | 0];
+// Points along a quadratic curve, for Graphics.strokePoints.
+const bezier = (ax, ay, cx, cy, bx, by, n = 8) =>
+  Array.from({ length: n + 1 }, (_, i) => {
+    const t = i / n, u = 1 - t;
+    return { x: u * u * ax + 2 * u * t * cx + t * t * bx, y: u * u * ay + 2 * u * t * cy + t * t * by };
+  });
 const DEBUG = new URLSearchParams(location.search).has('debug'); // ?debug draws the hull and dock zones
 
 const HUD_RIGHT = W - 148;
@@ -65,6 +72,9 @@ export class RiverScene extends Phaser.Scene {
     this.featureCursor = 150; // world y of the next bank feature (smaller = further downstream)
     this.propCursor = H + 80;
     this.nextSoulAt = 0;
+    this.obstacles = new ObstacleField((Math.random() * 2 ** 31) | 0); // rocks and dead trees, never a wall (src/obstacles.js)
+    this.obstacleItems = [];
+    this.wrecking = false; // the hull breaking up on the rocks, before the boat comes back
 
     this.buildWorld();
     this.buildBoat();
@@ -119,9 +129,10 @@ export class RiverScene extends Phaser.Scene {
     }
     this.water.update(dt, this.scroll, this.speed * TUNING.currentFactor * (this.ended ? 0.3 : 1), eddyRocks);
     this.updateFeatures(dt);
+    this.updateObstacles();
     this.updateSouls(dt);
     if (this.mark) this.updateMark();
-    if (!this.ended) this.updateBoat(dt);
+    if (!this.ended && !this.wrecking) this.updateBoat(dt);
     this.updateHold(dt);
     this.drawWake(dt);
     if (this.playing) {
@@ -137,6 +148,8 @@ export class RiverScene extends Phaser.Scene {
     this.bank = this.add.tileSprite(0, 0, W, H, 'bank').setOrigin(0).setDepth(0);
     this.shoreG = this.add.graphics().setDepth(0.5);
     this.water = new Water(this, riverAt, 1); // Ines's water: body, flowing surface, current lines, lifestream, foam
+    this.foamUnder = this.add.graphics().setDepth(3.45); // around the rocks and trees: wakes, eddies, foam under...
+    this.foamOver = this.add.graphics().setDepth(3.6); // ...and a finer ring of foam over them
     this.buildAtmosphere();
   }
 
@@ -211,6 +224,8 @@ export class RiverScene extends Phaser.Scene {
       this.spawnFeature(this.featureCursor);
       this.featureCursor -= Math.min(TUNING.featureGapMax, TUNING.featureGapStart + this.scroll * TUNING.featureGapGrowth) * rnd(0.9, 1.1);
     }
+    this.obstacles.generateTo(top - OBSTACLES.ahead, this.features);
+    for (const it of this.obstacles.take()) this.addObstacle(it);
     while (this.propCursor > top - 140) {
       this.spawnPropRow(this.propCursor);
       this.propCursor -= rnd(24, 46);
@@ -399,10 +414,173 @@ export class RiverScene extends Phaser.Scene {
       } else if (!f.used && base > 60) {
         this.hint('shop', "Dock at Hermes' stall to spend your obols");
       }
-      if (this.ended || this.dockDist(f, base) > (f.dockReach ?? TUNING.dockReach)) continue;
+      if (this.ended || this.wrecking || this.dockDist(f, base) > (f.dockReach ?? TUNING.dockReach)) continue;
       if (f.kind === 'shrine') this.deliver(f);
       else if (!f.used && this.playing) this.openShop(f);
     }
+  }
+
+  /* ---------- obstacles: rocks and dead trees in the river (src/obstacles.js) ---------- */
+
+  addObstacle(it) {
+    if (it.kind === 'rock') it.img = this.add.image(it.x, it.y + this.scroll, `crag${it.v}`).setDepth(3.5);
+    else {
+      const { box } = SNAGS[it.v];
+      it.img = this.add.image(it.x, it.y + this.scroll, `snag${it.v}`).setOrigin(box.ox / box.w, box.oy / box.h).setScale(it.dir * it.sc, it.sc).setRotation(it.dir * it.ang).setDepth(3.55);
+      if (it.bait) this.spawnSoul(it.bait.y + this.scroll, it.bait);
+    }
+    this.obstacleItems.push(it);
+  }
+
+  updateObstacles() {
+    const gu = this.foamUnder.clear(), go = this.foamOver.clear();
+    for (let i = this.obstacleItems.length - 1; i >= 0; i--) {
+      const it = this.obstacleItems[i], y = it.y + this.scroll;
+      if (y > H + 320) {
+        it.img.destroy();
+        this.obstacleItems.splice(i, 1);
+        continue;
+      }
+      it.img.y = y;
+      if (y < -320) continue;
+      if (y > 60 && y < H) this.hint('rocks', "Rocks: brush past them, but don't get pinned");
+      if (it.kind === 'rock') this.rockFoam(gu, go, it, y);
+      else this.snagFoam(go, it, y);
+    }
+    this.obstacles.prune(H + 320 - this.scroll);
+  }
+
+  // After Ines: a wake off each side of a rock, eddies behind, foam around it, heavier where it faces upstream.
+  rockFoam(gu, go, it, y) {
+    const sh = CRAGS[it.v], x = it.x, e = sh.ext * 0.6, t = this.t;
+    gu.lineStyle(1.3, 0xe1defa, 0.2);
+    for (const [p, sd] of [[sh.left, -1], [sh.right, 1]]) {
+      const ax = x + p[0], ay = y + p[1] + 2;
+      gu.strokePoints(bezier(ax, ay, ax + sd * e * 0.5, y + p[1] + e * 1.7, ax + sd * (e * 0.8 + 3 * Math.sin(t * 2 + it.ph)), y + p[1] + e * 3.4));
+    }
+    gu.lineStyle(1.3, 0xe6e4fa, 0.22);
+    for (let j = 0; j < 2; j++) {
+      const a = t * 2.4 + j * 3.1 + it.ph;
+      gu.beginPath();
+      gu.arc(x + (j ? -1 : 1) * e * 0.45, y + sh.bottom + e * 0.7, e * 0.35, a, a + 2);
+      gu.strokePath();
+    }
+    for (const [g, a, grow, ph] of [[gu, 0.16, 1.5, it.ph], [go, 0.1, -1, it.ph + 1]]) {
+      sh.outline.forEach(([ox, oy, nx, ny], i) => {
+        if (i % 2) return;
+        const up = Math.max(0, -ny), r = (1.3 + 2 * up) * (1 + 0.6 * Math.sin(t * 3 + i * 1.7 + ph));
+        g.fillStyle(0xe8e6f8, a * (0.5 + up));
+        g.fillCircle(x + ox + nx * grow, y + oy + ny * grow, r);
+      });
+    }
+  }
+
+  // Foam sliding along a dead tree's upstream edge, and a wake off its tip.
+  snagFoam(g, it, y) {
+    const s = SNAGS[it.v], at = { ...it, y }, pts = s.foam.map(([lx, ly]) => snagToWorld(at, lx, ly)), cum = [0];
+    for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + Math.hypot(pts[k].x - pts[k - 1].x, pts[k].y - pts[k - 1].y));
+    const total = cum[cum.length - 1];
+    const pointAt = (d) => {
+      let k = 0;
+      while (k < pts.length - 2 && cum[k + 1] < d) k++;
+      const f = (d - cum[k]) / (cum[k + 1] - cum[k] || 1);
+      return [pts[k].x + (pts[k + 1].x - pts[k].x) * f, pts[k].y + (pts[k + 1].y - pts[k].y) * f];
+    };
+    g.lineStyle(2, 0xebe8fa, 0.32);
+    for (let d = -((this.t * 16) % 13); d < total; d += 13) {
+      const d0 = Math.max(0, d), d1 = Math.min(total, d + 7);
+      if (d1 <= d0) continue;
+      const [ax, ay] = pointAt(d0), [bx, by] = pointAt(d1);
+      g.lineBetween(ax, ay, bx, by);
+    }
+    const e = s.spine[s.spine.length - 1], w = (lx, ly) => snagToWorld(at, lx, ly);
+    const a = w(e[0], e[1] + 6), c = w(e[0] + 10, e[1] + 40), b = w(e[0] - 6 + 4 * Math.sin(this.t * 2 + it.ph), e[1] + 80);
+    g.lineStyle(1.3, 0xe1defa, 0.2);
+    g.strokePoints(bezier(a.x, a.y, c.x, c.y, b.x, b.y));
+  }
+
+  // Obstacles always win: they push the hull out, even past the edge of the play area, and pushed too
+  // far past the bottom edge or a bank, the boat is wrecked. Through the grace after a lantern goes
+  // out the boat passes through them like a ghost, and the grace lasts until it's clear.
+  collideObstacles() {
+    const b = this.boat;
+    b.pinned = 0;
+    if (this.t < this.graceUntil) {
+      if (this.graceUntil - this.t < 0.15 && this.insideObstacle()) this.graceUntil = this.t + 0.15;
+      return;
+    }
+    for (let i = 0; i < 3 && this.pushOut(); i++);
+    const q = riverAt(b.y - this.scroll), past = Math.max(b.y - TUNING.boatBottom, q.l + TUNING.boatEdgeMargin - b.x, b.x - (q.r - TUNING.boatEdgeMargin));
+    b.pinned = Math.max(0, past);
+    if (b.pinned > 6) this.hint('pinned', 'Pinned! Slide out sideways before you go under', 0xf87171);
+    if (past <= OBSTACLES.crushSlack) return;
+    if (this.playing) this.wreck();
+    else Object.assign(b, { x: this.obstacles.pathAt(TUNING.boatStartY - this.scroll), y: TUNING.boatStartY, vx: 0, vy: 0 }); // attract mode: start over on the safe path
+  }
+
+  // Push the hull (the upright pickup capsule) out of any obstacle it overlaps. True if it touched one.
+  pushOut() {
+    const b = this.boat;
+    let hit = false;
+    this.obstacles.nearby(b.y - this.scroll, 46 + 80, (c) => {
+      const cy = c.y + this.scroll, py = clamp(cy, b.y + TUNING.hullFront, b.y + TUNING.hullBack), rc = c.r * OBSTACLES.collide + TUNING.hullRadius;
+      let nx = b.x - c.x, ny = py - cy;
+      const d = Math.hypot(nx, ny);
+      if (d >= rc) return;
+      hit = true;
+      if (d < 0.001) {
+        nx = 0;
+        ny = 1;
+      } else {
+        nx /= d;
+        ny /= d;
+      }
+      b.x += nx * (rc - d);
+      b.y += ny * (rc - d);
+      const vn = b.vx * nx + b.vy * ny;
+      if (vn < 0) {
+        b.vx -= vn * nx;
+        b.vy -= vn * ny;
+      }
+    });
+    return hit;
+  }
+
+  insideObstacle() {
+    const b = this.boat;
+    let inside = false;
+    this.obstacles.nearby(b.y - this.scroll, 46 + 80, (c) => {
+      const cy = c.y + this.scroll, py = clamp(cy, b.y + TUNING.hullFront, b.y + TUNING.hullBack);
+      if (Math.hypot(b.x - c.x, py - cy) < c.r * OBSTACLES.collide + TUNING.hullRadius) inside = true;
+    });
+    return inside;
+  }
+
+  // Pushed off the water by a rock or a tree: the hull breaks up and a lantern goes out, as a smite would
+  // (Poseidon takes the wreck), then the boat comes back at the centre of the river, a ghost for a few seconds.
+  wreck() {
+    const b = this.boat;
+    sfx.wreck();
+    this.cameras.main.shake(380, 0.011);
+    for (let k = 0; k < 3; k++) this.ringFx(b.x, b.y, 0xe6e2f8, 0.5 + k * 0.2, 20 + k * 12);
+    this.loseLantern({ god: 2, wreck: true });
+    if (this.ended) return;
+    this.wrecking = true;
+    b.vx = b.vy = 0;
+    this.tweens.add({ targets: this.boatImg, scale: 0.7, alpha: 0, angle: '+=25', duration: OBSTACLES.wreckSeconds * 800, ease: 'Quad.easeIn' });
+    this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 300 });
+    this.time.delayedCall(OBSTACLES.wreckSeconds * 1000, () => this.respawn());
+    this.toast(`Wrecked: ${this.lanterns === 1 ? 'one lantern left' : `${this.lanterns} lanterns left`}`, 0xe6e2f8, true);
+  }
+
+  respawn() {
+    const b = this.boat;
+    this.wrecking = false;
+    this.tweens.killTweensOf([this.boatImg, this.lantern, this.lanternCore]);
+    this.boatImg.setScale(1).setAlpha(1);
+    Object.assign(b, { x: riverAt(TUNING.boatStartY - this.scroll).cx, y: TUNING.boatStartY, vx: 0, vy: 0, tilt: 0, pinned: 0 });
+    this.graceUntil = this.t + LANTERNS.graceSeconds;
+    this.ringFx(b.x, b.y, 0xffc478, 0.8, 34);
   }
 
   // The gods of the next n shrines the boat hasn't reached yet, nearest first.
@@ -417,10 +595,14 @@ export class RiverScene extends Phaser.Scene {
 
   /* ---------- souls ---------- */
 
-  spawnSoul(sy = -36) {
+  // at: a spot for a bait soul, waiting in the pocket under a dead tree (world x, y).
+  spawnSoul(sy = -36, at = null) {
     const god = this.pickSoulGod();
     const { key, color } = GODS[god];
-    const s = { sy, god, o: clamp(gauss() * 0.62, -0.78, 0.78), ph: rnd(0, TAU), sp: rnd(0.96, 1.08), x: 0, y: sy, trailAt: null };
+    const wy = sy - this.scroll, q = riverAt(wy);
+    let o = at ? (at.x - q.cx) / q.hw : clamp(gauss() * 0.62, -0.78, 0.78);
+    for (let k = 0; !at && k < 6 && this.obstacles.hits(q.cx + o * q.hw, wy, TUNING.soulRadius + 8); k++) o = clamp(gauss() * 0.62, -0.78, 0.78); // not on a rock or a tree
+    const s = { sy, god, o, ph: rnd(0, TAU), sp: at ? 1 : rnd(0.96, 1.08), bait: Boolean(at), x: 0, y: sy, trailAt: null };
     s.halo = this.add.image(0, 0, 'glow').setTint(color).setBlendMode('ADD').setScale(1.6).setDepth(10);
     s.body = this.add.image(0, 0, `soul_${key}`).setDepth(11);
     s.rim = this.add.image(0, 0, 'rim').setRotation(rnd(0, TAU)).setDepth(12);
@@ -437,7 +619,8 @@ export class RiverScene extends Phaser.Scene {
 
   placeSoul(s) {
     const q = riverAt(s.sy - this.scroll);
-    s.x = q.cx + (s.o + 0.07 * Math.sin(this.t * 0.8 + s.ph)) * q.hw + 4 * Math.sin(this.t * 1.7 + s.ph);
+    const sway = s.bait ? 0 : 0.07, bob = s.bait ? 1.5 : 4; // a bait soul holds still in its pocket
+    s.x = q.cx + (s.o + sway * Math.sin(this.t * 0.8 + s.ph)) * q.hw + bob * Math.sin(this.t * 1.7 + s.ph);
     s.y = s.sy + 3 * Math.cos(this.t * 1.3 + s.ph);
     const fade = clamp((s.sy + 40) / 60, 0, 1);
     s.halo.setPosition(s.x, s.y).setAlpha(0.36 * fade);
@@ -454,15 +637,27 @@ export class RiverScene extends Phaser.Scene {
       const s = this.souls[i];
       s.sy += this.speed * s.sp * dt;
       s.rim.rotation += dt * 1.6;
+      if (!s.bait) this.steerSoul(s);
       this.placeSoul(s);
       if (s.sy > H + 40) {
         this.removeSoul(i);
         this.skipped(s.god);
-      } else if (!this.ended && this.hold.length < this.stats.capacity && this.hullDist(s.x, s.y) < TUNING.soulRadius + TUNING.hullRadius) {
+      } else if (!this.ended && !this.wrecking && this.hold.length < this.stats.capacity && this.hullDist(s.x, s.y) < TUNING.soulRadius + TUNING.hullRadius) {
         this.removeSoul(i);
         this.collect(s);
       }
     }
+  }
+
+  // The current carries souls around rocks and trees instead of through them (out toward mid-river past a tree).
+  steerSoul(s) {
+    const wy = s.sy - this.scroll, q = riverAt(wy);
+    this.obstacles.nearby(wy, 80, (c) => {
+      const d = Math.hypot(s.x - c.x, wy - c.y), min = c.r + TUNING.soulRadius + 4;
+      if (d >= min) return;
+      const dir = c.item.kind === 'tree' ? c.item.dir : s.x < c.x ? -1 : 1;
+      s.o = clamp(s.o + (dir * Math.min(4, min - d)) / q.hw, -0.9, 0.9);
+    });
   }
 
   removeSoul(i) {
@@ -607,7 +802,7 @@ export class RiverScene extends Phaser.Scene {
   /* ---------- the boat ---------- */
 
   buildBoat() {
-    this.boat = { x: W / 2, y: TUNING.boatStartY, vx: 0, vy: 0, tilt: 0, wakeT: 0 };
+    this.boat = { x: W / 2, y: TUNING.boatStartY, vx: 0, vy: 0, tilt: 0, wakeT: 0, pinned: 0 };
     this.wake = [];
     this.boatImg = this.add.image(this.boat.x, this.boat.y, 'boat').setOrigin(0.4, 72 / 170).setDepth(20);
     this.lantern = this.add.image(0, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(3.3).setAlpha(0.5).setDepth(21);
@@ -671,9 +866,12 @@ export class RiverScene extends Phaser.Scene {
       b.x = hi;
       b.vx = Math.min(0, b.vx);
     }
+    this.collideObstacles();
+    if (this.wrecking) return;
     b.tilt += (clamp(b.vx * 0.0011, -0.3, 0.3) - b.tilt) * Math.min(1, dt * 7);
     const blink = this.t < this.graceUntil && Math.sin(this.t * 38) > 0; // the boat flickers through the grace after a smite
-    this.boatImg.setPosition(b.x, b.y).setRotation(b.tilt).setAlpha(blink ? 0.35 : 1);
+    const shake = b.pinned > 2 ? rnd(-2.5, 2.5) : 0; // groaning against a rock
+    this.boatImg.setPosition(b.x + shake, b.y).setRotation(b.tilt).setAlpha(blink ? 0.35 : 1);
     const bow = this.local(0, -66);
     const gutter = this.playing && this.lanterns === 1 ? 0.45 + 0.55 * Math.abs(Math.sin(this.t * 7.3) * Math.sin(this.t * 3.1)) : 1; // on the last lantern the bow light gutters
     this.lantern.setPosition(bow.x, bow.y).setAlpha(0.5 * gutter);
@@ -711,6 +909,9 @@ export class RiverScene extends Phaser.Scene {
       }
     }
     if (tx === null) tx = riverAt(b.y - this.scroll).cx + 70 * Math.sin(this.t * 0.45);
+    let near = false; // with rocks or trees ahead, ride the safe path
+    this.obstacles.nearby(b.y - this.scroll - 150, 300, () => (near = true));
+    if (near) tx = this.obstacles.pathAt(b.y - this.scroll - 60);
     b.vx = clamp(b.vx + ((tx - b.x) * 7 - b.vx * 5) * dt, -430, 430);
     b.vy = (TUNING.boatStartY + 10 * Math.sin(this.t * 0.55) - b.y) * 4;
   }
@@ -1182,6 +1383,7 @@ export class RiverScene extends Phaser.Scene {
     this.tweens.add({ targets: [this.lantern, this.lanternCore], alpha: 0, duration: 400 });
     const result = {
       god: cause.god,
+      wreck: Boolean(cause.wreck),
       distance: this.scroll,
       delivered: this.run.delivered,
       earned: this.run.earned,
@@ -1205,7 +1407,8 @@ export class RiverScene extends Phaser.Scene {
     this.ended = false;
     this.lanterns = 1;
     this.graceUntil = this.t + LANTERNS.graceSeconds;
-    if (this.sunkBy.god !== undefined) this.appease(this.sunkBy.god);
+    if (this.sunkBy.wreck) this.respawn(); // back at the centre of the river, clear of the rock that sank it
+    else if (this.sunkBy.god !== undefined) this.appease(this.sunkBy.god);
     this.tweens.killTweensOf([this.boatImg, this.lantern, this.lanternCore]);
     this.boatImg.setScale(1).clearTint();
     this.lanternPulse[0] = 1;
@@ -1449,7 +1652,13 @@ export class RiverScene extends Phaser.Scene {
   drawDebug() {
     if (!this.debugG) this.debugG = this.add.graphics().setDepth(99);
     const g = this.debugG, a = this.local(0, TUNING.hullFront), b = this.local(0, TUNING.hullBack);
-    g.clear().lineStyle(1, 0x00ff88, 0.9);
+    g.clear().lineStyle(1, 0x3df2b0, 0.7); // the safe path, and what the rocks and trees collide with
+    const path = [];
+    for (let y = -10; y <= H + 10; y += 20) path.push({ x: this.obstacles.pathAt(y - this.scroll), y });
+    g.strokePoints(path);
+    g.lineStyle(1, 0xf87171, 0.8);
+    this.obstacles.nearby(H / 2 - this.scroll, H / 2 + 60, (c) => g.strokeCircle(c.x, c.y + this.scroll, c.r * OBSTACLES.collide));
+    g.lineStyle(1, 0x00ff88, 0.9);
     g.lineBetween(a.x, a.y, b.x, b.y);
     g.strokeCircle(a.x, a.y, TUNING.hullRadius).strokeCircle(b.x, b.y, TUNING.hullRadius);
     for (const f of this.features) {
