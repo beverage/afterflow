@@ -53,3 +53,4 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 16:14 · Ines's water is drawn with Canvas 2D into one texture per frame (src/water.js), not rebuilt in WebGL · keeps her look exactly and costs ~2 ms a frame · Claude
 - 16:23 · Souls burn out with a flash (flare, shockwave, embers, fizzle) instead of going poof, and flicker first; brought over from shelved PR #2 · team's call · team
 - 16:23 · The ambient hum was a synth drone; replaced by quiet flowing water with the odd droplet (AMBIENCE_VOLUME in sfx.js, 0 turns it off); brought over from shelved PR #2 · the hum sounded like a fault · team
+- 16:28 · No background ambience: the flowing-water bed read as a constant hiss; silence between sound effects (AMBIENCE_VOLUME = 0 in sfx.js) · team
