@@ -156,3 +156,17 @@ export const STICK = {
   radius: 34, // the ring trails the thumb beyond this, so sliding back reverses at once
   axisSnap: 0.38, // slides within ~22° of straight count as straight, like a single arrow key
 };
+
+// Ines's angled portals (sprite sheets portal_<god>.webp in public/assets): 8x4 frames of 327x299, a 4 s loop.
+// Offsets are px from the gate's base point (on the bank, 8 px from the water), mirrored on the right bank.
+export const PORTAL = {
+  frameWidth: 327,
+  frameHeight: 299,
+  frames: 32,
+  fps: 8,
+  anchor: [80, 195.2], // the gate's base point inside a frame
+  swirl: [-1, -45], // centre of the swirl, where delivered souls fly
+  dock: [95, 28], // the brightest part of the light pooling on the water: sail in here to deliver
+  medal: [-16, -160], // her medallion, which ours covers so the symbol matches the souls
+  scale: 1,
+};

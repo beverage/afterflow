@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, LANTERNS, SCROLLS, PORTAL, FONT, DISPLAY_FONT } from '../config.js';
 import { riverAt } from '../river.js';
 import { tutorialPending } from './TutorialScene.js';
 import { soulValue, statsFor, charonFee, formatObols, formatMeters } from '../economy.js';
@@ -239,10 +239,29 @@ export class RiverScene extends Phaser.Scene {
     return this.add.image(Math.min(from, to), 0, 'pier').setOrigin(0, 14 / 34).setScale(Math.abs(to - from) / 96, 1).setFlipX(side === 'right').setDepth(4);
   }
 
+  // Ines's angled portal: an animated gate on the waterline whose light pools into the river.
+  // The dock is that pool of light: sail into it to deliver. Falls back to the stone arch without the sheet.
   makeShrine(wy, side, god) {
+    const { key, color } = GODS[god], sheet = `portal_${key}`;
+    if (!this.textures.exists(sheet) || !this.anims.exists(sheet)) return this.makeArchShrine(wy, side, god);
+    const q = riverAt(wy), dir = side === 'left' ? 1 : -1, s = PORTAL.scale;
+    const ax = side === 'left' ? q.l - 8 : q.r + 8;
+    const at = ([dx, dy]) => ({ x: ax + dir * dx * s, dy: dy * s });
+    const swirl = at(PORTAL.swirl), dock = at(PORTAL.dock), medal = at(PORTAL.medal);
+    const f = { kind: 'shrine', portal: true, wy, side, god, x: swirl.x, tip: dock.x, dockDy: dock.dy, swirlDy: swirl.dy, popDy: medal.dy - 55, pulse: 0, parts: [] };
+    f.glow = this.attach(f, this.add.image(f.x, 0, 'glow').setTint(color).setBlendMode('ADD').setScale(3).setAlpha(0).setDepth(6.4), swirl.dy);
+    const gate = this.add.sprite(ax, 0, sheet).setOrigin(PORTAL.anchor[0] / PORTAL.frameWidth, PORTAL.anchor[1] / PORTAL.frameHeight).setScale(dir * s, s).setDepth(6.5);
+    gate.play({ key: sheet, startFrame: (Math.random() * PORTAL.frames) | 0 });
+    this.attach(f, gate, 0);
+    this.attach(f, this.add.image(medal.x, 0, `medal_${key}`).setScale(1.45 * s).setDepth(6.6), medal.dy);
+    f.beam = this.attach(f, this.add.image(f.x, 0, 'beam').setOrigin(0.5, 1).setTint(color).setBlendMode('ADD').setAlpha(0).setDepth(6.7), swirl.dy - 75);
+    return f;
+  }
+
+  makeArchShrine(wy, side, god) {
     const { x, tip } = this.bankSpot(wy, side);
     const { key, color } = GODS[god];
-    const f = { kind: 'shrine', wy, side, god, x, tip, pulse: 0, parts: [] };
+    const f = { kind: 'shrine', wy, side, god, x, tip, dockDy: -6, swirlDy: -46, popDy: -150, pulse: 0, parts: [] };
     this.attach(f, this.makePier(x, tip, side), -6);
     f.glow = this.attach(f, this.add.image(x, 0, 'glow').setTint(color).setBlendMode('ADD').setScale(4).setAlpha(0.3).setDepth(5), -44);
     f.dockGlow = this.attach(f, this.add.image(tip, 0, 'glow').setTint(color).setBlendMode('ADD').setScale(2.8).setAlpha(0.25).setDepth(5), -6);
@@ -257,7 +276,7 @@ export class RiverScene extends Phaser.Scene {
 
   makeShop(wy, side) {
     const { x, tip } = this.bankSpot(wy, side);
-    const f = { kind: 'shop', wy, side, x, tip, used: false, parts: [] };
+    const f = { kind: 'shop', wy, side, x, tip, dockDy: -6, used: false, parts: [] };
     this.attach(f, this.makePier(x, tip, side), -6);
     f.glow = this.attach(f, this.add.image(x, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(3.6).setAlpha(0.35).setDepth(5), -58);
     f.dockGlow = this.attach(f, this.add.image(tip, 0, 'glow').setTint(0xffc478).setBlendMode('ADD').setScale(2.6).setAlpha(0.3).setDepth(5), -6);
@@ -271,7 +290,7 @@ export class RiverScene extends Phaser.Scene {
     return this.features.some(
       (f) =>
         (Math.abs(x - f.x) < 80 + pad && wy > f.wy - 150 - pad && wy < f.wy + 20 + pad) ||
-        (x > Math.min(f.x, f.tip) - pad && x < Math.max(f.x, f.tip) + pad && Math.abs(wy - (f.wy - 6)) < 18 + pad),
+        (x > Math.min(f.x, f.tip) - pad && x < Math.max(f.x, f.tip) + pad && Math.abs(wy - (f.wy + f.dockDy)) < (f.portal ? 50 : 18) + pad),
     );
   }
 
@@ -338,13 +357,16 @@ export class RiverScene extends Phaser.Scene {
       for (const p of f.parts) p.y = base + p.dy;
       if (f.kind === 'shrine') {
         f.pulse = Math.max(0, f.pulse - dt * 1.6);
-        f.swirl.rotation += dt * (1.4 + f.pulse * 4);
-        f.glow.setAlpha(0.28 + 0.4 * f.pulse + 0.05 * Math.sin(this.t * 1.8 + f.wy)).setScale(4 + 1.4 * f.pulse);
-        f.dockGlow.setAlpha(0.22 + 0.3 * f.pulse);
+        if (f.portal) f.glow.setAlpha(0.55 * f.pulse).setScale(3 + 2 * f.pulse); // the sheet animates itself; flare on delivery
+        else {
+          f.swirl.rotation += dt * (1.4 + f.pulse * 4);
+          f.glow.setAlpha(0.28 + 0.4 * f.pulse + 0.05 * Math.sin(this.t * 1.8 + f.wy)).setScale(4 + 1.4 * f.pulse);
+          f.dockGlow.setAlpha(0.22 + 0.3 * f.pulse);
+        }
       } else if (!f.used && base > 60) {
         this.hint('shop', "Dock at Hermes' stall to spend your obols");
       }
-      if (this.ended || this.hullDist(f.tip, base - 6) > TUNING.dockReach) continue;
+      if (this.ended || this.hullDist(f.tip, base + f.dockDy) > TUNING.dockReach) continue;
       if (f.kind === 'shrine') this.deliver(f);
       else if (!f.used && this.playing) this.openShop(f);
     }
@@ -354,7 +376,7 @@ export class RiverScene extends Phaser.Scene {
   upcomingGods(n) {
     const line = this.boat.y - 30;
     return this.features
-      .filter((f) => f.kind === 'shrine' && f.wy + this.scroll - 6 < line)
+      .filter((f) => f.kind === 'shrine' && f.wy + this.scroll + f.dockDy < line)
       .sort((a, b) => b.wy - a.wy)
       .slice(0, n)
       .map((f) => f.god);
@@ -526,15 +548,15 @@ export class RiverScene extends Phaser.Scene {
   arrived(f, gain, clutch, count) {
     const base = f.wy + this.scroll, { color } = GODS[f.god];
     f.pulse = 1;
-    this.ringFx(f.x, base - 46, color, 0.9, 30);
+    this.ringFx(f.x, base + f.swirlDy, color, 0.9, 30);
     this.tweens.add({ targets: f.beam, alpha: { from: 0.85, to: 0 }, duration: 1600, ease: 'Quad.easeOut' });
     if (!this.playing) return;
-    this.popup('+' + formatObols(gain), f.x, base - 150, color, 30);
+    this.popup('+' + formatObols(gain), f.x, base + f.popDy, color, 30);
     if (clutch) {
-      this.popup('CLUTCH!', f.x, base - 194, color, 46, true);
+      this.popup('CLUTCH!', f.x, base + f.popDy - 44, color, 46, true);
       this.cameras.main.shake(180, 0.004);
     } else if (count >= 3) this.cameras.main.shake(140, 0.003);
-    this.coinFx(f.x, base - 46, Math.min(6, 2 + count));
+    this.coinFx(f.x, base + f.swirlDy, Math.min(6, 2 + count));
   }
 
   /* ---------- the boat ---------- */
@@ -616,7 +638,7 @@ export class RiverScene extends Phaser.Scene {
     let tx = null, bestDy = Infinity;
     for (const f of this.features) {
       if (f.kind !== 'shrine' || !aboard.has(f.god)) continue;
-      const dy = b.y - (f.wy + this.scroll - 6);
+      const dy = b.y - (f.wy + this.scroll + f.dockDy);
       if (dy > -40 && dy < 340 && dy < bestDy) {
         bestDy = dy;
         tx = f.tip;
@@ -700,7 +722,7 @@ export class RiverScene extends Phaser.Scene {
       delay,
       ease: 'Sine.easeInOut',
       onUpdate: (tw) => {
-        const e = tw.getValue(), u = 1 - e, ty = f.wy + this.scroll - 46;
+        const e = tw.getValue(), u = 1 - e, ty = f.wy + this.scroll + f.swirlDy;
         img.setPosition(u * u * x + 2 * u * e * cx + e * e * f.x, u * u * y + 2 * u * e * Math.min(cy, ty - 30) + e * e * ty);
       },
       onComplete: () => {
@@ -1246,6 +1268,6 @@ export class RiverScene extends Phaser.Scene {
     g.clear().lineStyle(1, 0x00ff88, 0.9);
     g.lineBetween(a.x, a.y, b.x, b.y);
     g.strokeCircle(a.x, a.y, TUNING.hullRadius).strokeCircle(b.x, b.y, TUNING.hullRadius);
-    for (const f of this.features) g.strokeCircle(f.tip, f.wy + this.scroll - 6, TUNING.dockReach);
+    for (const f of this.features) g.strokeCircle(f.tip, f.wy + this.scroll + f.dockDy, TUNING.dockReach);
   }
 }
