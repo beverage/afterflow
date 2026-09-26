@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 import { WIDTH as W, HEIGHT as H, UPGRADES, FONT, DISPLAY_FONT } from '../config.js';
 import { price, formatObols } from '../economy.js';
-import { onAction, clearKeys } from '../controls.js';
+import { onAction, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
 import { drawMeander } from '../ui.js';
 
 // Hermes' stall: opens over the paused river when the boat docks at a shop.
-// Buy with 1 / 2 / 3 or a click, cast off with Space or Esc.
+// Buy with 1 / 2 / 3 or a click or tap, cast off with Space, Esc or the button.
 export class ShopScene extends Phaser.Scene {
   constructor() {
     super('Shop');
@@ -14,6 +14,10 @@ export class ShopScene extends Phaser.Scene {
 
   create() {
     this.river = this.scene.get('River');
+    this.touch = isTouch();
+    // Clicks and taps count after a moment, so a thumb that was steering as you docked can't buy or cast off.
+    this.armed = false;
+    this.time.delayedCall(400, () => (this.armed = true));
     const pw = 780, ph = 440, px = (W - pw) / 2, py = (H - ph) / 2;
     this.add.rectangle(0, 0, W, H, 0x05040c, 0.62).setOrigin(0);
     const g = this.add.graphics();
@@ -25,12 +29,17 @@ export class ShopScene extends Phaser.Scene {
     this.add.image(px + pw - 150, py + 66, 'obol').setScale(0.7);
     this.obolText = this.add.text(px + pw - 128, py + 66, '', { fontFamily: FONT, fontSize: '26px', fontStyle: '600', color: '#f1e6c8' }).setOrigin(0, 0.5);
     this.cards = UPGRADES.map((u, i) => this.makeCard(u, i, W / 2 + (i - 1) * 244, py + 262));
-    const leave = this.add
-      .text(W / 2, py + ph - 30, 'Space or Esc to cast off', { fontFamily: FONT, fontSize: '16px', fontStyle: '600', color: '#dce6e2' })
-      .setOrigin(0.5)
-      .setAlpha(0.75)
-      .setInteractive({ useHandCursor: true });
-    leave.on('pointerdown', () => this.close());
+    const ly = py + ph - 30;
+    if (this.touch) {
+      g.lineStyle(1.5, 0xdce6e2, 0.35).strokeRoundedRect(W / 2 - 100, ly - 21, 200, 42, 21);
+      this.add.text(W / 2, ly, 'Cast off', { fontFamily: FONT, fontSize: '20px', fontStyle: '600', color: '#dce6e2' }).setOrigin(0.5);
+    } else {
+      this.add.text(W / 2, ly, 'Space or Esc to cast off', { fontFamily: FONT, fontSize: '16px', fontStyle: '600', color: '#dce6e2' }).setOrigin(0.5).setAlpha(0.75);
+    }
+    this.add
+      .zone(W / 2, ly, 300, 48)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.armed && this.close());
 
     onAction(this, (action) => {
       if (action === 'buy1') this.buy(0);
@@ -52,9 +61,11 @@ export class ShopScene extends Phaser.Scene {
     card.desc = this.add.text(x, y + 46, u.desc, { fontFamily: FONT, fontSize: '14px', color: '#97aaa2', align: 'center', wordWrap: { width: w - 36 } }).setOrigin(0.5);
     card.coin = this.add.image(x - 32, y + 92, 'obol').setScale(0.55);
     card.cost = this.add.text(x - 16, y + 92, '', { fontFamily: FONT, fontSize: '22px', fontStyle: '600', color: '#f1e6c8' }).setOrigin(0, 0.5);
-    this.add
-      .text(x + w / 2 - 12, y - h / 2 + 12, String(i + 1), { fontFamily: FONT, fontSize: '13px', fontStyle: '600', color: '#0b100e', backgroundColor: '#dce6e2', padding: { x: 6, y: 2 } })
-      .setOrigin(1, 0);
+    if (!this.touch) {
+      this.add
+        .text(x + w / 2 - 12, y - h / 2 + 12, String(i + 1), { fontFamily: FONT, fontSize: '13px', fontStyle: '600', color: '#0b100e', backgroundColor: '#dce6e2', padding: { x: 6, y: 2 } })
+        .setOrigin(1, 0);
+    }
     const zone = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
     zone.on('pointerover', () => {
       card.hover = true;
@@ -64,7 +75,7 @@ export class ShopScene extends Phaser.Scene {
       card.hover = false;
       this.drawCard(card);
     });
-    zone.on('pointerdown', () => this.buy(i));
+    zone.on('pointerdown', () => this.armed && this.buy(i));
     return card;
   }
 

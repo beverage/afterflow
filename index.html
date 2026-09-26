@@ -22,15 +22,53 @@
         -webkit-user-select: none;
         user-select: none;
         -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
       }
       #game {
         position: fixed;
         inset: 0;
       }
+      /* A phone held upright: ask for landscape. controls.js pauses the run (same media query there). */
+      #turn {
+        display: none;
+      }
+      @media (orientation: portrait) and (pointer: coarse) and (max-width: 700px) {
+        #turn {
+          position: fixed;
+          inset: 0;
+          z-index: 10;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 28px;
+          background: #0e0c1c;
+          color: #e6eeea;
+          font: italic 600 30px 'Cormorant Garamond', Georgia, serif;
+        }
+      }
+      #turn .phone {
+        width: 30px;
+        height: 52px;
+        border: 2px solid #97aaa2;
+        border-radius: 7px;
+        animation: turn 2.4s ease-in-out infinite;
+      }
+      @keyframes turn {
+        0%,
+        25% {
+          transform: rotate(0deg);
+        }
+        55%,
+        100% {
+          transform: rotate(-90deg);
+        }
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="turn"><div class="phone"></div>Turn your phone sideways</div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

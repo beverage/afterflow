@@ -43,3 +43,8 @@ Fastest way to add one: `npm run decide -- "Cut the leaderboard · no time to se
 - 14:58 · Fonts: Cormorant Garamond and Source Sans 3 from Google Fonts · the River Flow prototype's typefaces · Claude
 - 14:58 · Keys read by physical position (event.code), so WASD works as ZQSD on AZERTY with one binding · simpler than binding both letter sets · Claude
 - 14:58 · The streak resets when a soul poofs, not on skipped souls · skips already cost rage; breaking the streak too felt like double punishment · Claude
+- 16:02 · Phones now, not v3: touch controls for a phone held sideways, built on the side in its own PR · no presentation to give, so we build to the buzzer · Alex
+- 16:02 · Touch steering is a floating stick: slide anywhere and the boat heads that way at full speed, like a held key; lift to glide · keeps the boat's physics, so Handling still matters (1:1 finger drag would bypass it) · Alex
+- 16:02 · Stick feel: 10 px dead zone, the ring trails the thumb past 34 px, slides within ~22° of straight snap straight (STICK in config.js) · taps don't steer, reversing is instant, and the keyboard-tuned braking still applies · Claude
+- 16:02 · The title starts the run on tap release, and sound also wakes on touchend · phones only allow audio and fullscreen from the end of a tap, so sound was likely silent on phones · Claude
+- 16:02 · The run also pauses when the tab is hidden or a phone turns upright, not just on window blur · phones switch apps without a blur · Claude

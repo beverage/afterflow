@@ -27,11 +27,19 @@ export function unlockAudio() {
   if (ac.state !== 'running') ac.resume().catch(() => {});
 }
 
+// Phones only let audio start at the end of a tap, and iOS suspends it when you switch apps:
+// wake it again on the next tap or key.
+for (const type of ['pointerup', 'touchend', 'keydown']) {
+  window.addEventListener(type, () => ac && ac.state !== 'running' && ac.resume().catch(() => {}), true);
+}
+
 export function toggleMute() {
   muted = !muted;
   if (master) master.gain.setTargetAtTime(muted ? 0 : 1, ac.currentTime, 0.03);
   return muted;
 }
+
+export const isMuted = () => muted;
 
 function tone(freq, { type = 'sine', dur = 0.2, vol = 0.3, attack = 0.005, at = 0, slide = 0 } = {}) {
   if (!ac) return;
