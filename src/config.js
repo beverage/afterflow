@@ -121,7 +121,7 @@ export const UPGRADES = [
     basePrice: 60,
     maxLevel: 8,
     perLevel: 0.12,
-    desc: 'The river runs 12% faster: more souls and obols per minute, more risk',
+    desc: 'The river runs 12% faster: more souls and obols, more risk',
   },
   {
     key: 'handling',
@@ -135,6 +135,16 @@ export const UPGRADES = [
   },
   { key: 'hold', name: 'Hold', icon: 'icon_hold', basePrice: 80, maxLevel: 5, perLevel: 1, desc: 'Carry one more soul' },
 ];
+
+// Scrolls, the stall's bottom row: one per god, carried one at a time, used by saying the incantation aloud.
+export const SCROLLS = {
+  calm: 0.5, // share of a full rage bar that one scroll takes away
+  priceSouls: 6, // a scroll costs this many souls' worth at your distance, so it stays worth the same effort
+  panelSeconds: 5, // Space shows your scrolls this long; the river never slows
+  match: 0.72, // how closely (0-1) what the mic heard must sound like the incantation
+  wordMatch: 0.7, // ...and each of its two words on its own
+  heardSeconds: 2.5, // the words the mic caught stay on screen this long
+};
 
 // Touch steering on phones: a floating stick under the thumb, in screen px (see controls.js).
 export const STICK = {
