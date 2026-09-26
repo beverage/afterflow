@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH as W, HEIGHT as H, GODS, COLORS, FONT, DISPLAY_FONT } from '../config.js';
+import { WIDTH as W, HEIGHT as H, GODS, TUNING, COLORS, FONT, DISPLAY_FONT } from '../config.js';
 import { formatObols, formatMeters } from '../economy.js';
 import { onAction, clearKeys, isTouch } from '../controls.js';
 import { sfx, toggleMute } from '../sfx.js';
@@ -23,6 +23,7 @@ export class GameOverScene extends Phaser.Scene {
       .text(W / 2, 218, `${god.name} smote you.`, { fontFamily: DISPLAY_FONT, fontSize: '78px', fontStyle: 'italic 600', color: hexCss(god.color) })
       .setOrigin(0.5)
       .setShadow(0, 0, hexCss(god.color), 24, true, true);
+    this.addBestLine(data);
     const stats = [
       ['DISTANCE', formatMeters(data.distance)],
       ['SOULS DELIVERED', String(data.delivered)],
@@ -57,6 +58,19 @@ export class GameOverScene extends Phaser.Scene {
       if (this.feeZone && over.includes(this.feeZone)) this.payFee();
       else this.restart();
     });
+  }
+
+  // How this run compares with your best on this device: a new best, the first mark, or how far short.
+  addBestLine({ distance, previousBest = 0 }) {
+    const y = 284;
+    if (distance > previousBest) {
+      const text = previousBest ? `New best: ${formatMeters(distance)}` : `Your mark on the river: ${formatMeters(distance)}. Beat it next time`;
+      this.add.text(W / 2, y, text, { fontFamily: DISPLAY_FONT, fontSize: '28px', fontStyle: 'italic 600', color: '#ffe6aa' }).setOrigin(0.5).setShadow(0, 0, '#ffc478', 14, true, true);
+      return;
+    }
+    const short = previousBest - distance;
+    const text = short < TUNING.pxPerMeter ? `Just short of your best, ${formatMeters(previousBest)}` : `${formatMeters(short)} short of your best, ${formatMeters(previousBest)}`;
+    this.add.text(W / 2, y, text, { fontFamily: FONT, fontSize: '18px', color: COLORS.dim }).setOrigin(0.5);
   }
 
   // Charon's offer: one row, "Pay Charon (obol) 200 to return", in a button. Out of reach, it says what you'd need.

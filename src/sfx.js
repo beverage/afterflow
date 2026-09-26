@@ -145,6 +145,12 @@ export const sfx = {
     [392, 587.33, 783.99].forEach((f, i) => tone(f, { type: 'triangle', dur: 0.7, vol: 0.13, attack: 0.03, at: 0.05 + i * 0.07 }));
     tone(1567.98, { dur: 0.9, vol: 0.05, attack: 0.08, at: 0.2 });
   },
+  // Passing your best: a warm rising fanfare, lower and longer than the clutch.
+  newBest() {
+    [392, 493.88, 587.33, 783.99].forEach((f, i) => tone(f, { type: 'triangle', dur: 0.8, vol: 0.16, attack: 0.02, at: i * 0.09 }));
+    tone(1174.66, { dur: 1.2, vol: 0.06, attack: 0.1, at: 0.35 });
+    noise({ dur: 0.9, vol: 0.06, freq: 5000, type: 'highpass', at: 0.3 });
+  },
   tap() {
     tone(1200, { dur: 0.05, vol: 0.08 });
   },

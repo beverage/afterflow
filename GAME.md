@@ -14,11 +14,12 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## Rules (v1)
 
-- One continuous run. Nothing is saved: no accounts, no best score. Game over, press a key, fresh run.
+- One continuous run: game over, press a key, fresh run. No accounts, but this device remembers your best run and lifetime totals (localStorage); `?fresh` in the URL forgets them.
 - 3 gods, one rage bar each in the HUD: **Athena** (gold, owl), **Ares** (crimson, spear), **Poseidon** (seafoam, trident). Souls carry their god's symbol too, not just a color.
 - Rage: only skipped souls fill it (a soul that leaves the bottom of the screen uncaught, including when your hold is full). Any bar at 100%: that god smites you and a lantern goes out.
 - **Lanterns** are your lives: you start with 2 and can hold 3 (small lanterns under the rage bars). A smite puts one out and takes the souls aboard and the streak with it; the god who struck is appeased (rage back to 0) and the others cool by 25%, then for 3 s the boat flickers and passing souls anger no one. When the last lantern goes out, the run ends. Every 8th delivery in a row lights one. Obstacles (v2) will put them out too.
 - **Charon's fee:** when the last lantern goes out, the game-over screen offers to pay Charon to return with one lantern (the god who struck is appeased, as after any smite). The fee starts at 150 obols and climbs on the same curve as Hermes' prices, ×1.8 each time it's paid in a run (150, 270, 490, 870...), so obols not spent at Hermes' stall are a way back. Out of reach, the screen shows the fee next to your obols.
+- **Your best:** your best distance is marked on the river, a line of floating lights across the water labelled on the bank; crossing it pops "New best!". The game-over screen says how the run compares (a new best, your first mark, or how far short), and the title shows your best and the souls you've ferried.
 - Souls shrink and flicker over their lifespan and burn out in a flash at zero, which forces regular deliveries.
 - The streak resets when a soul burns out. Skipped souls already cost rage, so they don't also break it.
 - Shops: a riverside dock every ~20 s, alternating banks. Docking pauses the game. Items:
@@ -61,6 +62,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 - On a phone, taps do everything else: start, buy, cast off (a button), resume, pay Charon (his offer is a button), restart. A pause button sits top right, and the pause screen has a sound toggle. Prompts say "tap" instead of naming keys.
 - A phone held upright shows "turn your phone sideways" and pauses the run. Android goes fullscreen on the first tap; iPhones can't, short of Add to Home Screen.
 - Add `?touch` to the URL to try the phone controls on a laptop, dragging with the mouse.
+- Add `?fresh` to the URL to forget saved runs, as on a first visit (for playtests and demos).
 
 ## Look and sound
 
@@ -88,7 +90,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 | `obol` | 40x40 | Coin with Athena's owl |
 | `icon_speed`, `icon_handling`, `icon_hold` | 96x96 | Shop icons |
 
-- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite and lantern lit. No background ambience: silence between effects. Real audio can replace them later. Owner: TBD.
+- Sounds: all synthesized in code (`src/sfx.js`): pickup, deliver (pitch climbs with the streak), streak break, **clutch (unique)**, burn-out, skip, coin, shop open, buy, can't afford, rage warning, smite, lantern lit and new best. No background ambience: silence between effects. Real audio can replace them later. Owner: TBD.
 
 ## Voices (Gradium, v2)
 
@@ -103,7 +105,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 - Hack rule: use at least 2 of Gemini, Gradium, Devin, Voodoo (use during development counts).
 - v1, must have for the demo: river runner, 3 gods, souls with a lifespan, shrines and deliveries, rage bars and death, riverside shops with exponential prices (Speed, Handling, Hold), streaks, clutch with its own sound, juice (pops, obol bursts, screen shake), game over and instant restart.
-- v2, after v1 is solid: AI gods (reactions, fresh prayers, death verdict, soul stories), prayer scrolls read aloud (speech-to-text), obstacles and damage, saving and best score, bullet-hell arena when a god's rage fills, weapons.
+- v2, after v1 is solid: AI gods (reactions, fresh prayers, death verdict, soul stories), prayer scrolls read aloud (speech-to-text), obstacles and damage, bullet-hell arena when a god's rage fills, weapons.
 - Phones, alongside v1: touch controls for a phone held sideways (see Controls). Phone versions of v2 input (prayers) come with v2.
 - Stretch: voice cloning (the ferryman repeats your prayer in your own voice).
 - Considered, not chosen: golden hero souls, underworld zones, missions, leaderboard.
@@ -111,7 +113,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 
 ## v1 status
 
-Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives), death and Charon's fee, Hermes' stall with exponential prices, pause, game over and instant restart, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
+Built and playable: title over a self-steering river, a how-to-play tour on the first run, the river runner, souls with a lifespan, shrines and deliveries, streaks and clutches, rage bars, lanterns (lives), death and Charon's fee, Hermes' stall with exponential prices, pause, game over and instant restart, your best run saved on this device and marked on the river, one-time tips, placeholder art and synthesized sound, and touch controls for phones held sideways.
 
 Next: playtest and tune the numbers in `src/config.js` against the targets above, then drop in Ines's art.
 

@@ -34,6 +34,7 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 | `src/art.js` | Placeholder art drawn by code at boot, under the same keys as the manifest |
 | `src/controls.js` | All input: `moveVector()` (keys, or the touch stick) plus actions (pause, mute, confirm, help, buy1-3) by physical key; `isTouch()`, `onAway()` |
 | `src/sfx.js` | Sound effects and the ambient drone, synthesized with Web Audio (no files) |
+| `src/save.js` | What this device remembers between runs (localStorage): best run, last run, lifetime totals. `?fresh` forgets it |
 | `src/river.js`, `src/economy.js` | River shape; soul value, prices, upgrade stats, Charon's fee, number formats |
 | `src/ai.js` | `askAI({ prompt, system, schema, fallback })`, `getAIStatus()` |
 | `src/voice.js` | `speak(text, { voice })`, `prepareSpeech()`, `stopSpeaking()`, `getVoiceStatus()` |
@@ -68,3 +69,4 @@ The game must be playable at every commit on `main`. The live demo is at 20:00, 
 - `npm run decide -- "Cut the leaderboard · no time"`: appends a timestamped line to DECISIONS.md
 - Add `?debug` to the URL to see the hull and dock zones, and whether AI and voice are live. `window.game` is exposed in the console.
 - Add `?touch` to the URL to try the phone controls on a laptop: tap prompts, and a mouse drag steers.
+- Add `?fresh` to the URL to forget saved runs (best, mark on the river, totals), as on a first visit.
