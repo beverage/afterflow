@@ -9,7 +9,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 ## Core loop (v1: what the player does every few seconds)
 
 1. **Scoop.** The river scrolls down the middle of the screen. Move the boat anywhere on the water with WASD and touch drifting souls to take them aboard. Each soul has its god's color and slowly shrinks; when its lifespan runs out it burns out in a flash.
-2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into a shrine's dock to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to burn out is a **CLUTCH**, with its own sound and a bonus.
+2. **Deliver.** Shrines drift by on the left and right banks (a strip shows the next 3). Steer into the pool of light at a shrine's portal to hand over every soul of its color for obols. Back-to-back deliveries build a **streak** (x2, x3, x4...). Delivering a soul that was about to burn out is a **CLUTCH**, with its own sound and a bonus.
 3. **Upgrade or die.** Every soul that floats past uncaught fills its god's rage bar; if any bar fills, that god smites you and one of your lanterns goes out; when the last one goes out, the run ends. Riverside shops pause the game when you dock: spend obols on upgrades whose prices climb exponentially.
 4. **Remember and recite.** Each scroll has a two-word incantation in crypto-Greek. Say it aloud on the river and the scroll calms its god. You can glance at your scrolls, but the river never slows: learn the words.
 
@@ -53,7 +53,7 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 ## Controls
 
 - Laptop first. **WASD** (the same keys are ZQSD on French AZERTY keyboards: keys are read by position) or the **arrow keys** move the boat freely on the water, shoot-'em-up style: across the river to reach souls and banks, forward and back to rush or wait. Diagonals are not faster. Quick acceleration with a slight glide; Handling makes it snappier.
-- Deliver: automatic when the boat touches a shrine's dock.
+- Deliver: automatic when the boat sails into the pool of light in front of a shrine's portal.
 - Shop: touching a shop's dock pauses the game and opens it. **1 to 6** or a click buys (1-3 upgrades, 4-6 scrolls), **Space** or **Esc** casts off.
 - **Esc** or **P** pauses, **M** mutes, **Space** or **Enter** restarts after game over (after a short delay, so a held key doesn't restart instantly); **1** or a click on Charon's offer pays his fee instead.
 - A "click to play" screen gives the game keyboard focus and unlocks audio. The game pauses when the window loses focus or the tab is hidden, so keys can't get stuck.
@@ -68,20 +68,21 @@ _Name: **Soul Drift** (for now)._ Ferry the dead down the river: scoop up drifti
 ## Look and sound
 
 - View: 3/4 top-down 2D (2.5D) on a landscape 1280x720 canvas.
-- Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines drawn as stone-arch portals with a swirl in their god's color. Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
+- Art direction: the River Flow prototype's look. A glowing violet river on dark water, misty grey-green banks with pines and red spider lilies, souls as glowing bubbles, shrines are Ines's animated stone portals, set at an angle on the bank and spilling a pool of light in their god's color onto the water (sail into it to deliver). Animated look preview: https://claude.ai/artifact/BrqevqKY2V8ADoYP1JQCK3
 - Layout: the river (~560 px wide) runs down the middle. The banks (~360 px each side) hold shrines and shops at the water's edge. HUD panels sit on the outer edges: rage bars, lanterns and distance on the left; obols, streak and next shrines on the right. The boat faces up the screen and everything drifts from top to bottom.
 - Art owner: Ines. Every key below already has a placeholder drawn by code (`src/art.js`), so real art is optional and drops in by key with no code change.
 - Atmosphere after Ines's river study: drifting fog banks, a grey tint and haze at the top and bottom (under souls and the boat so they stay crisp), floating spores, darkened edges. `fogAmount` in `src/config.js` sets the fog (her slider; default 0.75).
 - Banks after Ines's river study too: uneven shoreline with a muddy strip, and pines, ferns, rocks and spider lilies scattered at her densities, clear of shrines and stalls.
 - How-to-play tour: Ines's tutorial design from her River Flow prototype. The screen dims except a soft round spotlight circled by a slowly turning dashed ring; a dark caption card with a faint violet glow (Cormorant title, Source Sans text, step dots, a violet-to-cyan bar that fills as the step runs out) sits at the top or bottom, away from the spotlight.
-- Drawn by code, not art: the water (ported from Ines's river study `afterflow-riviere.html`: shallow-to-deep body, flowing surface, current lines faster mid-stream, serpentine lifestream ribbons, glints, foam along the banks), glows, portal swirls, soul trails and sparks.
+- Drawn by code, not art: the water (ported from Ines's river study `afterflow-riviere.html`: shallow-to-deep body, flowing surface, current lines faster mid-stream, serpentine lifestream ribbons, glints, foam along the banks), glows, soul trails and sparks (and the fallback stone arch with its swirl, used only if a portal sheet fails to load).
 - Assets (PNG with transparency in `public/assets/`, one line each in `src/assets.js`):
 
 | Key | Size (px) | Notes |
 |---|---|---|
 | `bank` | 1280x720 | Ground for both banks, no water (the river is drawn over it). Loops top to bottom. Placeholder: Ines's mossy ground with grass, moss and pale flowers |
 | `boat` | 100x170 | Charon's ferry from above, bow up, hull centred at (40, 72) |
-| `arch` | 150x150 | Shrine arch, base centre at (75, 138). Leave the opening transparent: the portal shows through |
+| `portal_athena`, `portal_ares`, `portal_poseidon` | 2616x1196 | Ines's animated portals (Afterflow): sprite sheets of 8x4 frames, 327x299 each, played at 8 fps. Gate base at (80, 195) in a frame, facing right; mirrored on the right bank. Matched by color: her gold Apollo sheet is Athena, her red Persephone sheet is Ares, her Poseidon sheet hue-shifted to seafoam is Poseidon. Our god medallions sit over her symbols (`PORTAL` in `src/config.js` has the offsets) |
+| `arch` | 150x150 | Fallback shrine arch, used only if a portal sheet fails to load. Base centre at (75, 138); leave the opening transparent: the portal shows through |
 | `shop` | 150x150 | Hermes' stall, base centre at (75, 138) |
 | `pier` | 100x34 | Planks with posts at the right (water) end, stretched to length |
 | `pine1`, `pine2`, `pine3` | about 98 to 136 square | Pines seen from above (Ines's radiating needles); trunk up-left of centre, shadow down-right |
