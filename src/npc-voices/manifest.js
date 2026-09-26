@@ -135,5 +135,237 @@ export const AUDIO = {
         "seconds": 1.92
       }
     ]
+  },
+  "hades": {
+    "run_start": [
+      {
+        "path": "/npc-voices/hades/run_start_charon-row.wav",
+        "text": "Charon. Row.",
+        "seconds": 1.6
+      },
+      {
+        "path": "/npc-voices/hades/run_start_the-dead-are-waiting.wav",
+        "text": "The dead are waiting.",
+        "seconds": 1.76
+      }
+    ],
+    "rage_50": [
+      {
+        "path": "/npc-voices/hades/rage_50_losing-my-dead.wav",
+        "text": "Losing my dead?",
+        "seconds": 1.92
+      },
+      {
+        "path": "/npc-voices/hades/rage_50_i-am-watching-charon.wav",
+        "text": "I am watching, Charon.",
+        "seconds": 2.4
+      }
+    ],
+    "rage_80": [
+      {
+        "path": "/npc-voices/hades/rage_80_careful-charon.wav",
+        "text": "Careful, Charon.",
+        "seconds": 2.32
+      },
+      {
+        "path": "/npc-voices/hades/rage_80_my-patience-ends-here.wav",
+        "text": "My patience ends here.",
+        "seconds": 2.4
+      }
+    ],
+    "hurry": [
+      {
+        "path": "/npc-voices/hades/hurry_faster-charon.wav",
+        "text": "Faster, Charon.",
+        "seconds": 2
+      },
+      {
+        "path": "/npc-voices/hades/hurry_the-dead-do-not-wait.wav",
+        "text": "The dead do not wait.",
+        "seconds": 1.84
+      }
+    ],
+    "shout": [
+      {
+        "path": "/npc-voices/hades/shout_charon.wav",
+        "text": "Charon!",
+        "seconds": 1.12
+      },
+      {
+        "path": "/npc-voices/hades/shout_row.wav",
+        "text": "Row.",
+        "seconds": 0.88
+      },
+      {
+        "path": "/npc-voices/hades/shout_faster.wav",
+        "text": "Faster.",
+        "seconds": 1.12
+      },
+      {
+        "path": "/npc-voices/hades/shout_mine.wav",
+        "text": "Mine.",
+        "seconds": 0.96
+      },
+      {
+        "path": "/npc-voices/hades/shout_careless.wav",
+        "text": "Careless.",
+        "seconds": 1.2
+      },
+      {
+        "path": "/npc-voices/hades/shout_pathetic.wav",
+        "text": "Pathetic.",
+        "seconds": 1.28
+      },
+      {
+        "path": "/npc-voices/hades/shout_lost-again.wav",
+        "text": "Lost. Again.",
+        "seconds": 2
+      },
+      {
+        "path": "/npc-voices/hades/shout_enough.wav",
+        "text": "Enough!",
+        "seconds": 0.88
+      }
+    ],
+    "streak": [
+      {
+        "path": "/npc-voices/hades/streak_good.wav",
+        "text": "Good.",
+        "seconds": 0.8
+      },
+      {
+        "path": "/npc-voices/hades/streak_the-underworld-is-fed.wav",
+        "text": "The underworld is fed.",
+        "seconds": 2.32
+      }
+    ],
+    "smite": [
+      {
+        "path": "/npc-voices/hades/smite_your-river-ends.wav",
+        "text": "Your river ends.",
+        "seconds": 1.68
+      },
+      {
+        "path": "/npc-voices/hades/smite_you-belong-to-me-now.wav",
+        "text": "You belong to me now.",
+        "seconds": 2.08
+      }
+    ]
+  },
+  "athena": {
+    "run_start": [
+      {
+        "path": "/npc-voices/athena/run_start_think-before-you-row.wav",
+        "text": "Think before you row.",
+        "seconds": 2.16
+      },
+      {
+        "path": "/npc-voices/athena/run_start_be-precise.wav",
+        "text": "Be precise.",
+        "seconds": 1.84
+      }
+    ],
+    "rage_50": [
+      {
+        "path": "/npc-voices/athena/rage_50_that-soul-was-mine.wav",
+        "text": "That soul was mine.",
+        "seconds": 1.6
+      },
+      {
+        "path": "/npc-voices/athena/rage_50_i-expected-more.wav",
+        "text": "I expected more.",
+        "seconds": 1.84
+      }
+    ],
+    "rage_80": [
+      {
+        "path": "/npc-voices/athena/rage_80_i-am-counting.wav",
+        "text": "I am counting.",
+        "seconds": 1.44
+      },
+      {
+        "path": "/npc-voices/athena/rage_80_last-warning-ferryman.wav",
+        "text": "Last warning, ferryman.",
+        "seconds": 2.48
+      }
+    ],
+    "hurry": [
+      {
+        "path": "/npc-voices/athena/hurry_hurry-charon.wav",
+        "text": "Hurry, Charon.",
+        "seconds": 2.24
+      },
+      {
+        "path": "/npc-voices/athena/hurry_they-are-fading.wav",
+        "text": "They are fading.",
+        "seconds": 1.52
+      }
+    ],
+    "shout": [
+      {
+        "path": "/npc-voices/athena/shout_ferryman.wav",
+        "text": "Ferryman!",
+        "seconds": 1.28
+      },
+      {
+        "path": "/npc-voices/athena/shout_focus.wav",
+        "text": "Focus.",
+        "seconds": 1.04
+      },
+      {
+        "path": "/npc-voices/athena/shout_wrong.wav",
+        "text": "Wrong.",
+        "seconds": 0.96
+      },
+      {
+        "path": "/npc-voices/athena/shout_careless.wav",
+        "text": "Careless.",
+        "seconds": 1.12
+      },
+      {
+        "path": "/npc-voices/athena/shout_think.wav",
+        "text": "Think!",
+        "seconds": 0.96
+      },
+      {
+        "path": "/npc-voices/athena/shout_mine.wav",
+        "text": "Mine.",
+        "seconds": 0.88
+      },
+      {
+        "path": "/npc-voices/athena/shout_again.wav",
+        "text": "Again?",
+        "seconds": 0.88
+      },
+      {
+        "path": "/npc-voices/athena/shout_enough.wav",
+        "text": "Enough!",
+        "seconds": 0.96
+      }
+    ],
+    "streak": [
+      {
+        "path": "/npc-voices/athena/streak_good-you-are-learning.wav",
+        "text": "Good. You are learning.",
+        "seconds": 2.4
+      },
+      {
+        "path": "/npc-voices/athena/streak_precise.wav",
+        "text": "Precise.",
+        "seconds": 1.52
+      }
+    ],
+    "smite": [
+      {
+        "path": "/npc-voices/athena/smite_you-wasted-every-chance.wav",
+        "text": "You wasted every chance.",
+        "seconds": 2
+      },
+      {
+        "path": "/npc-voices/athena/smite_a-foolish-end.wav",
+        "text": "A foolish end.",
+        "seconds": 1.6
+      }
+    ]
   }
 };

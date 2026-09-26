@@ -10,29 +10,28 @@
 //     but forceful energy, a warrior general giving orders; calm, then sharp when angered. Regal, proud, cold and
 //     disappointed. The voice of Athena, goddess of wisdom and war, in a dark video game."
 // voiceId: the Gradium voice kept with `npm run voice:keep -- <id> "Athena"`.
-// null = the server's default voice until Athena's own voice is kept.
 // Lines stay under ~5 words (about 2.5 s of audio). Periods keep her precise; save "!" for the rare moment
 // she snaps. Callers show the text on screen too.
 
 export const ATHENA = {
   name: 'Athena',
-  voiceId: null,
+  voiceId: 'xejWGWmOKQHMxQbh', // "Athena", kept from Voice Design candidate vox_emb_t6gPWRtyA5TYOWJf (prompt A)
   lines: {
     run_start: [
       'Think before you row.',
-      'Ferryman. Be precise.',
+      'Be precise.',
     ],
     rage_50: [
       'That soul was mine.',
-      'Careless. I expected more.',
+      'I expected more.',
     ],
     rage_80: [
-      'One more mistake. I am counting.',
+      'I am counting.',
       'Last warning, ferryman.',
     ],
     hurry: [
       'Hurry, Charon.',
-      'My souls are fading. Move.',
+      'They are fading.',
     ],
     shout: [
       'Ferryman!',
@@ -50,7 +49,7 @@ export const ATHENA = {
     ],
     smite: [
       'You wasted every chance.',
-      'A foolish end, ferryman.',
+      'A foolish end.',
     ],
   },
 };

@@ -16,7 +16,8 @@ resetHeroAudio();
 assert.ok(next('Ares') && next(' ARES '));
 assert.equal(getHeroAudio('zeus', 'shout', { now: (t += 5000) }), null);
 assert.equal(next('ares', 'no_such_moment'), null);
-if (!AUDIO.athena) assert.equal(next('athene'), null, 'no Athena audio yet: null, not a crash');
+if (AUDIO.athena) assert.ok(next('Athene'), '"athene" is an alias of athena');
+else assert.equal(next('athene'), null, 'no Athena audio yet: null, not a crash');
 
 // Shuffle bag: every block of n draws holds each shout once, never the same line twice in a row.
 resetHeroAudio();
