@@ -1283,7 +1283,7 @@ export class RiverScene extends Phaser.Scene {
 
   updateScrolls(dt) {
     const carried = this.run.scrolls, any = carried.some(Boolean);
-    setListening(!this.ended && any && this.sys.isActive(), (c) => this.heard(c));
+    setListening(!this.ended && any && this.sys.isActive(), (c) => this.heard(c), carried);
     const mic = listenStatus();
     this.micPulse = Math.max(0, (this.micPulse || 0) - dt * 3);
     this.micDot.setFillStyle(mic === 'listening' ? 0x4ade80 : canListen() ? 0x97aaa2 : 0xf87171).setAlpha(any ? (mic === 'listening' ? 0.6 + 0.4 * Math.sin(this.t * 4) : 0.7) : 0.25);
@@ -1332,7 +1332,7 @@ export class RiverScene extends Phaser.Scene {
   // while the stall has the game paused.
   takeScroll(god) {
     this.run.scrolls[god] = takeIncantation(god);
-    setListening(true, (c) => this.heard(c));
+    setListening(true, (c) => this.heard(c), this.run.scrolls);
   }
 
   // The mic caught some words: show them, and use a carried scroll if they match its incantation.
